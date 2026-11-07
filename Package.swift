@@ -21,7 +21,9 @@ let package = Package(
         ),
         .testTarget(
             name: "UniversalKMCoreTests",
-            dependencies: ["UniversalKMCore"]
+            dependencies: ["UniversalKMCore"],
+            // Read through #filePath, not bundled.
+            exclude: ["Fixtures"]
         ),
     ]
 )
