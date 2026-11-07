@@ -2,13 +2,14 @@
 
 ## Context
 
-Проект пустой (README + OpenSpec). Зачем он нужен — см. proposal.md, раздел «Why». Требования — в `specs/`.
+Зачем это нужно — см. proposal.md, раздел «Why». Требования — в `specs/`. В репозитории уже есть каркас пакета, скрипты сборки `.app`, кодирование HID‑отчётов и накопитель движения в Core (задачи 1.1–1.2 и задел 1.4–1.5).
 
 Окружение разработки: macOS 27, Xcode 27.1, Swift 6.4, Apple Silicon. Генераторов Xcode‑проектов (xcodegen, tuist) нет.
 
 Ограничения платформы, которые определяют решения ниже:
 
-- **CoreBluetooth в роли Peripheral** даёт только высокоуровневый API. Рекламировать можно лишь `LocalName` и `ServiceUUIDs` (без Appearance и без флагов). Для `CBMutableDescriptor` официально поддерживаются только 0x2901 (User Description) и 0x2904 (Presentation Format), а HOGP нужен Report Reference (0x2908). Отдельного колбэка об отключении центрального устройства нет. Имя подключённого центрального устройства недоступно — есть только `CBCentral.identifier`.
+- **Mac не может быть BLE HID периферией (проверено 2026‑11‑08, macOS 27):** `CBPeripheralManager.add` отклоняет сервисы 0x1812, 0x180A и 0x180F с ошибкой «The specified UUID is not allowed for this operation». Внешние USB‑Bluetooth‑адаптеры macOS не использует. Адаптер AIC8800 из ящика пользователя не переключить в рабочий режим: libusb даже под root не может отцепить драйвер Mass Storage без ограниченного права `com.apple.vm.device-access`. Поэтому роль BLE HID отдана внешнему устройству.
+- **ChameleonUltra** (hw_v1, прошивка v2.1, USB `6868:8686`, CDC‑serial `/dev/cu.usbmodem…`) — nRF52840 с открытой прошивкой RfidResearchGroup/ChameleonUltra (GPL‑3.0): nRF5 SDK 17 и SoftDevice S140 7.2.0 лежат в репозитории; уже есть BLE‑периферия (Nordic UART Service, Battery, Peer Manager с bonding и опциональным статическим PIN), USB‑CDC с протоколом кадров `netdata` (SOF `0x11`, LRC, команда/статус/длина u16; занятые ID команд — до 5013), DFU по USB со штатным загрузчиком. Ключ подписи DFU (`resource/dfu_key/chameleon.pem`) публичен в репозитории, значит, свои пакеты загрузчик примет. Пока Chameleon питается от USB, таймер сна остановлен.
 - **Event tap, который блокирует события** (`.defaultTap`), требует разрешения Accessibility. Только чтение событий (`.listenOnly`) требует Input Monitoring. В App Sandbox фильтрующий tap не работает.
 - **TCC‑разрешения** привязаны к подписи кода. Если каждая сборка подписана ad‑hoc, macOS считает её новым приложением и сбрасывает разрешения.
 - **iOS** показывает курсор BLE‑мыши только при включённом AssistiveTouch (на iPadOS курсор поддерживается сразу). Android 9+ поддерживает HOGP мышь + клавиатуру без настроек.
@@ -16,7 +17,8 @@
 ## Goals / Non-Goals
 
 **Goals:**
-- Первым делом проверить, что macOS 14+ позволяет опубликовать рабочий HOGP‑сервис, и только потом строить остальное.
+- Первым делом добиться, чтобы ChameleonUltra с режимом HID сопрягался с Android и iPhone и принимал отчёты с Mac, и только потом строить остальное.
+- Режим HID — дополнение к штатной прошивке Chameleon, а не замена: NFC/RFID‑функции и штатный клиент продолжают работать, откат — официальный DFU‑пакет.
 - Вынести всю логику, не зависящую от железа (дескрипторы, кодирование отчётов, раскладка клавиш, детектор края, конечный автомат), в библиотеку с unit‑тестами.
 - Ввод Mac ни при каких обстоятельствах не должен «застрять» в захвате: горячая клавиша, автоматический возврат, возврат при выходе и при отключении tap.
 - Сборка и запуск из командной строки, без ручной настройки Xcode‑проекта.
@@ -34,9 +36,11 @@
 
 ### D1. Swift Package + скрипт сборки `.app` вместо `.xcodeproj`
 `Package.swift` с тремя таргетами:
-- `UniversalKMCore` (library) — чистая логика без CoreBluetooth и без event tap: `HIDReportDescriptor`, `HIDReports` (кодирование), `KeyCodeMap` (virtual keycode macOS → HID Usage), `DeviceArrangement` + `ArrangementLayout` (модель, прилипание, зона передачи), `HandoffZoneDetector`, `Hotkey` (модель, проверка допустимости, сопоставление), `CaptureStateMachine`, `MouseAccumulator`.
-- `UniversalKM` (executable) — `UniversalKMApp.swift`, `BluetoothHIDServer.swift`, `InputManager.swift`, `PermissionsManager.swift`, `DisplayLayoutProvider.swift`, `AppStateManager.swift`, `MenuBarView.swift`, `ArrangementView.swift`, `HotkeyRecorderView.swift`.
-- `UniversalKMCoreTests` — тесты на XCTest или Swift Testing.
+- `UniversalKMCore` (library) — чистая логика без ввода‑вывода и без event tap: `HIDReportDescriptor`, `HIDReports` (кодирование), `ChameleonFrame` (кодек кадров `netdata` и команды режима HID, D5), `KeyCodeMap` (virtual keycode macOS → HID Usage), `DeviceArrangement` + `ArrangementLayout` (модель, прилипание, зона передачи), `HandoffZoneDetector`, `Hotkey` (модель, проверка допустимости, сопоставление), `CaptureStateMachine`, `MouseAccumulator`.
+- `UniversalKM` (executable) — `UniversalKMApp.swift`, `HIDTransport.swift` (протокол), `ChameleonHIDTransport.swift`, `SerialPort.swift`, `ChameleonDeviceWatcher.swift`, `InputManager.swift`, `PermissionsManager.swift`, `DisplayLayoutProvider.swift`, `AppStateManager.swift`, `MenuBarView.swift`, `ArrangementView.swift`, `HotkeyRecorderView.swift`.
+- `UniversalKMCoreTests` — тесты на Swift Testing.
+
+Спайк на CoreBluetooth (`BluetoothHIDServer.swift`) и ObjC‑хелпер для перехвата исключений (`ObjCSupport`) удаляются: они больше не нужны.
 
 `scripts/build-app.sh` запускает `swift build -c release`, собирает `build/UniversalKM.app` (`Contents/MacOS/UniversalKM`, `Contents/Info.plist` из `Resources/Info.plist`) и подписывает: `codesign --force --options runtime --entitlements Resources/UniversalKM.entitlements --sign "$SIGN_IDENTITY"`. По умолчанию берётся первая идентичность «Apple Development» из связки ключей. Если её нет — ad‑hoc подпись и явное предупреждение, что разрешения будут сбрасываться при каждой пересборке. `scripts/run.sh` собирает и запускает `open build/UniversalKM.app`.
 
@@ -54,28 +58,22 @@
 | `CFBundleShortVersionString` / `CFBundleVersion` | `0.1.0` / `1` | |
 | `LSMinimumSystemVersion` | `14.0` | |
 | `LSUIElement` | `true` | нет значка в Dock, только строка меню |
-| `NSBluetoothAlwaysUsageDescription` | «UniversalKM работает Bluetooth‑клавиатурой и мышью для вашего телефона.» | без этого ключа процесс падает при первом обращении к Bluetooth |
 
-Для Accessibility и Input Monitoring ключей в Info.plist нет — они выдаются в System Settings. `NSBluetoothPeripheralUsageDescription` устарел и на macOS не нужен.
-`Resources/UniversalKM.entitlements`: без App Sandbox, hardened runtime. Для Bluetooth без песочницы entitlements не нужны (`com.apple.security.device.bluetooth` требуется только в песочнице).
+Для Accessibility и Input Monitoring ключей в Info.plist нет — они выдаются в System Settings. Приложение само Bluetooth не использует, поэтому `NSBluetoothAlwaysUsageDescription` не нужен (ключ, добавленный в задаче 1.2, удаляется).
+`Resources/UniversalKM.entitlements`: без App Sandbox, hardened runtime. Доступ к USB‑serial (`/dev/cu.*`) вне песочницы entitlements не требует.
 
-### D3. GATT‑структура HOGP
-Сервисы:
-- **HID 0x1812**:
-  - HID Information 0x2A4A — read, `[0x11,0x01, 0x00, 0x02]` (bcdHID 1.11, country 0, флаг NormallyConnectable).
-  - Report Map 0x2A4B — read, encrypted.
-  - HID Control Point 0x2A4C — write without response.
-  - Protocol Mode 0x2A4E — read / write without response, значение 0x01 (Report).
-  - Report 0x2A4D (input, клавиатура, ID 1) — read/notify, encrypted.
-  - Report 0x2A4D (output, светодиоды клавиатуры, ID 1) — read/write/write without response, encrypted.
-  - Report 0x2A4D (input, мышь, ID 2) — read/notify, encrypted.
-  - Каждый Report — с дескриптором Report Reference 0x2908 `[reportID, type]`.
-- **Device Information 0x180A**: Manufacturer Name 0x2A29, PnP ID 0x2A50 (vendor source = USB, VID/PID — константы для разработки).
-- **Battery 0x180F**: Battery Level 0x2A19 — read/notify, всегда 100.
+### D3. GATT‑структура HOGP — в прошивке Chameleon
+HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (в апстриме его нет в сборке — добавляется в Makefile и `sdk_config.h`):
+- **HID 0x1812**: HID Information `[0x11,0x01, 0x00, 0x02]` (bcdHID 1.11, country 0, NormallyConnectable), Report Map (D4), HID Control Point, Protocol Mode (Report), Report keyboard input (ID 1), Report keyboard output (ID 1, светодиоды — принимаются и игнорируются), Report mouse input (ID 2). Дескрипторы Report Reference и CCCD `ble_hids` создаёт сам. Boot‑характеристики не включаются (хосты используют Report Protocol).
+- **Device Information 0x180A** (`ble_dis`): Manufacturer «RfidResearchGroup», PnP ID (USB‑IF, VID/PID режима HID — константы, Open Questions).
+- **Battery 0x180F**: уже есть в апстриме, с реальным уровнем заряда.
+- Nordic UART Service апстрима остаётся — штатное мобильное приложение Chameleon продолжает работать, когда режим HID выключен.
 
-Шифрование: у характеристик с отчётами `permissions = .readEncryptionRequired` (и `.writeEncryptionRequired` у записываемых). Первое чтение запускает системное сопряжение и bonding через bluetoothd.
+Безопасность: характеристики отчётов — `SEC_JUST_WORKS` минимум (шифрование), сопряжение и bonding — через уже настроенный Peer Manager апстрима. Если в настройках Chameleon включён статический PIN (`ble_pairing_enable`), телефон спросит его — это штатное поведение, его не меняем.
+Реклама в режиме HID: флаги, список UUID16 `0x1812, 0x180F`, Appearance `BLE_APPEARANCE_HID_KEYBOARD` (0x03C1), имя — в scan response. Имя устройства остаётся `ChameleonUltra`, чтобы не сломать поиск штатного клиента.
+Одно BLE‑соединение (`NRF_SDH_BLE_PERIPHERAL_LINK_COUNT 1`, как в апстриме): пока телефон подключён как клавиатура, штатное мобильное приложение Chameleon подключиться не может.
 
-*Почему составное устройство с Report ID, а не два периферийных устройства:* CoreBluetooth даёт одну периферию на процесс, а хосты одинаково поддерживают составные HID‑устройства.
+*Почему составное устройство с Report ID, а не два периферийных устройства:* у Chameleon одно соединение, а хосты одинаково поддерживают составные HID‑устройства.
 
 ### D4. Report Map и формат отчётов
 - **Клавиатура, Report ID 1, input, 8 байт:** `[modifiers, reserved, k1..k6]`. Usage Page 0x07, модификаторы 0xE0–0xE7 (биты), коды 0x00–0x65.
@@ -83,24 +81,41 @@
 - **Мышь, Report ID 2, input, 7 байт:** `[buttons(5 бит + 3 паддинг), x int16 LE, y int16 LE, wheel int8, pan int8]`. X/Y — Logical −32767..32767, Relative. Wheel — Generic Desktop 0x38. Pan — Consumer 0x0238 (AC Pan).
 
 16‑битные X/Y вместо классических 8‑битных: быстрое движение мыши на Mac легко превышает ±127 за событие, а дробить его на несколько отчётов значит тратить слоты BLE. Android и iOS 16‑битные относительные поля поддерживают.
-Байты Report Map — константа в `UniversalKMCore`, сверяемая golden‑тестом. Корректность проверяется на устройстве в шаге 1.
+Единственный источник байтов Report Map — `firmware/src/ukm_report_map.h` (C‑массив). Swift‑константа `HIDReportDescriptor.reportMap` должна совпадать с ним: unit‑тест читает заголовок, разбирает байты и сравнивает (так прошивка и приложение не разойдутся). Корректность проверяется на телефоне в шаге 1.
 
-### D5. Доставка отчётов: свой serial queue, слияние мыши, очередь клавиатуры
-- `CBPeripheralManager` создаётся с собственной `DispatchQueue` (`ble.hid`). Всё состояние сервера живёт только на этой очереди.
-- Движение мыши и прокрутка суммируются в `MouseAccumulator` в `Double`. В отчёт идёт целая часть, дробный остаток остаётся до следующего отчёта (D10). Кнопки — текущий bitmask.
-- Отчёты отправляются через `updateValue(_:for:onSubscribedCentrals:)`. При `false` ждём `peripheralManagerIsReady(toUpdateSubscribers:)`, а пока ждём, новые движения продолжают суммироваться. Остаток сверх int16 переносится в следующий отчёт (так выполняется требование «без потерь»).
-- Отчёты клавиатуры **не** сливаются — их порядок важен (down/up). Они идут через FIFO и при доставке имеют приоритет над мышью.
-- Изменение кнопки мыши сбрасывает накопленное движение в отдельный отчёт до отчёта с новыми кнопками, иначе клик уедет в сторону.
+### D5. Канал Mac → Chameleon: кадры `netdata` по USB‑CDC, слияние мыши, очередь клавиатуры
+**Транспорт.** `HIDTransport` — протокол (`sendMouse`, `sendKey`, `sendNeutral`, `setEnabled`, поток статусов), его реализует `ChameleonHIDTransport`. Модули 2–3 работают только с протоколом.
+- `ChameleonDeviceWatcher`: `IOServiceAddMatchingNotification` на `IOUSBHostDevice` с `idVendor 0x6868 / idProduct 0x8686` (появление и исчезновение), путь порта — `kIOCalloutDeviceKey` дочернего `IOSerialBSDClient`.
+- `SerialPort`: `open(O_RDWR | O_NOCTTY | O_NONBLOCK)`, termios raw 115200 8N1 (для USB‑CDC скорость условна), `DispatchSourceRead` на очереди `ukm.serial`; всё состояние транспорта живёт на этой очереди.
+- Кодек кадров (`ChameleonFrame` в Core): SOF `0x11`, LRC1, cmd u16 BE, status u16 BE, len u16 BE, LRC2, data, LRC3 — как `netdata.h` апстрима; потоковый парсер с ресинхронизацией по SOF.
+
+**Команды режима HID** (новый диапазон 6000+, версия протокола 1):
+
+| ID | Команда | Данные запроса | Ответ |
+|---|---|---|---|
+| 6000 | `UKM_HID_GET_INFO` | — | `[protocolVersion u8, state u8, peerId u16]` |
+| 6001 | `UKM_HID_SET_ENABLED` | `[0/1]` | статус; 0 — разорвать соединение с HID‑хостом и вернуть штатную рекламу |
+| 6002 | `UKM_HID_KEYBOARD` | 8 байт отчёта | статус: OK / BUSY / NOT_CONNECTED |
+| 6003 | `UKM_HID_MOUSE` | 7 байт отчёта | статус: OK / BUSY / NOT_CONNECTED |
+| 6004 | `UKM_HID_STATE` (событие от устройства, без запроса) | — | `[state u8, peerId u16, peerAddr 6 байт]`; state: 0 выключен, 1 реклама, 2 подключён, 3 подключён и подписан на отчёты |
+
+Официальная прошивка на 6000 отвечает «неизвестная команда» → статус «неподходящая прошивка» (spec «Проверка прошивки»).
+
+**Поток.**
+- Движение мыши и прокрутка суммируются в `MouseAccumulator` в `Double`. В отчёт идёт целая часть, дробный остаток остаётся до следующего отчёта (D10). Кнопки — текущий bitmask. Изменение кнопки выделяет накопленное движение в отдельный отчёт до отчёта с новыми кнопками.
+- В полёте не больше одного отчёта мыши; пока ответ не пришёл, новое движение копится в `MouseAccumulator`. Отчёты клавиатуры **не** сливаются: FIFO, до 4 в полёте, приоритет над мышью.
+- Прошивка кладёт отчёт в очередь уведомлений SoftDevice (`ble_hids_inp_rep_send`); `NRF_ERROR_RESOURCES` → ответ BUSY, Mac повторяет через 2 мс (мышь — уже со слитым движением). Очередь HVN в прошивке увеличивается до 8 (`hvn_tx_queue_size`).
+- Если USB‑порт закрылся или пропало питание USB, прошивка сама шлёт телефону нейтральные отчёты (spec «Chameleon вынут с зажатыми клавишами»).
 
 ### D6. Как определяется подключение и имя хоста
-Подключение — это подписка центрального устройства на input‑отчёт (`didSubscribeTo`). Отключение — отписка (`didUnsubscribeFrom`), которую CoreBluetooth генерирует и при обрыве связи. Пока подписок нет, идёт реклама. С подписчиком реклама останавливается (поддерживается один хост).
-Имя: CoreBluetooth не даёт имя центрального устройства. Решение: имя задаёт пользователь, когда добавляет устройство на схему (D14). Так как на схеме одно устройство, любой подписавшийся хост считается им, и статус — «Подключено к <имя>». `identifier` последнего хоста запоминается в модели устройства — пригодится, когда устройств станет несколько. Если устройство ещё не добавлено, показывается «Подключено к устройству XXXX» (последние 4 символа `identifier`).
-*Альтернатива* — IOBluetooth/`system_profiler`: для BLE‑центральных устройств данных нет, отклонено.
+Состояние подключения знает прошивка: `BLE_GAP_EVT_CONNECTED/DISCONNECTED` и включение уведомлений на input‑отчётах (`BLE_HIDS_EVT_NOTIF_ENABLED`). При каждом изменении она шлёт событие `UKM_HID_STATE` (D5); при открытии порта Mac запрашивает `UKM_HID_GET_INFO`. «Подключено» для приложения — state 3. После отключения прошивка снова рекламирует себя как HID‑устройство.
+Идентификатор хоста — `peerId` Peer Manager (стабилен для сопряжённого телефона, в отличие от случайного BLE‑адреса).
+Имя: BLE HID не даёт имя центрального устройства. Решение: имя задаёт пользователь, когда добавляет устройство на схему (D14). Так как на схеме одно устройство, любой подключённый хост считается им, и статус — «Подключено к <имя>». `peerId` последнего хоста запоминается в модели устройства — пригодится, когда устройств станет несколько. Если устройство ещё не добавлено, показывается «Подключено к устройству #<peerId>».
 
 ### D7. Event tap на отдельном потоке и синхронное решение о захвате
 - `CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap, options: .defaultTap, …)` с маской: mouseMoved, left/right/otherMouseDown/Up/Dragged, scrollWheel, keyDown, keyUp, flagsChanged. Tap работает на выделенном `Thread` со своим `CFRunLoop`, чтобы не зависеть от загрузки main thread и не попадать под `tapDisabledByTimeout`.
 - Колбэк должен вернуть результат (пропустить событие или `nil`) **синхронно**. Поэтому режим (`local`/`remote`) и флаг «хост подключён» хранятся в маленьком потокобезопасном состоянии (`OSAllocatedUnfairLock`), которое колбэк читает без хопов. Переходы, которые запускает tap (край, горячая клавиша), выполняются прямо в колбэке, а затем уведомляют `AppStateManager` через `MainActor`. Переходы, которые запускает приложение (отключение, меню, выход), вызывают потокобезопасный `InputManager.release()`.
-- В колбэке нет тяжёлой работы: события переводятся в лёгкие значения и отправляются через `ble.hid` queue `async`.
+- В колбэке нет тяжёлой работы: события переводятся в лёгкие значения и отправляются в `HIDTransport` (очередь `ukm.serial`, `async`).
 - `tapDisabledByTimeout`/`tapDisabledByUserInput` → `CGEvent.tapEnable(tap:enable:true)` и, если режим `remote`, сначала release.
 
 ### D8. Расположение устройства и зона передачи
@@ -146,10 +161,26 @@
 - Уведомлений о выдаче разрешения нет, поэтому пока чего‑то не хватает, раз в 2 с идёт опрос. Как только всё выдано, создаётся event tap и опрос останавливается. Если `tapCreate` вернул `nil`, значит разрешения нет: показываем это в меню.
 
 ### D13. Связка в приложении (Swift 6 concurrency)
-- `AppStateManager`: `@MainActor @Observable`. Владеет `BluetoothHIDServer`, `InputManager`, `PermissionsManager`, `DisplayLayoutProvider`. Публикует `bluetoothStatus`, `mode`, `permissions`, `displays`, `arrangement`, `isArrangementTemporary`, `hotkey`, `hostDisplayName`. Хранит `arrangement` и `hotkey` в `UserDefaults` (JSON) и при каждом изменении передаёт в `InputManager` пересчитанную зону и горячую клавишу.
-- `BluetoothHIDServer` и `InputManager` — `final class … : @unchecked Sendable` с явной изоляцией (своя очередь / lock). Причина — колбэки C‑API и делегаты CoreBluetooth с произвольных потоков. Наружу — `AsyncStream`/колбэки, которые `AppStateManager` читает на `MainActor`.
+- `AppStateManager`: `@MainActor @Observable`. Владеет `HIDTransport` (`ChameleonHIDTransport`), `InputManager`, `PermissionsManager`, `DisplayLayoutProvider`. Публикует `transportStatus`, `mode`, `permissions`, `displays`, `arrangement`, `isArrangementTemporary`, `hotkey`, `hostDisplayName`. Хранит `arrangement` и `hotkey` в `UserDefaults` (JSON) и при каждом изменении передаёт в `InputManager` пересчитанную зону и горячую клавишу.
+- `ChameleonHIDTransport` и `InputManager` — `final class … : @unchecked Sendable` с явной изоляцией (своя очередь / lock). Причина — колбэки C‑API (IOKit, event tap, `DispatchSource`) с произвольных потоков. Наружу — `AsyncStream`/колбэки, которые `AppStateManager` читает на `MainActor`.
 - `UniversalKMApp`: `MenuBarExtra("UniversalKM", systemImage: …)` со стилем **`.window`** — панель с произвольным SwiftUI (схема, перетаскивание, поле записи клавиши), чего не умеет стиль `.menu`. Иконка `desktopcomputer` в режиме Mac и `iphone`/`ipad` (по типу устройства) в режиме Устройство.
-- Выход: `NSApplication.willTerminateNotification` → синхронный release (показать курсор, `CGAssociate…(1)`, пустые отчёты, `stopAdvertising`).
+- Выход: `NSApplication.willTerminateNotification` → синхронный release (показать курсор, `CGAssociate…(1)`, пустые отчёты, `UKM_HID_SET_ENABLED 0` с ожиданием ответа до 300 мс). При запуске приложение шлёт `UKM_HID_SET_ENABLED 1`.
+
+### D15. Прошивка: свои файлы + патчи к зафиксированному апстриму
+- `firmware/UPSTREAM` — URL и коммит апстрима (`RfidResearchGroup/ChameleonUltra@4c5bc2cb6b023d23f7bbc383c9b2b5e39f95419e`, 2026‑10‑31).
+- `firmware/src/` — новые файлы, копируются в `firmware/application/src/` апстрима: `ukm_hid.c/.h` (сервис HID, реклама в режиме HID, обработчики команд 6000–6004, событие состояния, нейтральные отчёты при потере USB), `ukm_report_map.h`.
+- `firmware/patches/*.patch` — минимальные правки апстрима: Makefile (новые исходники, `ble_hids`, `ble_dis`), `sdk_config.h` (`BLE_HIDS_ENABLED`, `BLE_DIS_ENABLED`, размер очереди HVN, число vendor UUID/атрибутов GATT), `ble_main.c` (вызов `ukm_hid_init()` и обработчика событий, реклама), `app_cmd.c` (регистрация команд 6000–6004), `usb_main.c` (событие закрытия порта / пропажи питания).
+- `scripts/firmware-build.sh`: клонирует апстрим на зафиксированном коммите в `build/firmware-src/`, копирует `firmware/src/`, применяет патчи (`git apply --check` перед применением), собирает `ultra-dfu-app.zip` его же `build.sh`. Инструменты на macOS: Arm GNU Toolchain 12.2 для darwin‑arm64 (`GNU_INSTALL_ROOT`), `nrfutil` + `nrfutil install nrf5sdk-tools device`. Без Docker.
+- Патчи — GPL‑3.0, как апстрим; приложение Mac — отдельная программа, общающаяся только по USB‑serial.
+
+*Почему не своя прошивка с нуля:* Peer Manager, батарея, USB‑CDC и DFU уже отлажены в апстриме, а пользователь сохраняет функции Chameleon.
+*Почему не форк на GitHub:* патчи на зафиксированный коммит не требуют внешних репозиториев и показывают в ревью ровно наши изменения.
+
+### D16. Прошивка и откат
+- `scripts/firmware-flash.sh`: переводит Chameleon в DFU командой апстрима (`resource/tools/enter_dfu.py` по serial; запасной путь — выключить, зажать кнопку B и подключить USB, светодиоды 4 и 5 мигают), ждёт `1915:521f`, прошивает `nrfutil device program --firmware ultra-dfu-app.zip --traits nordicDfu`.
+- Обновляется только приложение (`dfu-app`), загрузчик и SoftDevice не трогаются — устройство всегда можно вернуть в DFU и прошить заново.
+- Откат: `scripts/firmware-flash.sh --official` прошивает `ultra-dfu-app.zip` из официального релиза апстрима (скачивается по зафиксированному тегу).
+- Первая прошивка выполняется только после явного согласия пользователя.
 
 ### D14. Схема расположения в панели
 - `DisplayLayoutProvider`: `CGGetActiveDisplayList` → для каждого дисплея `CGDisplayBounds` (глобальные координаты, та же раскладка, что в настройках мониторов), UUID и признак главного (`CGDisplayIsMain`). Обновляется по `CGDisplayRegisterReconfigurationCallback`.
@@ -172,21 +203,23 @@
 
 ## Risks / Trade-offs
 
-- **[macOS запрещает 0x1812 или 0x2908 в CBPeripheralManager]** (на iOS HID‑сервис точно заблокирован; на macOS поведение зависит от версии) → первая задача шага 1 — spike без UI: добавить сервисы, рекламу, подключиться с Android через nRF Connect и с iPhone. Если сервис отклонён — **стоп, решение за пользователем**. Варианты: (а) обойтись boot‑характеристиками (0x2A22/0x2A32/0x2A33 — им не нужен Report Reference); (б) внешний BLE‑донгл (ESP32‑S3 или nRF52840 по USB‑serial), на который Mac шлёт готовые отчёты. Для варианта (б) отправка отчётов скрыта за протоколом `HIDTransport`, и модули 2 и 3 менять не придётся.
-- **[Телефон уже знает Mac как Bluetooth‑устройство (Handoff, общий Apple ID) и путает адреса]** → проверяем в spike. Если мешает — инструкция «забыть устройство» и уникальное `LocalName`.
+- **[Неудачная прошивка Chameleon]** → обновляется только приложение, загрузчик остаётся; вход в DFU кнопкой B работает при любой прошивке приложения; откат официальным пакетом (D16). Перед первой прошивкой — сборка и проверка неизменённого апстрима тем же скриптом.
+- **[Патчи перестанут накладываться на новый апстрим]** → апстрим зафиксирован коммитом; обновление коммита — отдельная задача с перепроверкой.
+- **[iOS прячет экранную клавиатуру, пока подключена аппаратная]** → пока приложение работает, Chameleon остаётся подключён к телефону. Если это мешает, позже можно добавить отключение HID в режиме Mac (ценой 1–2 с на переподключение). При выходе из приложения режим HID выключается (D13).
+- **[Сопряжение по PIN]** → если в Chameleon включён статический PIN, телефон его спросит; в README — где PIN задаётся и как выключить.
+- **[Штатное мобильное приложение Chameleon не подключается]** → одно BLE‑соединение: при подключённом телефоне‑хосте штатное приложение недоступно, пока режим HID не выключен. Штатный USB‑клиент на Mac и UniversalKM не могут держать порт одновременно.
 - **[Курсор не скрывается из фонового агента]** → см. D9, поэтапные варианты. Функционально захват работает и с видимым курсором.
 - **[Secure Event Input: когда на Mac в фокусе поле пароля, нажатия клавиш могут не проходить через tap]** → проверять `IsSecureEventInputEnabled()` и показывать предупреждение в меню. Мышь при этом работает.
 - **[Ввод «застрял» в захвате из‑за бага]** → горячая клавиша обрабатывается первой в колбэке, до всей остальной логики. При падении процесса macOS сама снимает tap. При `tapDisabled*` — release. Кнопка в меню доступна мышью только в local, поэтому главная страховка — горячая клавиша.
 - **[Устройство накладывает своё ускорение поверх ускорения Mac]** Android и iOS ускоряют относительное движение HID‑мыши, и отключить это с нашей стороны нельзя. Из‑за двойного ускорения быстрые движения на устройстве могут быть «резче», чем на Mac → слайдер скорости устройства (D10). В README — совет выключить ускорение на устройстве, где это возможно (на Android 14+ «Ускорение указателя» в настройках мыши; на iOS есть только «Скорость отслеживания» в AssistiveTouch). Ручная проверка 2.7 сравнивает ощущение при включённом и выключенном ускорении на Mac.
-- **[Задержка BLE 7.5–30 мс на connection interval]** → слияние движения (D5) убирает накопление очереди. Курсор на телефоне может быть заметно «тяжелее» локального — это принятый компромисс.
+- **[Задержка: USB‑CDC + BLE 7.5–30 мс на connection interval]** → слияние движения (D5) убирает накопление очереди; прошивка запрашивает минимальный connection interval 7.5 мс в режиме HID. Курсор на телефоне может быть заметно «тяжелее» локального — это принятый компромисс.
 - **[Ad‑hoc подпись сбрасывает разрешения]** → `build-app.sh` по умолчанию использует Apple Development и предупреждает при fallback.
 - **[iOS без AssistiveTouch]** → курсора нет, клавиатура работает. Подсказка в меню и README.
 
 ## Migration Plan
 
-Новое приложение, миграции данных нет. Откат — выйти из приложения (курсор возвращается) и удалить `UniversalKM.app`. Сопряжение на телефоне удаляется через «Забыть устройство». Выданные разрешения отзываются в System Settings → Privacy & Security или командой `tccutil reset Accessibility com.universalkm.UniversalKM`.
+Новое приложение, миграции данных нет. Откат — выйти из приложения (курсор возвращается) и удалить `UniversalKM.app`; Chameleon вернуть на официальную прошивку (`scripts/firmware-flash.sh --official`, D16). Сопряжение на телефоне удаляется через «Забыть устройство», на Chameleon — штатной командой удаления bonds. Выданные разрешения отзываются в System Settings → Privacy & Security или командой `tccutil reset Accessibility com.universalkm.UniversalKM`.
 
 ## Open Questions
 
-- Подбор чисел: шаг прокрутки в пикселях на «щелчок», VID/PID в PnP ID, точные пропорции прямоугольников устройств. Подбираются на устройстве, на спеки и задачи не влияют.
-- Нужен ли iOS обязательно сервис Battery, или достаточно Android‑минимума. На план не влияет: Battery сервис добавляется в любом случае.
+- Подбор чисел: шаг прокрутки в пикселях на «щелчок», VID/PID в PnP ID, точные пропорции прямоугольников устройств, размеры очереди отчётов. Подбираются на устройстве, на спеки и задачи не влияют.
