@@ -163,7 +163,9 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 ### D13. Связка в приложении (Swift 6 concurrency)
 - `AppStateManager`: `@MainActor @Observable`. Владеет `HIDTransport` (`ChameleonHIDTransport`), `InputManager`, `PermissionsManager`, `DisplayLayoutProvider`. Публикует `transportStatus`, `mode`, `permissions`, `displays`, `arrangement`, `isArrangementTemporary`, `hotkey`, `hostDisplayName`. Хранит `arrangement` и `hotkey` в `UserDefaults` (JSON) и при каждом изменении передаёт в `InputManager` пересчитанную зону и горячую клавишу.
 - `ChameleonHIDTransport` и `InputManager` — `final class … : @unchecked Sendable` с явной изоляцией (своя очередь / lock). Причина — колбэки C‑API (IOKit, event tap, `DispatchSource`) с произвольных потоков. Наружу — `AsyncStream`/колбэки, которые `AppStateManager` читает на `MainActor`.
-- `UniversalKMApp`: `MenuBarExtra("UniversalKM", systemImage: …)` со стилем **`.window`** — панель с произвольным SwiftUI (схема, перетаскивание, поле записи клавиши), чего не умеет стиль `.menu`. Иконка `desktopcomputer` в режиме Mac и `iphone`/`ipad` (по типу устройства) в режиме Устройство.
+- Запуск — AppKit (`main.swift`: `NSApplication`, `.accessory`, `AppDelegate`), а не SwiftUI `App`: сцена‑заглушка `Settings` показывает пустое окно при активации агентского приложения (проверено).
+- Значок и панель — `NSStatusItem` + `NSPopover` (`.transient`, без анимации) с `NSHostingController` (`sizingOptions = .preferredContentSize`, панель меняет высоту по содержимому), а не `MenuBarExtra`: `MenuBarExtra` нельзя закрыть из кода — `orderOut` рассинхронизирует его состояние, а программный `performClick` по кнопке значка он игнорирует (проверено). При открытии — `NSApp.activate()`. Фон панели сплошной (`windowBackgroundColor`), как в LocalAIBar. Иконка `desktopcomputer` в режиме Mac и `iphone`/`ipad` (по типу устройства) в режиме Устройство.
+- Подвал панели — как в LocalAIBar: кнопки без рамки мелким шрифтом «♥ Поддержать» (розовая), «Обновления», справа версия `vX.Y.Z` и «Выход».
 - Выход: `NSApplication.willTerminateNotification` → синхронный release (показать курсор, `CGAssociate…(1)`, пустые отчёты, `UKM_HID_SET_ENABLED 0` с ожиданием ответа до 300 мс). При запуске приложение шлёт `UKM_HID_SET_ENABLED 1`.
 
 ### D15. Прошивка: свои файлы + патчи к зафиксированному апстриму
@@ -213,8 +215,8 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 
 ### D18. Донаты (порт из EnhanceCapCut)
 - Core: `Donations` (`LocalizedText`, `DonationMethod`, `DonationInfo.parse`, `Donations.download/cached`) — перенос из EnhanceCapCut. Файл `universalkm.json`, кеш `~/Library/Caches/UniversalKM/donations.json`, User-Agent `UniversalKM`, тайм‑аут 10 с, только `https`.
-- Приложение: `DonateModel` (загрузка при каждом открытии, сначала показывается кеш), `SupportView` (оно же «О программе»), `DonateButton` (эффекты, расписание и учёт «Уменьшения движения» — как в EnhanceCapCut). Окно — `NSWindow` с `NSHostingView` и `NSApp.activate()`, так как у агентского приложения нет главного окна.
-- Тексты интерфейса — русские. Тексты из файла выбираются по `Locale.preferredLanguages`.
+- Приложение — интерфейс как в LocalAIBar (утилита пользователя для локальной ИИ): `DonateModel` (кеш показывается сразу, загрузка при каждом открытии раздела, `isLoading`), `DonateView` — раздел внутри панели вместо основного содержимого: заголовок «Поддержать UniversalKM» с индикатором загрузки и крестиком, обращение, способы — строки‑кнопки на `pink.opacity(0.12)`, клик открывает `NSWorkspace.open(url)`. Отдельного окна и анимированной кнопки (вариант EnhanceCapCut) нет — так попросил пользователь.
+- Тексты интерфейса — русские. Тексты из файла выбираются для `["ru"] + Locale.preferredLanguages` (язык интерфейса первым, как в EnhanceCapCut), чтобы окно не смешивало русский интерфейс с английскими текстами на macOS с английским языком.
 - Автоматического предложения доната нет. В EnhanceCapCut его показывают после экспорта, а у UniversalKM нет «завершённой работы». Окно, всплывающее само по себе в фоновой утилите, мешало бы, тем более во время захвата ввода.
 - `universalkm.json` добавляется в DeMoZ/donations отдельным PR, из worktree от `origin/main`: в общей копии репозитория работает другая ветка. Способы доната и формулировки — как у EnhanceCapCut (Tribute и CloudTips), обращение — про UniversalKM.
 

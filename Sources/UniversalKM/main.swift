@@ -1,24 +1,9 @@
 import AppKit
-import os
 
-// Temporary AppKit bootstrap for step 1 (BLE HID only). Step 3 replaces it with the
-// SwiftUI MenuBarExtra app.
-
-@MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "app")
-    let server = BluetoothHIDServer()
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        log.info("launched, arguments: \(CommandLine.arguments, privacy: .public)")
-        server.start()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        server.stop()
-    }
-}
-
+// UniversalKM lives in the menu bar only (LSUIElement): no Dock icon, no main window.
+// AppKit lifecycle: a SwiftUI `App` needs a scene, and even an empty Settings scene shows
+// a window when the agent app activates. The menu bar icon and its panel are an
+// NSStatusItem with an NSPopover hosting SwiftUI, owned by AppDelegate (design D13).
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
