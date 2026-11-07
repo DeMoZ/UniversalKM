@@ -1,5 +1,6 @@
 import AppKit
 import os
+import Sparkle
 import SwiftUI
 
 /// Owns the long-lived parts of the app. Step 3 moves state into AppStateManager.
@@ -72,10 +73,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     /// Ways to donate shown in the panel (design D18).
     let donateModel = DonateModel()
 
-    // MARK: Updates (design D17; Sparkle comes in task 5.5)
+    // MARK: Updates (design D17)
+
+    /// Sparkle, only inside the app bundle: a `swift run` build has no Info.plist with the feed and key.
+    /// Automatic checks (once a day) are on through SUEnableAutomaticChecks in Info.plist.
+    private let updater: SPUStandardUpdaterController? = Bundle.main.bundleURL.pathExtension == "app"
+        ? SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil) : nil
 
     func checkForUpdates() {
-        log.info("check for updates requested (Sparkle not wired yet)")
+        closePanel()
+        guard let updater else {
+            log.error("updates work only in the app bundle (scripts/build-app.sh)")
+            return
+        }
+        // A menu bar app: bring Sparkle's window to the front.
+        NSApp.activate()
+        updater.checkForUpdates(nil)
     }
 }
 
