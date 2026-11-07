@@ -201,6 +201,23 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 - `HotkeyRecorderView`: пока идёт запись, локальный `NSEvent.addLocalMonitorForEvents(.keyDown)` получает сочетание, проверяет его через `Hotkey.isValid` и сохраняет; `Esc` без модификаторов отменяет запись. Запись возможна только в режиме Mac (в режиме Устройство панель открыть мышью нельзя).
 - Чтобы перетаскивание и ввод работали в панели агентского приложения, при её открытии вызывается `NSApp.activate()`.
 
+### D17. Обновления: Sparkle + GitHub Releases (как в EnhanceCapCut)
+- Зависимость `https://github.com/sparkle-project/Sparkle` `exact: 2.10.0`, только в таргете приложения. `SPUStandardUpdaterController(startingUpdater: true, …)` создаётся, только если приложение запущено из `.app`: у сборки через `swift run` нет Info.plist с лентой.
+- Info.plist: `SUFeedURL = https://github.com/DeMoZ/UniversalKM/releases/latest/download/appcast.xml`, `SUEnableAutomaticChecks = true` (интервал по умолчанию — сутки), `SUPublicEDKey` — публичная половина ключа, созданного `generate_keys --account UniversalKM`. Приватная половина остаётся в связке ключей пользователя, а её копия лежит в секрете репозитория `SPARKLE_PRIVATE_KEY`. Ключ не печатается: экспорт идёт во временный файл с правами 600 и сразу через stdin в `gh secret set`, затем файл удаляется.
+- `scripts/build-app.sh` копирует `Sparkle.framework` в `Contents/Frameworks`, добавляет `@executable_path/../Frameworks` в rpath и подписывает изнутри наружу (`Installer.xpc`, `Downloader.xpc` с `--preserve-metadata=entitlements`, `Autoupdate`, `Updater.app`, фреймворк, приложение). С флагом `--zip` собирает `build/UniversalKM-<версия>.zip` (`ditto -c -k --keepParent`).
+- Формат обновления — zip с `.app`, а не pkg: приложение одно, без компонентов вне бандла.
+- `scripts/appcast.sh <zip>` подписывает архив (`sign_update`: ключ из `$SPARKLE_PRIVATE_KEY` или из связки ключей) и пишет `build/appcast.xml`. Описание версии берётся из `docs/releases/v<версия>.md`, как в EnhanceCapCut.
+- `.github/workflows/release.yml` запускается по тегу `v*` на `macos-26`: сверяет тег с `CFBundleShortVersionString`, запускает `swift test`, `scripts/build-app.sh --zip`, `scripts/firmware-build.sh` (ставит Arm GNU Toolchain и nrfutil), `scripts/appcast.sh`. Затем `gh release create` с zip, `appcast.xml` и `chameleon-ultra-hid-dfu-app-<версия>.zip`.
+- Выход ради обновления проходит обычный путь `willTerminate` (D13), поэтому ввод возвращается на Mac до перезапуска.
+- Подпись кода. Пока сертификата Developer ID нет, архив подписан ad‑hoc. Sparkle проверяет подпись EdDSA, этого достаточно для безопасной доставки. Но после каждого обновления macOS сбросит разрешения Accessibility и Input Monitoring (TCC) — это записано в README и снимается сертификатом.
+
+### D18. Донаты (порт из EnhanceCapCut)
+- Core: `Donations` (`LocalizedText`, `DonationMethod`, `DonationInfo.parse`, `Donations.download/cached`) — перенос из EnhanceCapCut. Файл `universalkm.json`, кеш `~/Library/Caches/UniversalKM/donations.json`, User-Agent `UniversalKM`, тайм‑аут 10 с, только `https`.
+- Приложение: `DonateModel` (загрузка при каждом открытии, сначала показывается кеш), `SupportView` (оно же «О программе»), `DonateButton` (эффекты, расписание и учёт «Уменьшения движения» — как в EnhanceCapCut). Окно — `NSWindow` с `NSHostingView` и `NSApp.activate()`, так как у агентского приложения нет главного окна.
+- Тексты интерфейса — русские. Тексты из файла выбираются по `Locale.preferredLanguages`.
+- Автоматического предложения доната нет. В EnhanceCapCut его показывают после экспорта, а у UniversalKM нет «завершённой работы». Окно, всплывающее само по себе в фоновой утилите, мешало бы, тем более во время захвата ввода.
+- `universalkm.json` добавляется в DeMoZ/donations отдельным PR, из worktree от `origin/main`: в общей копии репозитория работает другая ветка. Способы доната и формулировки — как у EnhanceCapCut (Tribute и CloudTips), обращение — про UniversalKM.
+
 ## Risks / Trade-offs
 
 - **[Неудачная прошивка Chameleon]** → обновляется только приложение, загрузчик остаётся; вход в DFU кнопкой B работает при любой прошивке приложения; откат официальным пакетом (D16). Перед первой прошивкой — сборка и проверка неизменённого апстрима тем же скриптом.
@@ -213,7 +230,9 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 - **[Ввод «застрял» в захвате из‑за бага]** → горячая клавиша обрабатывается первой в колбэке, до всей остальной логики. При падении процесса macOS сама снимает tap. При `tapDisabled*` — release. Кнопка в меню доступна мышью только в local, поэтому главная страховка — горячая клавиша.
 - **[Устройство накладывает своё ускорение поверх ускорения Mac]** Android и iOS ускоряют относительное движение HID‑мыши, и отключить это с нашей стороны нельзя. Из‑за двойного ускорения быстрые движения на устройстве могут быть «резче», чем на Mac → слайдер скорости устройства (D10). В README — совет выключить ускорение на устройстве, где это возможно (на Android 14+ «Ускорение указателя» в настройках мыши; на iOS есть только «Скорость отслеживания» в AssistiveTouch). Ручная проверка 2.7 сравнивает ощущение при включённом и выключенном ускорении на Mac.
 - **[Задержка: USB‑CDC + BLE 7.5–30 мс на connection interval]** → слияние движения (D5) убирает накопление очереди; прошивка запрашивает минимальный connection interval 7.5 мс в режиме HID. Курсор на телефоне может быть заметно «тяжелее» локального — это принятый компромисс.
-- **[Ad‑hoc подпись сбрасывает разрешения]** → `build-app.sh` по умолчанию использует Apple Development и предупреждает при fallback.
+- **[Ad‑hoc подпись сбрасывает разрешения]** → `build-app.sh` по умолчанию использует Apple Development и предупреждает при fallback. После каждого обновления через Sparkle без сертификата Developer ID разрешения придётся выдать снова (D17); README предупреждает об этом.
+- **[Сеть недоступна или GitHub режет запросы]** → обновления просто не находятся; для донатов есть зеркало jsDelivr и кеш (D18).
+- **[Потеря приватного ключа Sparkle]** → существующие установки не смогут принять новые обновления. Ключ хранится в связке ключей и в секрете репозитория; README описывает, как сделать резервную копию (`generate_keys -x`).
 - **[iOS без AssistiveTouch]** → курсора нет, клавиатура работает. Подсказка в меню и README.
 
 ## Migration Plan
