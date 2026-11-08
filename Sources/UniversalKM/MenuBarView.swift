@@ -39,7 +39,7 @@ struct MenuBarView: View {
                     Button {
                         state.releaseToMac()
                     } label: {
-                        Label("Back to the Mac (now: \(device.name))", systemImage: "arrow.uturn.backward")
+                        Label("Back to the Mac (now: \(device.displayName))", systemImage: "arrow.uturn.backward")
                     }
                 }
             }
@@ -73,7 +73,7 @@ struct MenuBarView: View {
             }
             Text("UniversalKM").font(.headline)
             Spacer()
-            Text(state.currentDevice.map { String(localized: "Input: \($0.name)") } ?? String(localized: "Input: Mac"))
+            Text(state.currentDevice.map { String(localized: "Input: \($0.displayName)") } ?? String(localized: "Input: Mac"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -101,7 +101,7 @@ struct MenuBarView: View {
                 ForEach(state.arrangement.devices) { device in
                     HStack(spacing: 6) {
                         Circle().fill(state.isConnected(device) ? Color.green : Color.gray).frame(width: 7, height: 7)
-                        Text(device.name).fontWeight(.medium)
+                        Text(device.displayName).fontWeight(.medium)
                         Text(state.isConnected(device) ? String(localized: "— connected") : String(localized: "— waiting for connection…"))
                             .foregroundStyle(.secondary)
                     }
@@ -164,7 +164,7 @@ struct MenuBarView: View {
             .fixedSize()
             if let device = selectedDevice {
                 Button("Rebind") { state.rebind(device.id) }
-                    .help("The next device to connect becomes “\(device.name)”")
+                    .help("The next device to connect becomes “\(device.displayName)”")
             }
             Spacer()
             Text("Drag a device next to a display edge")
@@ -206,7 +206,7 @@ struct MenuBarView: View {
         )
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Pointer speed for “\(device.name)”")
+                Text("Pointer speed for “\(device.displayName)”")
                 Spacer()
                 Text(String(format: "%.2g×", device.pointerSpeed)).monospacedDigit().foregroundStyle(.secondary)
             }

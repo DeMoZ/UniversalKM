@@ -72,7 +72,7 @@ final class AppStateManager {
     func addDevice(kind: DeviceKind, name: String, hostPeerID: UInt16? = nil) {
         guard arrangement.canAddDevice, let rightmost = displays.max(by: { $0.frame.maxX < $1.frame.maxX }) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        var device = PlacedDevice(name: trimmed.isEmpty ? (kind == .phone ? String(localized: "Phone") : String(localized: "Tablet")) : trimmed,
+        var device = PlacedDevice(name: trimmed,
                                   kind: kind, anchorDisplayUUID: rightmost.uuid, side: .right, offset: 0, hostPeerID: hostPeerID)
         let size = ArrangementLayout.size(of: device, on: rightmost)
         let place = ArrangementLayout.defaultPlacement(size: size, displays: displays, occupied: layouts.map(\.rect))

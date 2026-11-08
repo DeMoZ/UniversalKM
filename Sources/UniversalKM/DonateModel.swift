@@ -9,8 +9,8 @@ final class DonateModel: ObservableObject {
     @Published private(set) var info: DonationInfo? = Donations.cached()
     @Published private(set) var isLoading = false
 
-    /// The interface language (Russian) first, then the system's — as in EnhanceCapCut.
-    var languages: [String] { ["ru"] + Locale.preferredLanguages }
+    /// The language the interface is shown in first, then the system's, so the texts match the panel.
+    var languages: [String] { Bundle.main.preferredLocalizations + Locale.preferredLanguages }
 
     func load() {
         guard !isLoading else { return }
