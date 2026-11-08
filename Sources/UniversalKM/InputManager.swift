@@ -290,9 +290,9 @@ final class InputManager: @unchecked Sendable {
             case .unlockCursor:
                 unlockCursor()
             case .hideCursor:
-                CGDisplayHideCursor(CGMainDisplayID())
+                Task { @MainActor in CursorVisibility.hide() }
             case .showCursor:
-                CGDisplayShowCursor(CGMainDisplayID())
+                Task { @MainActor in CursorVisibility.show() }
             case .sendNeutralReports(let device):
                 if let peer = state.withLock({ $0.targets[device]?.peerID }) {
                     transport.sendNeutral(to: peer)
@@ -333,5 +333,31 @@ final class InputManager: @unchecked Sendable {
         if let origin = state.withLock({ $0.captureOrigin }) {
             CGWarpMouseCursorPosition(origin)
         }
+    }
+}
+
+/// Hiding the cursor from a background menu bar agent (design D9, variant b): WindowServer hides the
+/// cursor only for the active application, so UniversalKM becomes active while input goes to a device
+/// and gives the focus back to the previous application on return.
+@MainActor
+enum CursorVisibility {
+    private static var previous: NSRunningApplication?
+    private static var hidden = false
+
+    static func hide() {
+        guard !hidden else { return }
+        hidden = true
+        let front = NSWorkspace.shared.frontmostApplication
+        if front?.processIdentifier != ProcessInfo.processInfo.processIdentifier { previous = front }
+        NSApp.activate()
+        CGDisplayHideCursor(CGMainDisplayID())
+    }
+
+    static func show() {
+        guard hidden else { return }
+        hidden = false
+        CGDisplayShowCursor(CGMainDisplayID())
+        previous?.activate()
+        previous = nil
     }
 }
