@@ -11,6 +11,8 @@ import UniversalKMCore
 final class AppStateManager {
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "state")
     let transport: HIDTransport
+    /// The Android transport inside `transport`, for the Wi‑Fi actions of the panel.
+    let android: AndroidHIDTransport
     @ObservationIgnored private(set) lazy var input = InputManager(transport: transport)
     @ObservationIgnored private let displaysProvider = DisplayLayoutProvider()
     @ObservationIgnored private var permissionTimer: Timer?
@@ -20,7 +22,13 @@ final class AppStateManager {
     private(set) var displayNames: [String: String] = [:]
     private(set) var arrangement = DeviceArrangement()
     private(set) var transportStatus = TransportStatus.notConnected
+    private(set) var androidStatus = AndroidStatus()
+    /// Chameleon hosts subscribed to reports.
+    private var chameleonPeers: [UInt16] = []
+    /// `--ble-demo`: every available Android device is bound, so the demo reaches it.
+    @ObservationIgnored private let demoBindsAll: Bool
     private(set) var mode = CaptureStateMachine.Mode.local
+    /// Hosts that take reports: Chameleon subscribers and registered Android devices.
     private(set) var subscribedPeers: [UInt16] = []
     private(set) var isCaptureRunning = false
 
@@ -29,8 +37,10 @@ final class AppStateManager {
 
     private static let arrangementKey = "arrangement"
 
-    init(transport: HIDTransport) {
+    init(transport: HIDTransport, android: AndroidHIDTransport, demoBindsAll: Bool = false) {
         self.transport = transport
+        self.android = android
+        self.demoBindsAll = demoBindsAll
     }
 
     func start() {
@@ -53,13 +63,45 @@ final class AppStateManager {
     }
 
     func isConnected(_ device: PlacedDevice) -> Bool {
+        // Registered Android devices are in subscribedPeers too.
         device.hostPeerID.map(subscribedPeers.contains) ?? false
     }
 
-    /// Hosts nobody is bound to while no device waits: the panel offers to add them.
+    /// Hosts that are there right now: Chameleon subscribers and Android devices on USB or Wi‑Fi
+    /// (an Android device takes reports only once it is bound).
+    private var presentPeers: [UInt16] {
+        chameleonPeers + androidStatus.availablePeers.filter { !chameleonPeers.contains($0) }
+    }
+
+    /// Hosts nobody is bound to while no device waits: the panel offers to add them. Android first.
     var unboundHosts: [UInt16] {
         let waiting = arrangement.devices.contains { $0.hostPeerID == nil }
-        return subscribedPeers.filter { arrangement.device(boundTo: $0) == nil && (!waiting || notAutoBound.contains($0)) }
+        let unbound = presentPeers.filter { arrangement.device(boundTo: $0) == nil && (!waiting || notAutoBound.contains($0)) }
+        return unbound.filter(AndroidPeerRegistry.isAndroidPeer) + unbound.filter { !AndroidPeerRegistry.isAndroidPeer($0) }
+    }
+
+    /// Name of a host for the panel: the Android model, or the Chameleon peer number.
+    func hostName(_ peerID: UInt16) -> String {
+        androidStatus.device(peerID)?.name ?? String(localized: "New device connected #\(Int(peerID))")
+    }
+
+    enum Connection: Equatable { case usb, wifi, chameleon }
+
+    /// How a device of the arrangement is connected right now; nil = not connected.
+    func connection(of device: PlacedDevice) -> Connection? {
+        guard let peer = device.hostPeerID, subscribedPeers.contains(peer) else { return nil }
+        guard AndroidPeerRegistry.isAndroidPeer(peer) else { return .chameleon }
+        switch androidStatus.device(peer)?.active {
+        case .usb: return .usb
+        case .wifi: return .wifi
+        case .adbUSB: return .usb
+        case nil: return nil
+        }
+    }
+
+    /// Whether the arrangement has devices that go through ChameleonUltra (bound to a Chameleon host or waiting).
+    var usesChameleon: Bool {
+        arrangement.devices.contains { $0.hostPeerID.map { !AndroidPeerRegistry.isAndroidPeer($0) } ?? false }
     }
 
     var currentDevice: PlacedDevice? {
@@ -71,7 +113,8 @@ final class AppStateManager {
 
     func addDevice(kind: DeviceKind, name: String, hostPeerID: UInt16? = nil) {
         guard arrangement.canAddDevice, let rightmost = displays.max(by: { $0.frame.maxX < $1.frame.maxX }) else { return }
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        var trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty, let peer = hostPeerID, let android = androidStatus.device(peer) { trimmed = android.name }
         var device = PlacedDevice(name: trimmed,
                                   kind: kind, anchorDisplayUUID: rightmost.uuid, side: .right, offset: 0, hostPeerID: hostPeerID)
         let size = ArrangementLayout.size(of: device, on: rightmost)
@@ -92,7 +135,7 @@ final class AppStateManager {
     /// (the previous one among them) are not bound automatically until they reconnect.
     func rebind(_ id: UUID) {
         arrangement.rebind(id)
-        notAutoBound.formUnion(subscribedPeers)
+        notAutoBound.formUnion(presentPeers)
         arrangementChanged()
     }
 
@@ -180,12 +223,23 @@ final class AppStateManager {
     func transportChanged(_ status: TransportStatus) {
         transportStatus = status
         if case .ready(let state) = status {
-            subscribedPeers = state.hosts.compactMap { $0.state == .subscribed ? $0.peerID : nil }
+            chameleonPeers = state.hosts.compactMap { $0.state == .subscribed ? $0.peerID : nil }
         } else {
-            subscribedPeers = []
+            chameleonPeers = []
         }
-        notAutoBound.formIntersection(subscribedPeers)
-        if arrangement.bindHosts(subscribed: subscribedPeers.filter { !notAutoBound.contains($0) }) {
+        hostsChanged()
+    }
+
+    func androidChanged(_ status: AndroidStatus) {
+        androidStatus = status
+        hostsChanged()
+    }
+
+    private func hostsChanged() {
+        subscribedPeers = chameleonPeers + androidStatus.registeredPeers
+        let present = presentPeers
+        notAutoBound.formIntersection(present)
+        if arrangement.bindHosts(subscribed: present.filter { !notAutoBound.contains($0) }) {
             log.info("bound hosts: \(self.arrangement.devices.map { "\($0.name)=\($0.hostPeerID.map(String.init) ?? "-")" }, privacy: .public)")
             save()
         }
@@ -218,6 +272,9 @@ final class AppStateManager {
     }
 
     private func pushToInput() {
+        var bound = Set(arrangement.devices.compactMap(\.hostPeerID))
+        if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
+        transport.setBoundPeers(bound)
         input.update(zones: layouts.flatMap(\.zones), displays: displays)
         let rects = Dictionary(uniqueKeysWithValues: layouts.map { ($0.device.id, $0.rect) })
         input.update(targets: arrangement.devices.compactMap { device in

@@ -21,8 +21,17 @@ protocol HIDTransport: AnyObject, Sendable {
     /// Releases every key and button on the host and drops pending motion.
     func sendNeutral(to peerID: UInt16)
 
+    /// Peer IDs bound to devices of the arrangement. A transport that must not take a device on its own
+    /// (Android: the on-screen keyboard would disappear) registers the keyboard and mouse only on these.
+    func setBoundPeers(_ peers: Set<UInt16>)
+
     /// Synchronous shutdown for quitting (design D13): turns the HID mode off, waiting up to `timeout`.
     func shutdown(timeout: TimeInterval)
+}
+
+extension HIDTransport {
+    /// ChameleonUltra hosts pair by themselves; nothing to do.
+    func setBoundPeers(_ peers: Set<UInt16>) {}
 }
 
 enum TransportStatus: Equatable, Sendable {

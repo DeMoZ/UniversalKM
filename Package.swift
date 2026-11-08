@@ -16,10 +16,16 @@ let package = Package(
         // Pure logic: HID descriptors and report encoding, key maps, arrangement,
         // state machine. No I/O and no event taps, so it is unit-testable.
         .target(name: "UniversalKMCore"),
-        // The menu bar app: event tap, Chameleon transport, SwiftUI panel, Sparkle updates.
+        // USB control requests through IOKit's device user client, for AOA2 HID on Android
+        // (add-android-usb-transport design D2). C, because Swift cannot use IOKit's plug-in UUID macros.
+        .target(
+            name: "UKMUSB",
+            linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation")]
+        ),
+        // The menu bar app: event tap, Chameleon and Android transports, SwiftUI panel, Sparkle updates.
         .executableTarget(
             name: "UniversalKM",
-            dependencies: ["UniversalKMCore", .product(name: "Sparkle", package: "Sparkle")]
+            dependencies: ["UniversalKMCore", "UKMUSB", .product(name: "Sparkle", package: "Sparkle")]
         ),
         .testTarget(
             name: "UniversalKMCoreTests",
