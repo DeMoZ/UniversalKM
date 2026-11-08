@@ -438,8 +438,11 @@ static void set_enabled(bool enabled) {
         m_keep_adv_stopped = true;
         advertising_stop();
         ble_advertising_hid_mode_set(false);
+        // Every link goes, the Mac's control link too: HID mode off means the app is quitting, and macOS
+        // (which bonds to the keyboard it sees on that link) would otherwise keep a link busy.
+        m_controller = BLE_CONN_HANDLE_INVALID;
         for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
-            if (is_host(&m_links[i])) {   // the Mac's control link stays
+            if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) {
                 ret_code_t err = sd_ble_gap_disconnect(m_links[i].conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
                 if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
                     APP_ERROR_CHECK(err);
@@ -473,6 +476,17 @@ static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
 
         case BLE_GAP_EVT_CONNECTED: {
             if (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH) break;
+            if (m_keep_adv_stopped) {
+                // HID mode turned off: the Chameleon must stay out of reach until the next reset or until
+                // the app turns the mode on again. A host that slipped in (advertising restarted for an
+                // instant on a disconnection) would hang: Peer Manager ignores it without the pairing PIN.
+                advertising_stop();
+                ret_code_t err = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
+                    APP_ERROR_CHECK(err);
+                }
+                break;
+            }
             ukm_link_t *link = link_find(BLE_CONN_HANDLE_INVALID);
             for (size_t i = 0; i < ARRAY_SIZE(m_links) && link == NULL; i++) {
                 if (m_links[i].conn_handle == BLE_CONN_HANDLE_INVALID) link = &m_links[i];
