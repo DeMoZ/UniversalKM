@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  No App Sandbox: a filtering CGEventTap does not work inside the sandbox.
+  Without the sandbox, Bluetooth needs no entitlement
+  (com.apple.security.device.bluetooth is only for sandboxed apps).
+-->
+<dict>
+</dict>
+</plist>

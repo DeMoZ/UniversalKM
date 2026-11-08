@@ -1,0 +1,53 @@
+# Builds UniversalKM and the ChameleonUltra HID firmware and publishes a GitHub release when a version tag
+# is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
+# The tag must match CFBundleShortVersionString in Resources/Info.plist.
+# Release notes come from docs/releases/<tag>.md, or are generated from the merged PRs.
+# appcast.xml (the app's update feed, signed with the SPARKLE_PRIVATE_KEY secret) is published with the release,
+# so releases/latest/download/appcast.xml always describes the newest version.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Check the version
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
+          [[ "v$version" == "$GITHUB_REF_NAME" ]] || { echo "::error::Tag $GITHUB_REF_NAME doesn't match Resources/Info.plist ($version)"; exit 1; }
+
+      - name: Unit tests
+        run: swift test
+
+      - name: Build the app (build/UniversalKM-<version>.zip)
+        run: scripts/build-app.sh --zip
+
+      - name: Build the ChameleonUltra HID firmware (build/chameleon-ultra-hid-dfu-app-<version>.zip)
+        run: scripts/firmware-build.sh --release
+
+      - name: Sign the update for Sparkle (build/appcast.xml)
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: scripts/appcast.sh build/UniversalKM-*.zip
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          notes=docs/releases/$GITHUB_REF_NAME.md
+          if [[ -f "$notes" ]]; then args=(--notes-file "$notes"); else args=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" \
+            "build/UniversalKM-$version.zip" \
+            build/appcast.xml \
+            "build/chameleon-ultra-hid-dfu-app-$version.zip" \
+            --title "UniversalKM $version" "${args[@]}"

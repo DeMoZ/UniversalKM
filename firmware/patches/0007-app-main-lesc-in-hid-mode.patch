@@ -1,0 +1,22 @@
+diff --git a/firmware/application/src/app_main.c b/firmware/application/src/app_main.c
+index 119b1c7..b27c771 100644
+--- a/firmware/application/src/app_main.c
++++ b/firmware/application/src/app_main.c
+@@ -19,6 +19,7 @@
+ #include "nrfx_power.h"
+ #include "nrf_drv_lpcomp.h"
+ #include "nrf_ble_lesc.h"
++#include "ukm_hid.h"
+ 
+ #define NRF_LOG_MODULE_NAME app_main
+ #include "nrf_log.h"
+@@ -1116,7 +1117,8 @@ static void blink_usb_led_status(void) {
+ }
+ 
+ static void lesc_event_process(void) {
+-    if (settings_get_ble_pairing_enable_first_load()) {
++    // UniversalKM: HID hosts bond with LE Secure Connections even when the pairing PIN is off.
++    if (settings_get_ble_pairing_enable_first_load() || ukm_hid_is_enabled()) {
+         ret_code_t err_code;
+         err_code = nrf_ble_lesc_request_handler();
+         APP_ERROR_CHECK(err_code);
