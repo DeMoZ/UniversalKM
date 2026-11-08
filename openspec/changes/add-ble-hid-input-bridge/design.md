@@ -9,7 +9,7 @@
 Ограничения платформы, которые определяют решения ниже:
 
 - **Mac не может быть BLE HID периферией (проверено 2026‑11‑08, macOS 27):** `CBPeripheralManager.add` отклоняет сервисы 0x1812, 0x180A и 0x180F с ошибкой «The specified UUID is not allowed for this operation». Внешние USB‑Bluetooth‑адаптеры macOS не использует. Адаптер AIC8800 из ящика пользователя не переключить в рабочий режим: libusb даже под root не может отцепить драйвер Mass Storage без ограниченного права `com.apple.vm.device-access`. Поэтому роль BLE HID отдана внешнему устройству.
-- **ChameleonUltra** (hw_v1, прошивка v2.1, USB `6868:8686`, CDC‑serial `/dev/cu.usbmodem…`) — nRF52840 с открытой прошивкой RfidResearchGroup/ChameleonUltra (GPL‑3.0): nRF5 SDK 17 и SoftDevice S140 7.2.0 лежат в репозитории; уже есть BLE‑периферия (Nordic UART Service, Battery, Peer Manager с bonding и опциональным статическим PIN), USB‑CDC с протоколом кадров `netdata` (SOF `0x11`, LRC, команда/статус/длина u16; занятые ID команд — до 5013), DFU по USB со штатным загрузчиком. Ключ подписи DFU (`resource/dfu_key/chameleon.pem`) публичен в репозитории, значит, свои пакеты загрузчик примет. Пока Chameleon питается от USB, таймер сна остановлен.
+- **ChameleonUltra** (hw_v1, прошивка v2.1, USB `6868:8686`, CDC‑serial `/dev/cu.usbmodem…`) — nRF52840 с открытой прошивкой RfidResearchGroup/ChameleonUltra (GPL‑3.0): nRF5 SDK 17 и SoftDevice S140 7.2.0 лежат в репозитории; уже есть BLE‑периферия (Nordic UART Service, Battery, Peer Manager с bonding и опциональным статическим PIN), USB‑CDC с протоколом кадров `netdata` (SOF `0x11`, LRC, команда/статус/длина u16; на зафиксированном коммите заняты ID до 5013 и 6000–6005, 6010 — ISO14443‑4), DFU по USB со штатным загрузчиком. Ключ подписи DFU (`resource/dfu_key/chameleon.pem`) публичен в репозитории, значит, свои пакеты загрузчик примет. Пока Chameleon питается от USB, таймер сна остановлен.
 - **Event tap, который блокирует события** (`.defaultTap`), требует разрешения Accessibility. Только чтение событий (`.listenOnly`) требует Input Monitoring. В App Sandbox фильтрующий tap не работает.
 - **TCC‑разрешения** привязаны к подписи кода. Если каждая сборка подписана ad‑hoc, macOS считает её новым приложением и сбрасывает разрешения.
 - **iOS** показывает курсор BLE‑мыши только при включённом AssistiveTouch (на iPadOS курсор поддерживается сразу). Android 9+ поддерживает HOGP мышь + клавиатуру без настроек.
@@ -64,13 +64,13 @@
 
 ### D3. GATT‑структура HOGP — в прошивке Chameleon
 HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (в апстриме его нет в сборке — добавляется в Makefile и `sdk_config.h`):
-- **HID 0x1812**: HID Information `[0x11,0x01, 0x00, 0x02]` (bcdHID 1.11, country 0, NormallyConnectable), Report Map (D4), HID Control Point, Protocol Mode (Report), Report keyboard input (ID 1), Report keyboard output (ID 1, светодиоды — принимаются и игнорируются), Report mouse input (ID 2). Дескрипторы Report Reference и CCCD `ble_hids` создаёт сам. Boot‑характеристики не включаются (хосты используют Report Protocol).
+- **HID 0x1812**: HID Information `[0x11,0x01, 0x00, 0x02]` (bcdHID 1.11, country 0, NormallyConnectable), Report Map (D4), HID Control Point, Protocol Mode (Report), Report keyboard input (ID 1), Report keyboard output (ID 1, светодиоды — принимаются и игнорируются), Report mouse input (ID 2). Дескрипторы Report Reference и CCCD `ble_hids` создаёт сам. Protocol Mode `ble_hids` создаёт только вместе с boot‑характеристиками клавиатуры, поэтому они включены (`is_kb = true`, boot‑мыши нет). Хосты используют Report Protocol; в Boot Protocol работает только клавиатура (отчёт в boot‑характеристику), мышь отбрасывается.
 - **Device Information 0x180A** (`ble_dis`): Manufacturer «RfidResearchGroup», PnP ID (USB‑IF, VID/PID режима HID — константы, Open Questions).
 - **Battery 0x180F**: уже есть в апстриме, с реальным уровнем заряда.
 - Nordic UART Service апстрима остаётся — штатное мобильное приложение Chameleon продолжает работать, когда режим HID выключен.
 
-Безопасность: характеристики отчётов — `SEC_JUST_WORKS` минимум (шифрование), сопряжение и bonding — через уже настроенный Peer Manager апстрима. Если в настройках Chameleon включён статический PIN (`ble_pairing_enable`), телефон спросит его — это штатное поведение, его не меняем.
-Реклама в режиме HID: флаги, список UUID16 `0x1812, 0x180F`, Appearance `BLE_APPEARANCE_HID_KEYBOARD` (0x03C1), имя — в scan response. Имя устройства остаётся `ChameleonUltra`, чтобы не сломать поиск штатного клиента.
+Безопасность: характеристики HID — `SEC_JUST_WORKS` (шифрование), а при включённом статическом PIN Chameleon (`ble_pairing_enable`) — `SEC_MITM`, как штатные сервисы; bonding — через Peer Manager апстрима. Апстрим при выключенном PIN отвергает сопряжение, а с PIN использует MITM с вводом ключа (у Chameleon нет экрана для случайного ключа). Поэтому патч `ble_main.c`: в режиме HID сопряжение не отвергается, и если PIN выключен, на `PM_EVT_CONN_SEC_PARAMS_REQ` уходят параметры Just Works (LESC, bonding, без MITM). С PIN телефон спросит его — штатное поведение.
+Реклама в режиме HID: флаги, список UUID16 `0x1812, 0x180F`, Appearance `BLE_APPEARANCE_HID_KEYBOARD` (0x03C1), имя — в scan response (`ble_advertising_hid_mode_set` в `ble_main.c`, данные меняются на ходу). Сервисы HID и DIS есть в таблице GATT всегда (менять её на ходу нельзя), но реклама HID и отчёты — только в режиме HID. Режим выключен после каждого сброса. Имя устройства остаётся `ChameleonUltra`, чтобы не сломать поиск штатного клиента.
 Одно BLE‑соединение (`NRF_SDH_BLE_PERIPHERAL_LINK_COUNT 1`, как в апстриме): пока телефон подключён как клавиатура, штатное мобильное приложение Chameleon подключиться не может.
 
 *Почему составное устройство с Report ID, а не два периферийных устройства:* у Chameleon одно соединение, а хосты одинаково поддерживают составные HID‑устройства.
@@ -89,26 +89,27 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 - `SerialPort`: `open(O_RDWR | O_NOCTTY | O_NONBLOCK)`, termios raw 115200 8N1 (для USB‑CDC скорость условна), `DispatchSourceRead` на очереди `ukm.serial`; всё состояние транспорта живёт на этой очереди.
 - Кодек кадров (`ChameleonFrame` в Core): SOF `0x11`, LRC1, cmd u16 BE, status u16 BE, len u16 BE, LRC2, data, LRC3 — как `netdata.h` апстрима; потоковый парсер с ресинхронизацией по SOF.
 
-**Команды режима HID** (новый диапазон 6000+, версия протокола 1):
+**Команды режима HID** (диапазон 9000+, версия протокола 1; 6000–6005 заняты апстримом после v2.3.0). Статусы: OK = `0x68` (`STATUS_SUCCESS`), BUSY = `0xA0`, NOT_CONNECTED = `0xA1`, неверные данные = `0x60`. Каждый ответ на 9001–9003 несёт байт `state`:
 
 | ID | Команда | Данные запроса | Ответ |
 |---|---|---|---|
-| 6000 | `UKM_HID_GET_INFO` | — | `[protocolVersion u8, state u8, peerId u16]` |
-| 6001 | `UKM_HID_SET_ENABLED` | `[0/1]` | статус; 0 — разорвать соединение с HID‑хостом и вернуть штатную рекламу |
-| 6002 | `UKM_HID_KEYBOARD` | 8 байт отчёта | статус: OK / BUSY / NOT_CONNECTED |
-| 6003 | `UKM_HID_MOUSE` | 7 байт отчёта | статус: OK / BUSY / NOT_CONNECTED |
-| 6004 | `UKM_HID_STATE` (событие от устройства, без запроса) | — | `[state u8, peerId u16, peerAddr 6 байт]`; state: 0 выключен, 1 реклама, 2 подключён, 3 подключён и подписан на отчёты |
+| 9000 | `UKM_HID_GET_INFO` | — | `[protocolVersion u8, state u8, peerId u16 BE]` |
+| 9001 | `UKM_HID_SET_ENABLED` | `[0/1]` | `[state]`; 0 — пустые отчёты, разорвать соединение и остановить рекламу до следующего сброса (иначе сопряжённый телефон сам переподключится к «клавиатуре», и iOS спрячет экранную клавиатуру) |
+| 9002 | `UKM_HID_KEYBOARD` | 8 байт отчёта | статус OK / BUSY / NOT_CONNECTED, `[state]` |
+| 9003 | `UKM_HID_MOUSE` | 7 байт отчёта | статус OK / BUSY / NOT_CONNECTED, `[state]` |
+| 9004 | `UKM_HID_STATE` (запрос) | — | `[state u8, peerId u16 BE, peerAddr 6 байт]`; state: 0 выключен, 1 реклама, 2 подключён, 3 подключён и подписан на отчёты |
 
-Официальная прошивка на 6000 отвечает «неизвестная команда» → статус «неподходящая прошивка» (spec «Проверка прошивки»).
+Официальная прошивка на 9000 отвечает «неизвестная команда» (`0x67`) → статус «неподходящая прошивка» (spec «Проверка прошивки»).
 
 **Поток.**
 - Движение мыши и прокрутка суммируются в `MouseAccumulator` в `Double`. В отчёт идёт целая часть, дробный остаток остаётся до следующего отчёта (D10). Кнопки — текущий bitmask. Изменение кнопки выделяет накопленное движение в отдельный отчёт до отчёта с новыми кнопками.
-- В полёте не больше одного отчёта мыши; пока ответ не пришёл, новое движение копится в `MouseAccumulator`. Отчёты клавиатуры **не** сливаются: FIFO, до 4 в полёте, приоритет над мышью.
-- Прошивка кладёт отчёт в очередь уведомлений SoftDevice (`ble_hids_inp_rep_send`); `NRF_ERROR_RESOURCES` → ответ BUSY, Mac повторяет через 2 мс (мышь — уже со слитым движением). Очередь HVN в прошивке увеличивается до 8 (`hvn_tx_queue_size`).
-- Если USB‑порт закрылся или пропало питание USB, прошивка сама шлёт телефону нейтральные отчёты (spec «Chameleon вынут с зажатыми клавишами»).
+- **В полёте не больше одного кадра вообще.** Приёмник `dataframe.c` апстрима держит один кадр: пока он ждёт обработки в главном цикле, новые байты отбрасываются, как и всё, что пришло в том же USB‑пакете после конца кадра. Следующий кадр уходит только после ответа на предыдущий (ответ — 1–2 мс по USB). Пока ответ не пришёл, движение копится в `MouseAccumulator`. Отчёты клавиатуры **не** сливаются: FIFO с приоритетом над мышью.
+- Прошивка кладёт отчёт в очередь уведомлений SoftDevice (`ble_hids_inp_rep_send`); `NRF_ERROR_RESOURCES` → ответ BUSY, Mac повторяет через 2 мс (мышь — уже со слитым движением). Очередь HVN остаётся по умолчанию: её увеличение меняет требования SoftDevice к RAM, а слияние мыши и так не даёт очереди копиться.
+- Если USB‑порт закрылся или пропало питание USB, прошивка сама шлёт телефону нейтральные отчёты (spec «Chameleon вынут с зажатыми клавишами»); если очередь занята — повторяет на `BLE_GATTS_EVT_HVN_TX_COMPLETE`.
+- Режим HID просит connection interval 7,5–30 мс (`ble_conn_params_change_conn_params`): Android даёт 7,5 мс, iOS — 15 мс. Диапазон широкий, потому что `ble_conn_params` апстрима разрывает соединение, если хост держит интервал вне его.
 
 ### D6. Как определяется подключение и имя хоста
-Состояние подключения знает прошивка: `BLE_GAP_EVT_CONNECTED/DISCONNECTED` и включение уведомлений на input‑отчётах (`BLE_HIDS_EVT_NOTIF_ENABLED`). При каждом изменении она шлёт событие `UKM_HID_STATE` (D5); при открытии порта Mac запрашивает `UKM_HID_GET_INFO`. «Подключено» для приложения — state 3. После отключения прошивка снова рекламирует себя как HID‑устройство.
+Состояние подключения знает прошивка: `BLE_GAP_EVT_CONNECTED/DISCONNECTED` и включение уведомлений на input‑отчётах (`BLE_HIDS_EVT_NOTIF_ENABLED`). Событий без запроса прошивка не шлёт: передатчик USB у апстрима один, и кадр, отправленный во время чужой передачи, получает `NRF_ERROR_BUSY` → `APP_ERROR_CHECK` → сброс. Поэтому Mac узнаёт состояние из байта `state` в каждом ответе на отчёт, а в простое опрашивает `UKM_HID_STATE` раз в 250 мс; при открытии порта — `UKM_HID_GET_INFO`. Подписку на отчёты прошивка определяет по значению CCCD, а не по событию записи: у сопряжённого телефона при переподключении CCCD восстанавливаются без записи. «Подключено» для приложения — state 3. После отключения прошивка снова рекламирует себя как HID‑устройство.
 Идентификатор хоста — `peerId` Peer Manager (стабилен для сопряжённого телефона, в отличие от случайного BLE‑адреса).
 Имя: BLE HID не даёт имя центрального устройства. Решение: имя задаёт пользователь, когда добавляет устройство на схему (D14). Так как на схеме одно устройство, любой подключённый хост считается им, и статус — «Подключено к <имя>». `peerId` последнего хоста запоминается в модели устройства — пригодится, когда устройств станет несколько. Если устройство ещё не добавлено, показывается «Подключено к устройству #<peerId>».
 
@@ -171,8 +172,8 @@ HID‑сервис строится модулем `ble_hids` из nRF5 SDK 17 (
 ### D15. Прошивка: свои файлы + патчи к зафиксированному апстриму
 - `firmware/UPSTREAM` — URL и коммит апстрима (`RfidResearchGroup/ChameleonUltra@4c5bc2cb6b023d23f7bbc383c9b2b5e39f95419e`, 2026‑10‑31).
 - `firmware/src/` — новые файлы, копируются в `firmware/application/src/` апстрима: `ukm_hid.c/.h` (сервис HID, реклама в режиме HID, обработчики команд 6000–6004, событие состояния, нейтральные отчёты при потере USB), `ukm_report_map.h`.
-- `firmware/patches/*.patch` — минимальные правки апстрима: Makefile (новые исходники, `ble_hids`, `ble_dis`), `sdk_config.h` (`BLE_HIDS_ENABLED`, `BLE_DIS_ENABLED`, размер очереди HVN, число vendor UUID/атрибутов GATT), `ble_main.c` (вызов `ukm_hid_init()` и обработчика событий, реклама), `app_cmd.c` (регистрация команд 6000–6004), `usb_main.c` (событие закрытия порта / пропажи питания).
-- `scripts/firmware-build.sh`: клонирует апстрим на зафиксированном коммите в `build/firmware-src/`, копирует `firmware/src/`, применяет патчи (`git apply --check` перед применением), собирает `ultra-dfu-app.zip` его же `build.sh`. Инструменты на macOS: Arm GNU Toolchain 12.2 для darwin‑arm64 (`GNU_INSTALL_ROOT`), `nrfutil` + `nrfutil install nrf5sdk-tools device`. Без Docker.
+- `firmware/patches/*.patch` — минимальные правки апстрима: Makefile (новые исходники, `ble_hids`, `ble_dis`), `sdk_config.h` (`BLE_HIDS_ENABLED`, `BLE_DIS_ENABLED`, `NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE` 1408 → 2048 — запас под HID и DIS, переполнение дало бы `NO_MEM` и цикл перезагрузок), `application.ld` (начало RAM приложения сдвинуто на те же +0x280: 0x20002ae8 → 0x20002d68, конец RAM и noinit‑область не меняются), `ble_main.c/.h` (сервисы HID/DIS, сопряжение в режиме HID, смена рекламы), `app_cmd.c` (команды 9000–9004), `usb_main.c` (нейтральные отчёты при закрытии порта / пропаже питания).
+- `scripts/firmware-build.sh`: клонирует апстрим на зафиксированном коммите в `build/firmware-src/`, копирует `firmware/src/`, применяет патчи (`git apply --check` перед применением), собирает `ultra-dfu-app.zip` теми же шагами, что `build.sh` апстрима для пакета приложения (`make` в `application` и `nrfutil nrf5sdk-tools pkg generate` с ключом апстрима, `--hw-version 0`, `--sd-req 0x0100`). Сам `build.sh` на macOS не запускается: shebang `#!/bin/env bash` и `mergehex` из nRF Command Line Tools для полного образа. Инструменты на macOS: Arm GNU Toolchain 12.2 для darwin‑arm64 (`GNU_INSTALL_ROOT`), `nrfutil` + `nrfutil install nrf5sdk-tools device`. Без Docker.
 - Патчи — GPL‑3.0, как апстрим; приложение Mac — отдельная программа, общающаяся только по USB‑serial.
 
 *Почему не своя прошивка с нуля:* Peer Manager, батарея, USB‑CDC и DFU уже отлажены в апстриме, а пользователь сохраняет функции Chameleon.

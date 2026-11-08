@@ -1,0 +1,31 @@
+diff --git a/firmware/application/src/sdk_config.h b/firmware/application/src/sdk_config.h
+index 943af40..1755720 100644
+--- a/firmware/application/src/sdk_config.h
++++ b/firmware/application/src/sdk_config.h
+@@ -417,7 +417,7 @@
+ 
+ 
+ #ifndef BLE_DIS_ENABLED
+-#define BLE_DIS_ENABLED 0
++#define BLE_DIS_ENABLED 1
+ #endif
+ 
+ // <q> BLE_GLS_ENABLED  - ble_gls - Glucose Service
+@@ -431,7 +431,7 @@
+ 
+ 
+ #ifndef BLE_HIDS_ENABLED
+-#define BLE_HIDS_ENABLED 0
++#define BLE_HIDS_ENABLED 1
+ #endif
+ 
+ // <q> BLE_HRS_C_ENABLED  - ble_hrs_c - Heart Rate Service Client
+@@ -11468,7 +11468,7 @@
+ 
+ // <o> NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE - Attribute Table size in bytes. The size must be a multiple of 4.
+ #ifndef NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE
+-#define NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE 1408
++#define NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE 2048
+ #endif
+ 
+ // <o> NRF_SDH_BLE_VS_UUID_COUNT - The number of vendor-specific UUIDs.

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import UniversalKMCore
 
@@ -124,4 +125,30 @@ private func reportBits(_ map: [UInt8]) -> [String: Int] {
     #expect(KeyboardModifiers(usage: 0xE0) == .leftControl)
     #expect(KeyboardModifiers(usage: 0xE6) == .rightAlt)
     #expect(KeyboardModifiers(usage: 0x04) == nil)
+}
+
+// MARK: - Firmware parity (design D4)
+
+/// Bytes of the C array between the UKM_REPORT_MAP_BEGIN / _END markers of firmware/src/ukm_report_map.h.
+private func firmwareReportMap() throws -> [UInt8] {
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("firmware/src/ukm_report_map.h")
+    let text = try String(contentsOf: url, encoding: .utf8)
+    let begin = try #require(text.range(of: "// UKM_REPORT_MAP_BEGIN"))
+    let end = try #require(text.range(of: "// UKM_REPORT_MAP_END"))
+    let body = text[begin.upperBound..<end.lowerBound]
+        .split(separator: "\n")
+        .map { line in line.range(of: "//").map { String(line[..<$0.lowerBound]) } ?? String(line) }
+        .joined(separator: "\n")
+    let regex = try Regex(#"0x([0-9A-Fa-f]{2})\b"#)
+    return body.matches(of: regex).compactMap { match in
+        UInt8(String(body[match.range].dropFirst(2)), radix: 16)
+    }
+}
+
+@Test func reportMapMatchesFirmwareHeader() throws {
+    let firmware = try firmwareReportMap()
+    #expect(!firmware.isEmpty)
+    #expect(firmware == HIDReportDescriptor.reportMap)
 }

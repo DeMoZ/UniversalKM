@@ -1,0 +1,13 @@
+diff --git a/firmware/application/application.ld b/firmware/application/application.ld
+index 507a598..b8f2c78 100644
+--- a/firmware/application/application.ld
++++ b/firmware/application/application.ld
+@@ -6,7 +6,7 @@ GROUP(-lgcc -lc -lnosys)
+ MEMORY
+ {
+   FLASH (rx) : ORIGIN = 0x27000, LENGTH = 0xCC000
+-  RAM (rwx) :  ORIGIN = 0x20002ae8, LENGTH = 0x35518
++  RAM (rwx) :  ORIGIN = 0x20002d68, LENGTH = 0x35298
+ }
+ 
+ SECTIONS

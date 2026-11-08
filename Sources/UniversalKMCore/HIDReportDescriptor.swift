@@ -110,7 +110,7 @@ public enum HIDReportDescriptor {
     /// flags = NormallyConnectable (bit 1).
     public static let hidInformation: [UInt8] = [0x11, 0x01, 0x00, 0x02]
 
-    /// PnP ID (0x2A50): vendor ID source 0x02 (USB-IF), VID, PID, version.
-    /// Development values; tune in Open Questions.
-    public static let pnpID: [UInt8] = [0x02, 0x5E, 0x04, 0x01, 0x10, 0x01, 0x00]
+    /// PnP ID (0x2A50) the firmware publishes: vendor ID source 0x02 (USB-IF), the ChameleonUltra
+    /// USB VID 0x6868 / PID 0x8686, version 1 (all little-endian), see firmware/src/ukm_hid.c.
+    public static let pnpID: [UInt8] = [0x02, 0x68, 0x68, 0x86, 0x86, 0x01, 0x00]
 }
