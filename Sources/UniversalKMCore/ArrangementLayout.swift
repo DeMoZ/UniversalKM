@@ -7,12 +7,20 @@ public struct DisplayInfo: Equatable, Hashable, Sendable {
     public var uuid: String
     public var frame: CGRect
     public var isMain: Bool
+    /// Physical size of one point (CGDisplayScreenSize / CGDisplayBounds); nil when unknown.
+    public var millimetersPerPoint: Double?
 
-    public init(uuid: String, frame: CGRect, isMain: Bool = false) {
+    public init(uuid: String, frame: CGRect, isMain: Bool = false, millimetersPerPoint: Double? = nil) {
         self.uuid = uuid
         self.frame = frame
         self.isMain = isMain
+        self.millimetersPerPoint = millimetersPerPoint
     }
+
+    /// A typical Retina laptop, for displays that do not report their physical size.
+    public static let defaultMillimetersPerPoint = 0.26
+
+    public var effectiveMillimetersPerPoint: Double { millimetersPerPoint ?? Self.defaultMillimetersPerPoint }
 }
 
 /// Part of a display edge through which the cursor goes to a device (design D8).
@@ -49,6 +57,20 @@ public enum ArrangementLayout {
         return orientation == .portrait ? CGSize(width: short, height: long) : CGSize(width: long, height: short)
     }
 
+    /// The device's rectangle size next to `display` (design D8): its physical long side converted with
+    /// that display's density, its proportions from the screen size.
+    public static func size(of device: PlacedDevice, on display: DisplayInfo) -> CGSize {
+        let long = device.effectiveLongSideMillimeters / display.effectiveMillimetersPerPoint
+        let short = long / device.aspectRatio
+        return device.orientation == .portrait ? CGSize(width: short, height: long) : CGSize(width: long, height: short)
+    }
+
+    /// The physical long side for a rectangle whose long side is `points` next to `display` (resizing).
+    public static func longSideMillimeters(forLongSidePoints points: Double, on display: DisplayInfo) -> Double {
+        let mm = points * display.effectiveMillimetersPerPoint
+        return min(max(mm, PlacedDevice.longSideRange.lowerBound), PlacedDevice.longSideRange.upperBound)
+    }
+
     static func mainHeight(_ displays: [DisplayInfo]) -> Double {
         Double((displays.first(where: \.isMain) ?? displays.first)?.frame.height ?? 1080)
     }
@@ -62,15 +84,15 @@ public enum ArrangementLayout {
         var placed: [CGRect] = []
         var result: [DeviceLayout] = []
         for device in arrangement.devices {
-            let size = size(kind: device.kind, orientation: device.orientation, mainDisplayHeight: mainHeight(displays))
             var placement = device
             var temporary = false
             var rect: CGRect
             if let display = displays.first(where: { $0.uuid == device.anchorDisplayUUID }) {
-                rect = self.rect(size: size, display: display.frame, side: device.side, offset: device.offset)
+                rect = self.rect(size: size(of: device, on: display), display: display.frame, side: device.side, offset: device.offset)
             } else {
                 temporary = true
-                let snapped = defaultPlacement(size: size, displays: displays, occupied: placed)
+                let rightmost = displays.max { $0.frame.maxX < $1.frame.maxX }!
+                let snapped = defaultPlacement(size: size(of: device, on: rightmost), displays: displays, occupied: placed)
                 placement.anchorDisplayUUID = snapped.displayUUID
                 placement.side = snapped.side
                 placement.offset = snapped.offset

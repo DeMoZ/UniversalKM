@@ -39,7 +39,11 @@ final class DisplayLayoutProvider {
             guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),
                   let string = CFUUIDCreateString(nil, uuid) as String?
             else { return nil }
-            return DisplayInfo(uuid: string, frame: CGDisplayBounds(id), isMain: CGDisplayIsMain(id) != 0)
+            let bounds = CGDisplayBounds(id)
+            // Physical size: the device rectangles keep their real size whatever the display resolution.
+            let millimeters = CGDisplayScreenSize(id)
+            let perPoint = millimeters.height > 0 && bounds.height > 0 ? Double(millimeters.height / bounds.height) : nil
+            return DisplayInfo(uuid: string, frame: bounds, isMain: CGDisplayIsMain(id) != 0, millimetersPerPoint: perPoint)
         }
     }
 }

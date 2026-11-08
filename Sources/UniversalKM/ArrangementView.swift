@@ -31,6 +31,8 @@ struct ArrangementView: View {
     @State private var dragging: UUID?
     @State private var dragTranslation: CGSize = .zero
     @State private var hovered: UUID?
+    /// Resizing by the bottom-right corner: the device and its long side in global points while it moves.
+    @State private var resizing: (id: UUID, longSide: Double)?
     @State private var wallpapers = WallpaperCache()
 
     var body: some View {
@@ -126,6 +128,44 @@ struct ArrangementView: View {
         .allowsHitTesting(false)
     }
 
+    // MARK: Resizing
+
+    private func resizedRect(_ layout: DeviceLayout) -> CGRect {
+        guard let resizing, resizing.id == layout.device.id else { return layout.rect }
+        let long = max(layout.rect.width, layout.rect.height)
+        let factor = resizing.longSide / Double(long)
+        return CGRect(origin: layout.rect.origin,
+                      size: CGSize(width: layout.rect.width * factor, height: layout.rect.height * factor))
+    }
+
+    private func resizeHandle(_ layout: DeviceLayout, map: Mapping) -> some View {
+        let long = Double(max(layout.rect.width, layout.rect.height))
+        let alongHeight = layout.rect.height >= layout.rect.width
+        return Image(systemName: "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 13, height: 13)
+            .background(Circle().fill(Color.accentColor))
+            .help("Потяните, чтобы изменить размер")
+            .onHover { inside in
+                if inside { NSCursor.crosshair.push() } else { NSCursor.pop() }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        // The long side follows the drag along it (the handle is the bottom-right corner).
+                        let delta = alongHeight ? value.translation.height : value.translation.width
+                        resizing = (layout.device.id, max(30, long + Double(delta) / map.scale))
+                    }
+                    .onEnded { _ in
+                        if let resizing {
+                            withAnimation(.easeOut(duration: 0.15)) { state.resize(resizing.id, longSidePoints: resizing.longSide) }
+                        }
+                        resizing = nil
+                    }
+            )
+    }
+
     // MARK: Dragging
 
     private func draggedRect(_ id: UUID, map: Mapping) -> CGRect? {
@@ -163,7 +203,7 @@ struct ArrangementView: View {
         let device = layout.device
         let isDragging = dragging == device.id
         let isSelected = selection == device.id
-        let rect = map.view(isDragging ? (draggedRect(device.id, map: map) ?? layout.rect) : layout.rect)
+        let rect = map.view(isDragging ? (draggedRect(device.id, map: map) ?? layout.rect) : resizedRect(layout))
         let connected = state.isConnected(device)
         let small = min(rect.width, rect.height)
 
@@ -190,6 +230,12 @@ struct ArrangementView: View {
                 .frame(width: 6, height: 6)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .padding(4)
+            // Resize handle (bottom-right corner): keeps the proportions.
+            if isSelected && !isDragging {
+                resizeHandle(layout, map: map)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(2)
+            }
             // Rotate.
             if isSelected && !isDragging {
                 Button {
@@ -199,7 +245,7 @@ struct ArrangementView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Повернуть")
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(3)
             }
         }

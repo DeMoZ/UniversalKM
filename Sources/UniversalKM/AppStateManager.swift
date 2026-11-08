@@ -70,13 +70,16 @@ final class AppStateManager {
     // MARK: Editing the arrangement
 
     func addDevice(kind: DeviceKind, name: String, hostPeerID: UInt16? = nil) {
-        guard arrangement.canAddDevice, !displays.isEmpty else { return }
-        let size = ArrangementLayout.size(kind: kind, orientation: .portrait, mainDisplayHeight: mainDisplayHeight)
-        let place = ArrangementLayout.defaultPlacement(size: size, displays: displays, occupied: layouts.map(\.rect))
+        guard arrangement.canAddDevice, let rightmost = displays.max(by: { $0.frame.maxX < $1.frame.maxX }) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        arrangement.devices.append(PlacedDevice(name: trimmed.isEmpty ? (kind == .phone ? "Телефон" : "Планшет") : trimmed,
-                                                kind: kind, anchorDisplayUUID: place.displayUUID, side: place.side,
-                                                offset: place.offset, hostPeerID: hostPeerID))
+        var device = PlacedDevice(name: trimmed.isEmpty ? (kind == .phone ? "Телефон" : "Планшет") : trimmed,
+                                  kind: kind, anchorDisplayUUID: rightmost.uuid, side: .right, offset: 0, hostPeerID: hostPeerID)
+        let size = ArrangementLayout.size(of: device, on: rightmost)
+        let place = ArrangementLayout.defaultPlacement(size: size, displays: displays, occupied: layouts.map(\.rect))
+        device.anchorDisplayUUID = place.displayUUID
+        device.side = place.side
+        device.offset = place.offset
+        arrangement.devices.append(device)
         arrangementChanged()
     }
 
@@ -115,6 +118,33 @@ final class AppStateManager {
         arrangement.devices[index].pointerSpeed = min(max(speed, PlacedDevice.pointerSpeedRange.lowerBound),
                                                       PlacedDevice.pointerSpeedRange.upperBound)
         arrangementChanged()
+    }
+
+    /// Screen size of the device in points / pixels (portrait); nil clears it. Proportions follow it.
+    func setScreen(points: CGSize?, pixels: CGSize?, of id: UUID) {
+        guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
+        arrangement.devices[index].screenPoints = points
+        arrangement.devices[index].screenPixels = pixels
+        resnap(index)
+        arrangementChanged()
+    }
+
+    /// Resizing by the corner: the long side of the rectangle in global points next to its display.
+    func resize(_ id: UUID, longSidePoints: Double) {
+        guard let index = arrangement.devices.firstIndex(where: { $0.id == id }),
+              let display = displays.first(where: { $0.uuid == arrangement.devices[index].anchorDisplayUUID }) else { return }
+        arrangement.devices[index].longSideMillimeters =
+            ArrangementLayout.longSideMillimeters(forLongSidePoints: longSidePoints, on: display)
+        resnap(index)
+        arrangementChanged()
+    }
+
+    /// The rectangle changed size: stick to the edge again without overlapping anything.
+    private func resnap(_ index: Int) {
+        let id = arrangement.devices[index].id
+        if let layout = layouts.first(where: { $0.device.id == id }), let snap = snap(id, to: layout.rect) {
+            apply(snap, to: index)
+        }
     }
 
     /// Where the device dropped at `rect` (global coordinates) would stick.
