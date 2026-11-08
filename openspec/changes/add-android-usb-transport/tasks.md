@@ -25,7 +25,7 @@
 
 - [x] 4.1 `CompositeHIDTransport.swift` (design D1): маршрутизация по `isAndroidPeer`, `start/setEnabled/shutdown` обоим; `AppDelegate` создаёт оба и отдаёт составной `AppStateManager`, `InputManager`, `BLEDemo`. Проверка: `scripts/build-app.sh`; с Chameleon всё как в 0.1.4 (вручную: телефон через Chameleon, пересечение края, возврат).
 - [x] 4.2 `AppStateManager`: `subscribedPeers` = Chameleon + зарегистрированные Android; `unboundHosts` включает доступные Android без привязки; «Добавить», привязка ожидающего, «Перепривязать», удаление → регистрация/снятие через транспорт; имя по умолчанию — модель телефона. Проверка: unit‑тесты привязки для Android peer ID; вручную — впервые воткнутый телефон не теряет экранную клавиатуру, пока его не добавили.
-- [ ] 4.3 Отсутствие Chameleon не ошибка (spec `android-usb-link` «Работа без ChameleonUltra»): панель и иконка без ошибки, если Chameleon не используется в схеме или есть Android‑устройства. Проверка: только Samsung по USB, Chameleon отключён — ошибки нет, пересечение края работает.
+- [x] 4.3 Отсутствие Chameleon не ошибка (spec `android-usb-link` «Работа без ChameleonUltra»): панель и иконка без ошибки, если Chameleon не используется в схеме или есть Android‑устройства. Проверка: только Samsung по USB, Chameleon отключён — ошибки нет, пересечение края работает. Реализовано; ручная проверка «только Android в схеме» пропущена по решению пользователя (2026‑11‑09).
 
 ## 5. Wi‑Fi‑канал (ADB)
 
