@@ -485,7 +485,14 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         let now = ProcessInfo.processInfo.systemUptime
         for (key, peer) in registry.peers {
             let wanted = enabled && bound.contains(peer)
-            let best = wanted ? candidates(key).first : nil
+            let channels = wanted ? candidates(key) : []
+            var best = channels.first
+            // Stay on the current link while it is as good as the best one (two Wi‑Fi transports of
+            // one phone, e.g. `tcpip` and Wireless debugging, must not take turns).
+            if let current = active[peer], let first = best, current.channel == first.0,
+               let same = channels.first(where: { $0.0 == current.channel && isSame(current, $0.1) }) {
+                best = same
+            }
             if let pending = switching[peer], best == nil || now - pending.since > Self.switchTimeout {
                 log.info("peer \(peer): no other channel; disconnected")
                 switching[peer] = nil

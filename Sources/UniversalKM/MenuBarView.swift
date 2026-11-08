@@ -30,6 +30,7 @@ struct MenuBarView: View {
                 DonateView(model: donate, close: { showDonate = false })
             } else {
                 status
+                AndroidWiFiView(state: state)
                 if !state.isCaptureRunning { permissionRow }
                 ArrangementView(state: state, selection: $selection)
                 deviceControls
