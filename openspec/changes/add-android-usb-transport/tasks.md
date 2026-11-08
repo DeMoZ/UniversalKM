@@ -11,9 +11,9 @@
 
 ## 2. Core: AOA, команды hid, реестр peer ID
 
-- [ ] 2.1 `AOAHID.swift`: константы запросов 51/54–57, события `[reportID] + bytes` из `KeyboardReport`/`MouseReport`, признак «похоже на Android» по интерфейсам, vendor ID и PID с исключениями Apple и Chameleon (design D4). Проверка: unit‑тесты — байты событий; Samsung MTP/ADB и Google AOA PID → да; `05ac:139f`, `6868:8686`, USB‑мышь → нет.
-- [ ] 2.2 `HidCommand.swift`: JSON‑строки `register` (с `bus` и без) и `report` для `/system/bin/hid` (design D5). Проверка: unit‑тесты — строка `register` содержит дескриптор из `reportMap` числами, `report` — `[1, …]`/`[2, …]`, одна строка на команду без переводов строк внутри.
-- [ ] 2.3 `AndroidPeerRegistry` (design D3): peer ID из `0x8000…0x80FE` по серийному номеру, ключ `usb-loc:` без серийного, кодирование для UserDefaults, `isAndroidPeer(_:)`. Проверка: unit‑тесты — тот же серийный → тот же ID после round‑trip; переполнение → nil; ID Chameleon (`0…0x7FFF`, `0xFFFF`) не Android.
+- [x] 2.1 `AOAHID.swift`: константы запросов 51/54–57, события `[reportID] + bytes` из `KeyboardReport`/`MouseReport`, признак «похоже на Android» по интерфейсам, vendor ID и PID с исключениями Apple и Chameleon (design D4). Проверка: unit‑тесты — байты событий; Samsung MTP/ADB и Google AOA PID → да; `05ac:139f`, `6868:8686`, USB‑мышь → нет.
+- [x] 2.2 `HidCommand.swift`: JSON‑строки `register` (с `bus` и без) и `report` для `/system/bin/hid` (design D5). Проверка: unit‑тесты — строка `register` содержит дескриптор из `reportMap` числами, `report` — `[1, …]`/`[2, …]`, одна строка на команду без переводов строк внутри.
+- [x] 2.3 `AndroidPeerRegistry` (design D3): peer ID из `0x8000…0x80FE` по серийному номеру, ключ `usb-loc:` без серийного, кодирование для UserDefaults, `isAndroidPeer(_:)`. Проверка: unit‑тесты — тот же серийный → тот же ID после round‑trip; переполнение → nil; ID Chameleon (`0…0x7FFF`, `0xFFFF`) не Android.
 
 ## 3. Android‑транспорт: каркас и USB‑канал
 
