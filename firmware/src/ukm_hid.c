@@ -48,13 +48,68 @@ BLE_HIDS_DEF(m_hids,
              UKM_MOUSE_INPUT_LEN,
              UKM_KEYBOARD_OUTPUT_LEN);
 
+// One entry per BLE link (design D3: up to three hosts at once).
+typedef struct {
+    uint16_t conn_handle;               // BLE_CONN_HANDLE_INVALID: free
+    pm_peer_id_t peer_id;               // PM_PEER_ID_INVALID until the link is secured with a bond
+    ble_gap_addr_t addr;
+    bool boot_mode;
+    bool neutral_kb_pending;            // neutral keyboard report still to be sent (queue was full)
+    bool neutral_mouse_pending;         // neutral mouse report still to be sent
+} ukm_link_t;
+
 static bool m_enabled = false;
-static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
-static bool m_boot_mode = false;
-static pm_peer_id_t m_peer_id = PM_PEER_ID_INVALID;
-static ble_gap_addr_t m_peer_addr;
-static bool m_neutral_pending = false;  // neutral reports still to be sent (queue was full)
+static ukm_link_t m_links[NRF_SDH_BLE_PERIPHERAL_LINK_COUNT];
 static bool m_keep_adv_stopped = false; // HID mode turned off: stay out of the scan list
+static uint16_t m_controller = BLE_CONN_HANDLE_INVALID; // the Mac app over NUS: not a HID host
+
+// Report counters (UKM_HID_COUNTERS): since reset.
+static struct { uint32_t last_err; uint32_t ok; uint32_t busy; uint32_t failed; uint32_t hvn_complete; uint32_t last_fail_err; uint32_t last_fail_index; } m_cnt;
+
+static ukm_link_t *link_find(uint16_t conn_handle) {
+    if (conn_handle == BLE_CONN_HANDLE_INVALID) return NULL;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (m_links[i].conn_handle == conn_handle) return &m_links[i];
+    }
+    return NULL;
+}
+
+static ukm_link_t *link_by_peer(pm_peer_id_t peer_id) {
+    if (peer_id == PM_PEER_ID_INVALID) return NULL;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID && m_links[i].peer_id == peer_id) return &m_links[i];
+    }
+    return NULL;
+}
+
+static uint8_t link_count(void) {
+    uint8_t n = 0;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) n++;
+    }
+    return n;
+}
+
+static bool is_host(ukm_link_t const *link) {
+    return link->conn_handle != BLE_CONN_HANDLE_INVALID && link->conn_handle != m_controller;
+}
+
+// Links that are HID hosts (the Mac's control link is not one).
+static uint8_t host_count(void) {
+    uint8_t n = 0;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (is_host(&m_links[i])) n++;
+    }
+    return n;
+}
+
+static void links_reset(void) {
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        memset(&m_links[i], 0, sizeof(m_links[i]));
+        m_links[i].conn_handle = BLE_CONN_HANDLE_INVALID;
+        m_links[i].peer_id = PM_PEER_ID_INVALID;
+    }
+}
 
 // --- Diagnostics: what happened on the last connection (UKM_HID_DIAG) -----------------------------
 
@@ -97,13 +152,16 @@ void ukm_hid_on_pm_evt(pm_evt_t const *p_evt) {
 
 // --- Services -----------------------------------------------------------------------------------
 
+static ukm_link_t *link_find(uint16_t conn_handle);
+
 static void hids_evt_handler(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
+    ukm_link_t *link = (p_evt->p_ble_evt != NULL) ? link_find(p_evt->p_ble_evt->evt.gap_evt.conn_handle) : NULL;
     switch (p_evt->evt_type) {
         case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
-            m_boot_mode = true;
+            if (link != NULL) link->boot_mode = true;
             break;
         case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
-            m_boot_mode = false;
+            if (link != NULL) link->boot_mode = false;
             break;
         case BLE_HIDS_EVT_NOTIF_ENABLED:
             NRF_LOG_INFO("Host subscribed to HID reports");
@@ -199,6 +257,7 @@ static void dis_init(void) {
 }
 
 void ukm_hid_services_init(void) {
+    links_reset();
     // Encrypted link for everything with reports: the host bonds on first use.
     // With the Chameleon pairing PIN on, the PIN is required (MITM), as for the stock services.
     security_req_t sec = settings_get_ble_pairing_enable_first_load() ? SEC_MITM : SEC_JUST_WORKS;
@@ -208,30 +267,30 @@ void ukm_hid_services_init(void) {
 
 // --- State --------------------------------------------------------------------------------------
 
-static bool cccd_enabled(uint16_t cccd_handle) {
-    if (m_conn_handle == BLE_CONN_HANDLE_INVALID || cccd_handle == BLE_GATT_HANDLE_INVALID) {
+static bool cccd_enabled(uint16_t conn_handle, uint16_t cccd_handle) {
+    if (conn_handle == BLE_CONN_HANDLE_INVALID || cccd_handle == BLE_GATT_HANDLE_INVALID) {
         return false;
     }
     uint8_t value[BLE_CCCD_VALUE_LEN] = {0};
     ble_gatts_value_t gatts_value = {.len = sizeof(value), .offset = 0, .p_value = value};
-    if (sd_ble_gatts_value_get(m_conn_handle, cccd_handle, &gatts_value) != NRF_SUCCESS) {
+    if (sd_ble_gatts_value_get(conn_handle, cccd_handle, &gatts_value) != NRF_SUCCESS) {
         return false;
     }
     return ble_srv_is_notification_enabled(value);
 }
 
-static uint8_t current_state(void) {
-    if (!m_enabled) {
-        return UKM_HID_STATE_DISABLED;
+// UKM_HID_STATE_CONNECTED or _SUBSCRIBED for a link. A bonded host that reconnects gets its CCCDs
+// restored without a write, so read them (they are per connection).
+static uint8_t link_state(ukm_link_t const *link) {
+    if (link == NULL || link->conn_handle == BLE_CONN_HANDLE_INVALID) {
+        return m_enabled ? UKM_HID_STATE_ADVERTISING : UKM_HID_STATE_DISABLED;
     }
-    if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
-        return UKM_HID_STATE_ADVERTISING;
-    }
-    // A bonded host that reconnects gets its CCCDs restored without a write, so read them.
-    bool subscribed = m_boot_mode
-                      ? cccd_enabled(m_hids.boot_kb_inp_rep_handles.cccd_handle)
-                      : (cccd_enabled(m_hids.inp_rep_array[INPUT_REP_KEYBOARD_INDEX].char_handles.cccd_handle)
-                         || cccd_enabled(m_hids.inp_rep_array[INPUT_REP_MOUSE_INDEX].char_handles.cccd_handle));
+    bool subscribed = link->boot_mode
+                      ? cccd_enabled(link->conn_handle, m_hids.boot_kb_inp_rep_handles.cccd_handle)
+                      // Hosts enable the two input reports one after the other: subscribed means both,
+                      // otherwise the first mouse reports fail with NRF_ERROR_INVALID_STATE.
+                      : (cccd_enabled(link->conn_handle, m_hids.inp_rep_array[INPUT_REP_KEYBOARD_INDEX].char_handles.cccd_handle)
+                         && cccd_enabled(link->conn_handle, m_hids.inp_rep_array[INPUT_REP_MOUSE_INDEX].char_handles.cccd_handle));
     return subscribed ? UKM_HID_STATE_SUBSCRIBED : UKM_HID_STATE_CONNECTED;
 }
 
@@ -239,60 +298,113 @@ bool ukm_hid_is_enabled(void) {
     return m_enabled;
 }
 
+bool ukm_hid_link_available(void) {
+    return m_enabled && !m_keep_adv_stopped && link_count() < NRF_SDH_BLE_PERIPHERAL_LINK_COUNT;
+}
+
 // Returns a netdata status.
-static uint16_t send_input(uint8_t index, uint8_t *p_data, uint16_t len) {
-    if (!m_enabled || m_conn_handle == BLE_CONN_HANDLE_INVALID) {
+static uint16_t send_input(ukm_link_t *link, uint8_t index, uint8_t *p_data, uint16_t len) {
+    if (!m_enabled || link == NULL || link->conn_handle == BLE_CONN_HANDLE_INVALID) {
         return UKM_STATUS_NOT_CONNECTED;
     }
     ret_code_t err;
-    if (m_boot_mode) {
+    if (link->boot_mode) {
         if (index != INPUT_REP_KEYBOARD_INDEX) {
             return STATUS_SUCCESS; // no boot mouse: drop
         }
-        err = ble_hids_boot_kb_inp_rep_send(&m_hids, len, p_data, m_conn_handle);
+        err = ble_hids_boot_kb_inp_rep_send(&m_hids, len, p_data, link->conn_handle);
     } else {
-        err = ble_hids_inp_rep_send(&m_hids, index, len, p_data, m_conn_handle);
+        err = ble_hids_inp_rep_send(&m_hids, index, len, p_data, link->conn_handle);
     }
+    if (err != NRF_SUCCESS) m_cnt.last_err = err;
     switch (err) {
         case NRF_SUCCESS:
+            m_cnt.ok++;
             return STATUS_SUCCESS;
         case NRF_ERROR_RESOURCES:
         case NRF_ERROR_BUSY:
+            m_cnt.busy++;
             return UKM_STATUS_BUSY;
         default:
+            m_cnt.failed++;
+            m_cnt.last_fail_err = err;
+            m_cnt.last_fail_index = index;
             // NRF_ERROR_INVALID_STATE (not subscribed), BLE_ERROR_GATTS_SYS_ATTR_MISSING,
             // NRF_ERROR_FORBIDDEN (link not encrypted yet), BLE_ERROR_INVALID_CONN_HANDLE: no crash, report it.
             return UKM_STATUS_NOT_CONNECTED;
     }
 }
 
-static void send_neutral(void) {
+// Sends whichever neutral (all released) report of the link is still pending. Each one is sent once:
+// retrying both together would refill the one-slot notification queue with the keyboard report on every
+// HVN_TX_COMPLETE and starve the mouse report (and every other report to this host) forever.
+static void send_neutral_pending(ukm_link_t *link) {
     static uint8_t keyboard[UKM_KEYBOARD_INPUT_LEN];
     static uint8_t mouse[UKM_MOUSE_INPUT_LEN];
     memset(keyboard, 0, sizeof(keyboard));
     memset(mouse, 0, sizeof(mouse));
-    uint16_t kb = send_input(INPUT_REP_KEYBOARD_INDEX, keyboard, sizeof(keyboard));
-    uint16_t ms = (kb == UKM_STATUS_BUSY) ? UKM_STATUS_BUSY
-                                           : send_input(INPUT_REP_MOUSE_INDEX, mouse, sizeof(mouse));
-    // Retried on the next BLE_GATTS_EVT_HVN_TX_COMPLETE while the queue is full.
-    m_neutral_pending = (kb == UKM_STATUS_BUSY || ms == UKM_STATUS_BUSY);
-}
-
-void ukm_hid_on_usb_lost(void) {
-    if (m_enabled && m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-        NRF_LOG_INFO("USB lost: neutral reports");
-        send_neutral();
+    if (link->neutral_kb_pending) {
+        uint16_t kb = send_input(link, INPUT_REP_KEYBOARD_INDEX, keyboard, sizeof(keyboard));
+        if (kb == UKM_STATUS_BUSY) return; // retried on the next BLE_GATTS_EVT_HVN_TX_COMPLETE
+        link->neutral_kb_pending = false;
+    }
+    if (link->neutral_mouse_pending) {
+        uint16_t ms = send_input(link, INPUT_REP_MOUSE_INDEX, mouse, sizeof(mouse));
+        if (ms == UKM_STATUS_BUSY) return;
+        link->neutral_mouse_pending = false;
     }
 }
 
-static void request_fast_conn_params(void) {
+static void send_neutral(ukm_link_t *link) {
+    link->neutral_kb_pending = true;
+    link->neutral_mouse_pending = true;
+    send_neutral_pending(link);
+}
+
+static void send_neutral_all(void) {
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (is_host(&m_links[i])) {
+            send_neutral(&m_links[i]);
+        }
+    }
+}
+
+static void set_enabled(bool enabled);
+
+void ukm_hid_on_usb_lost(void) {
+    if (!m_enabled) {
+        return;
+    }
+    if (m_controller != BLE_CONN_HANDLE_INVALID) {
+        NRF_LOG_INFO("USB lost: neutral reports, the Mac goes on over Bluetooth");
+        send_neutral_all();
+    } else {
+        // Nobody can drive the keyboard now: let the hosts show their on-screen keyboards again.
+        NRF_LOG_INFO("USB lost without a Bluetooth link to the Mac: HID mode off");
+        set_enabled(false);
+    }
+}
+
+void ukm_hid_on_nus_comm(uint16_t conn_handle, bool started) {
+    if (started) {
+        m_controller = conn_handle;
+    } else if (m_controller == conn_handle) {
+        m_controller = BLE_CONN_HANDLE_INVALID;
+    }
+}
+
+uint16_t ukm_hid_controller_conn_handle(void) {
+    return m_controller;
+}
+
+static void request_fast_conn_params(uint16_t conn_handle) {
     ble_gap_conn_params_t params = {
         .min_conn_interval = UKM_MIN_CONN_INTERVAL,
         .max_conn_interval = UKM_MAX_CONN_INTERVAL,
         .slave_latency = 0,
         .conn_sup_timeout = UKM_CONN_SUP_TIMEOUT,
     };
-    ret_code_t err = ble_conn_params_change_conn_params(m_conn_handle, &params);
+    ret_code_t err = ble_conn_params_change_conn_params(conn_handle, &params);
     if (err != NRF_SUCCESS) {
         NRF_LOG_WARNING("Conn params change failed: %d", err);
     }
@@ -303,34 +415,38 @@ static void set_enabled(bool enabled) {
         return;
     }
     NRF_LOG_INFO("HID mode %s", enabled ? "on" : "off");
-    if (!enabled && m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-        send_neutral(); // while m_enabled is still true
+    if (!enabled) {
+        send_neutral_all(); // while m_enabled is still true
     }
     m_enabled = enabled;
-    m_neutral_pending = false;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        m_links[i].neutral_kb_pending = false;
+        m_links[i].neutral_mouse_pending = false;
+    }
     if (enabled) {
         m_keep_adv_stopped = false;
-        if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-            // Not advertising: the new data is used when advertising restarts after this link.
-            ble_advertising_hid_mode_set(true);
-            request_fast_conn_params();
-        } else {
-            // ble_advertising_start() reconfigures the advertising set, which the SoftDevice refuses
-            // (NRF_ERROR_INVALID_STATE -> APP_ERROR_CHECK -> reset) while advertising runs: stop first.
-            advertising_stop();
-            ble_advertising_hid_mode_set(true);
-            advertising_start(false);
+        ble_advertising_hid_mode_set(true);
+        for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+            if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) {
+                request_fast_conn_params(m_links[i].conn_handle);
+            }
         }
+        advertising_start(false); // stops and restarts with the HID data while a link is free
     } else {
         // Leave the scan list until the next reset, so a bonded phone does not reconnect to a keyboard
         // that no longer types (iOS would keep hiding its on-screen keyboard).
         m_keep_adv_stopped = true;
         advertising_stop();
         ble_advertising_hid_mode_set(false);
-        if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-            ret_code_t err = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-            if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
-                APP_ERROR_CHECK(err);
+        // Every link goes, the Mac's control link too: HID mode off means the app is quitting, and macOS
+        // (which bonds to the keyboard it sees on that link) would otherwise keep a link busy.
+        m_controller = BLE_CONN_HANDLE_INVALID;
+        for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+            if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) {
+                ret_code_t err = sd_ble_gap_disconnect(m_links[i].conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
+                    APP_ERROR_CHECK(err);
+                }
             }
         }
     }
@@ -343,6 +459,7 @@ static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
         memset(&m_diag, 0, sizeof(m_diag));
     }
     diag_ble(p_ble_evt->header.evt_id);
+    uint16_t conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
     switch (p_ble_evt->header.evt_id) {
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
             ble_gap_sec_params_t const *peer = &p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params;
@@ -357,32 +474,65 @@ static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
             m_diag.auth_bonded = p_ble_evt->evt.gap_evt.params.auth_status.bonded;
             break;
 
-        case BLE_GAP_EVT_CONNECTED:
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            m_peer_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
-            m_peer_id = PM_PEER_ID_INVALID;
-            m_boot_mode = false;
-            if (m_enabled) {
-                request_fast_conn_params();
-            }
-            break;
-
-        case BLE_GAP_EVT_DISCONNECTED:
-            m_diag.disconnect_reason = p_ble_evt->evt.gap_evt.params.disconnected.reason;
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            m_peer_id = PM_PEER_ID_INVALID;
-            m_neutral_pending = false;
-            // ble_advertising (higher priority) has just restarted advertising.
+        case BLE_GAP_EVT_CONNECTED: {
+            if (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH) break;
             if (m_keep_adv_stopped) {
+                // HID mode turned off: the Chameleon must stay out of reach until the next reset or until
+                // the app turns the mode on again. A host that slipped in (advertising restarted for an
+                // instant on a disconnection) would hang: Peer Manager ignores it without the pairing PIN.
                 advertising_stop();
+                ret_code_t err = sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
+                    APP_ERROR_CHECK(err);
+                }
+                break;
+            }
+            ukm_link_t *link = link_find(BLE_CONN_HANDLE_INVALID);
+            for (size_t i = 0; i < ARRAY_SIZE(m_links) && link == NULL; i++) {
+                if (m_links[i].conn_handle == BLE_CONN_HANDLE_INVALID) link = &m_links[i];
+            }
+            if (link == NULL) break; // cannot happen: the SoftDevice allows as many links as m_links has
+            memset(link, 0, sizeof(*link));
+            link->conn_handle = conn_handle;
+            link->peer_id = PM_PEER_ID_INVALID;
+            link->addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
+            if (m_enabled) {
+                request_fast_conn_params(conn_handle);
+                // ble_advertising does not resume after a connection: keep advertising while a link is free.
+                advertising_start(false);
             }
             break;
+        }
 
-        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-            if (m_neutral_pending) {
-                send_neutral();
+        case BLE_GAP_EVT_DISCONNECTED: {
+            m_diag.disconnect_reason = p_ble_evt->evt.gap_evt.params.disconnected.reason;
+            if (conn_handle == m_controller) {
+                m_controller = BLE_CONN_HANDLE_INVALID;
+            }
+            ukm_link_t *link = link_find(conn_handle);
+            if (link != NULL) {
+                memset(link, 0, sizeof(*link));
+                link->conn_handle = BLE_CONN_HANDLE_INVALID;
+                link->peer_id = PM_PEER_ID_INVALID;
+            }
+            if (m_keep_adv_stopped) {
+                // ble_advertising (higher priority) may have just restarted advertising.
+                advertising_stop();
+            } else if (m_enabled) {
+                // ble_advertising restarts only after the newest link; any freed link counts here.
+                advertising_start(false);
             }
             break;
+        }
+
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE: {
+            m_cnt.hvn_complete += p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count;
+            ukm_link_t *link = link_find(conn_handle);
+            if (link != NULL && (link->neutral_kb_pending || link->neutral_mouse_pending)) {
+                send_neutral_pending(link);
+            }
+            break;
+        }
 
         default:
             break;
@@ -418,8 +568,9 @@ bool ukm_hid_on_sec_params_req(pm_evt_t const *p_evt) {
 }
 
 void ukm_hid_on_conn_sec_succeeded(pm_evt_t const *p_evt) {
-    if (p_evt->conn_handle == m_conn_handle) {
-        m_peer_id = p_evt->peer_id;
+    ukm_link_t *link = link_find(p_evt->conn_handle);
+    if (link != NULL) {
+        link->peer_id = p_evt->peer_id;
     }
 }
 
@@ -428,9 +579,9 @@ void ukm_hid_on_conn_sec_succeeded(pm_evt_t const *p_evt) {
 data_frame_tx_t *ukm_hid_cmd_get_info(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
     uint8_t payload[4] = {
         UKM_HID_PROTOCOL_VERSION,
-        current_state(),
-        (uint8_t)(m_peer_id >> 8),
-        (uint8_t)(m_peer_id & 0xFF),
+        m_enabled ? 1 : 0,
+        host_count(),
+        NRF_SDH_BLE_PERIPHERAL_LINK_COUNT,
     };
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), payload);
 }
@@ -440,39 +591,46 @@ data_frame_tx_t *ukm_hid_cmd_set_enabled(uint16_t cmd, uint16_t status, uint16_t
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     }
     set_enabled(data[0] == 1);
-    uint8_t state = current_state();
+    uint8_t state = m_enabled ? UKM_HID_STATE_ADVERTISING : UKM_HID_STATE_DISABLED;
     return data_frame_make(cmd, STATUS_SUCCESS, 1, &state);
 }
 
-data_frame_tx_t *ukm_hid_cmd_keyboard(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    if (length != UKM_KEYBOARD_INPUT_LEN) {
+// [peer_id u16 BE] + report -> status, [state of that host, host count]
+static data_frame_tx_t *cmd_report(uint16_t cmd, uint16_t length, uint8_t *data, uint8_t index, uint16_t report_len) {
+    if (length != 2 + report_len) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     }
-    uint16_t result = send_input(INPUT_REP_KEYBOARD_INDEX, data, length);
-    uint8_t state = current_state();
-    return data_frame_make(cmd, result, 1, &state);
+    ukm_link_t *link = link_by_peer((pm_peer_id_t)((data[0] << 8) | data[1]));
+    uint16_t result = send_input(link, index, &data[2], report_len);
+    uint8_t payload[2] = {link_state(link), host_count()};
+    return data_frame_make(cmd, result, sizeof(payload), payload);
+}
+
+data_frame_tx_t *ukm_hid_cmd_keyboard(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    return cmd_report(cmd, length, data, INPUT_REP_KEYBOARD_INDEX, UKM_KEYBOARD_INPUT_LEN);
 }
 
 data_frame_tx_t *ukm_hid_cmd_mouse(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    if (length != UKM_MOUSE_INPUT_LEN) {
-        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
-    }
-    uint16_t result = send_input(INPUT_REP_MOUSE_INDEX, data, length);
-    uint8_t state = current_state();
-    return data_frame_make(cmd, result, 1, &state);
+    return cmd_report(cmd, length, data, INPUT_REP_MOUSE_INDEX, UKM_MOUSE_INPUT_LEN);
 }
 
+// [enabled, advertising, n] + n x [peer_id u16 BE, addr 6 bytes LE, state]
 data_frame_tx_t *ukm_hid_cmd_state(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    uint8_t payload[9];
-    payload[0] = current_state();
-    payload[1] = (uint8_t)(m_peer_id >> 8);
-    payload[2] = (uint8_t)(m_peer_id & 0xFF);
-    if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-        memcpy(&payload[3], m_peer_addr.addr, BLE_GAP_ADDR_LEN);
-    } else {
-        memset(&payload[3], 0, BLE_GAP_ADDR_LEN);
+    static uint8_t payload[3 + NRF_SDH_BLE_PERIPHERAL_LINK_COUNT * 9];
+    uint16_t n = 0;
+    payload[n++] = m_enabled ? 1 : 0;
+    payload[n++] = ukm_hid_link_available() ? 1 : 0;
+    payload[n++] = host_count();
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        ukm_link_t const *link = &m_links[i];
+        if (!is_host(link)) continue;
+        payload[n++] = (uint8_t)(link->peer_id >> 8);
+        payload[n++] = (uint8_t)(link->peer_id & 0xFF);
+        memcpy(&payload[n], link->addr.addr, BLE_GAP_ADDR_LEN);
+        n += BLE_GAP_ADDR_LEN;
+        payload[n++] = link_state(link);
     }
-    return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), payload);
+    return data_frame_make(cmd, STATUS_SUCCESS, n, payload);
 }
 
 // [ble_count, pm_count, auth_status, auth_error_src, auth_bonded, disconnect_reason,
@@ -507,4 +665,18 @@ data_frame_tx_t *ukm_hid_cmd_diag(uint16_t cmd, uint16_t status, uint16_t length
         out[n++] = m_diag.pm_evts[i];
     }
     return data_frame_make(cmd, STATUS_SUCCESS, n, out);
+}
+
+// [last_err, ok, busy, failed, hvn_complete, last_fail_err, last_fail_index] u32 BE each
+data_frame_tx_t *ukm_hid_cmd_counters(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    static uint8_t out[28];
+    uint32_t v[7] = {m_cnt.last_err, m_cnt.ok, m_cnt.busy, m_cnt.failed, m_cnt.hvn_complete,
+                     m_cnt.last_fail_err, m_cnt.last_fail_index};
+    for (int i = 0; i < 7; i++) {
+        out[4 * i] = (uint8_t)(v[i] >> 24);
+        out[4 * i + 1] = (uint8_t)(v[i] >> 16);
+        out[4 * i + 2] = (uint8_t)(v[i] >> 8);
+        out[4 * i + 3] = (uint8_t)v[i];
+    }
+    return data_frame_make(cmd, STATUS_SUCCESS, sizeof(out), out);
 }

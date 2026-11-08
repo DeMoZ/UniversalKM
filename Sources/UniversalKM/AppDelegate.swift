@@ -2,6 +2,7 @@ import AppKit
 import os
 import Sparkle
 import SwiftUI
+import UniversalKMCore
 
 /// Owns the long-lived parts of the app. Step 3 moves state into AppStateManager.
 @MainActor
@@ -17,7 +18,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("launched \(self.version, privacy: .public), arguments: \(CommandLine.arguments, privacy: .public)")
         setUpStatusItem()
+        transport.start()
+        startCapture()
+        // `--open-panel`: opens the panel on launch (manual UI checks and window snapshots).
+        if CommandLine.arguments.contains("--open-panel") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.togglePanel() }
+        }
     }
+
+    // MARK: State (design D13)
+
+    private(set) lazy var state = AppStateManager(transport: transport)
+
+    private func startCapture() {
+        state.onModeChange = { [weak self] device in
+            // Mac mode: the app's own menu bar icon; Device mode: the kind of device input goes to.
+            self?.statusItem?.button?.image = device == nil ? StatusIcon.make() : NSImage(
+                systemSymbolName: device?.kind == .tablet ? "ipad" : "iphone",
+                accessibilityDescription: "UniversalKM")
+        }
+        state.start()
+    }
+
+    // MARK: ChameleonUltra (design D5)
+
+    /// Latest transport status, for the panel (task 3.3) and the BLE demo (task 1.12).
+    @Published private(set) var transportStatus = TransportStatus.notConnected
+
+    private(set) lazy var transport: HIDTransport = ChameleonHIDTransport { [weak self] status in
+        Task { @MainActor in
+            self?.transportStatus = status
+            self?.demo?.statusChanged(status)
+            self?.state.transportChanged(status)
+        }
+    }
+
+    /// `--ble-demo` only (task 1.12).
+    private lazy var demo: BLEDemo? = isBLEDemo ? BLEDemo(transport: transport) : nil
 
     // MARK: Menu bar icon and panel (design D13)
 
@@ -35,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         panel.behavior = .transient
         panel.animates = false
         panel.delegate = self
-        let content = NSHostingController(rootView: MenuBarView(app: self, donate: donateModel))
+        let content = NSHostingController(rootView: MenuBarView(app: self, state: state, donate: donateModel))
         // The popover follows the SwiftUI content's size (e.g. when the donate section opens).
         content.sizingOptions = [.preferredContentSize]
         panel.contentViewController = content
@@ -64,6 +101,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func applicationWillTerminate(_ notification: Notification) {
         log.info("terminating")
+        // Cursor back on the Mac first, then hosts get neutral reports and are disconnected (design D13).
+        state.input.release(.quit)
+        transport.shutdown(timeout: 0.3)
     }
 
     func quit() {

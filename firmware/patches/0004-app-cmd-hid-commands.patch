@@ -1,5 +1,5 @@
 diff --git a/firmware/application/src/app_cmd.c b/firmware/application/src/app_cmd.c
-index 3633d24..1aa388f 100644
+index 3633d24..d6a831f 100644
 --- a/firmware/application/src/app_cmd.c
 +++ b/firmware/application/src/app_cmd.c
 @@ -33,6 +33,7 @@ extern void nfc_tag_14a_set_sniff_passive(bool passive);
@@ -10,7 +10,7 @@ index 3633d24..1aa388f 100644
  #include "nrf_log.h"
  #include "nrf_log_ctrl.h"
  #include "nrf_log_default_backends.h"
-@@ -3398,6 +3399,14 @@ static cmd_data_map_t m_data_cmd_map[] = {
+@@ -3398,6 +3399,15 @@ static cmd_data_map_t m_data_cmd_map[] = {
      /* HF14A scan keeping field alive */
      {    DATA_CMD_HF14A_SCAN_KEEP,                before_hf_reader_run,        cmd_processor_hf14a_scan_keep,               NULL                   },
  #endif
@@ -22,6 +22,7 @@ index 3633d24..1aa388f 100644
 +    {    DATA_CMD_UKM_HID_MOUSE,                  NULL,                        ukm_hid_cmd_mouse,                           NULL                   },
 +    {    DATA_CMD_UKM_HID_STATE,                  NULL,                        ukm_hid_cmd_state,                           NULL                   },
 +    {    DATA_CMD_UKM_HID_DIAG,                   NULL,                        ukm_hid_cmd_diag,                            NULL                   },
++    {    DATA_CMD_UKM_HID_COUNTERS,               NULL,                        ukm_hid_cmd_counters,                        NULL                   },
  };
  data_frame_tx_t *cmd_processor_get_device_capabilities(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
      size_t count = ARRAYLEN(m_data_cmd_map);
