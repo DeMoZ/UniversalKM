@@ -43,8 +43,8 @@
 
 - [x] 7.1 README.md по design D8: шапка и Features, «How it works» с тремя способами, разделы «Android over USB» и «Android over Wi‑Fi (ADB)», затем блок Chameleon с существующими разделами; уточнить фразу про libusb. Проверка: якоря `](#…)` ведут на существующие заголовки, текст разделов Chameleon сохранён.
 - [x] 7.2 README.ru.md — та же структура на русском. Проверка: заголовки двух README совпадают по порядку (`grep '^#'`).
-- [ ] 7.3 `docs/images/architecture.svg`: три пути (кабель → Android, Wi‑Fi → Android, Chameleon → Bluetooth → Android/iPhone/iPad), светлая и тёмная тема. Проверка: схема читается в обеих темах в браузере.
-- [ ] 7.4 Заметки к релизу `docs/releases/v<следующая>.md`. Проверка: файл есть, версия совпадает с `Resources/Info.plist` на момент релиза.
+- [x] 7.3 `docs/images/architecture.svg`: три пути (кабель → Android, Wi‑Fi → Android, Chameleon → Bluetooth → Android/iPhone/iPad), светлая и тёмная тема. Проверка: схема читается в обеих темах в браузере.
+- [x] 7.4 Заметки к релизу `docs/releases/v<следующая>.md`. Проверка: файл есть, версия совпадает с `Resources/Info.plist` на момент релиза.
 
 ## 8. Проверка целиком
 
