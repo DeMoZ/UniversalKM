@@ -292,3 +292,18 @@ private func zoneLength(_ zone: HandoffZone) -> Double {
     #expect(arrangement.devices[0].screenPoints == nil)
     #expect(arrangement.devices[0].effectiveLongSideMillimeters == 250)
 }
+
+@Test func androidAndChameleonHostsShareTheArrangement() throws {
+    var registry = AndroidPeerRegistry()
+    let given = registry.peerID(for: "R28M303RHET")
+    let phonePeer = try #require(given)
+    var arrangement = DeviceArrangement(devices: [phone(.right)])
+    // A waiting device takes the Android phone that shows up, as it would a Chameleon host.
+    arrangement.bindHosts(subscribed: [phonePeer])
+    #expect(arrangement.devices[0].hostPeerID == 0x8000)
+    // A Chameleon host next to it is offered, the bound phone is not.
+    #expect(arrangement.unboundHosts(subscribed: [phonePeer, 3]) == [3])
+    // The binding survives saving with the arrangement.
+    let decoded = try JSONDecoder().decode(DeviceArrangement.self, from: JSONEncoder().encode(arrangement))
+    #expect(decoded.device(boundTo: 0x8000)?.id == arrangement.devices[0].id)
+}
