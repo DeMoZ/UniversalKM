@@ -3,10 +3,19 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>ru</string>
+	<string>en</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>ru</string>
+		<string>de</string>
+		<string>fr</string>
+		<string>es</string>
+		<string>pt-BR</string>
+		<string>it</string>
+		<string>zh-Hans</string>
+		<string>ja</string>
+		<string>ko</string>
 	</array>
 	<key>CFBundleIdentifier</key>
 	<string>com.universalkm.UniversalKM</string>
@@ -31,7 +40,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>UniversalKM управляет ChameleonUltra по Bluetooth, когда он не подключён по USB.</string>
+	<string>UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB.</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/DeMoZ/UniversalKM/releases/latest/download/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>

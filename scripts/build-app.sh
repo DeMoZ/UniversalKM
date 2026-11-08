@@ -29,6 +29,8 @@ cp "$BIN_DIR/UniversalKM" "$APP/Contents/MacOS/UniversalKM"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 # App icon, drawn by scripts/make-icon.swift.
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# Interface translations (keys are the English source strings; scripts/localization.py writes them).
+cp -R "$ROOT"/Resources/*.lproj "$APP/Contents/Resources/"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 # Sparkle (app updates).
 ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
