@@ -213,3 +213,33 @@ private func zoneLength(_ zone: HandoffZone) -> Double {
     #expect(HandoffZoneDetector.device(at: CGPoint(x: 0, y: 600), delta: CGVector(dx: -2, dy: 0), zones: zones, displays: [laptop]) == left.id)
     #expect(HandoffZoneDetector.device(at: CGPoint(x: 1511.5, y: 600), delta: CGVector(dx: 2, dy: 0), zones: zones, displays: [laptop]) == right.id)
 }
+
+// MARK: Corner between two displays
+
+@Test func deviceInCornerTakesInputThroughBothEdges() throws {
+    // As on the user's desk: the laptop below a wide monitor; a tablet right of the laptop, under the monitor.
+    let laptop = DisplayInfo(uuid: "laptop", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), isMain: true)
+    let wide = DisplayInfo(uuid: "wide", frame: CGRect(x: -996, y: -1440, width: 3440, height: 1440))
+    let tablet = PlacedDevice(name: "Планшет", kind: .tablet, anchorDisplayUUID: "laptop", side: .right, offset: 0)
+    let layout = try #require(ArrangementLayout.layout(DeviceArrangement(devices: [tablet]), displays: [laptop, wide]).first)
+    #expect(layout.zones.count == 2)
+    #expect(layout.zones.map(\.side) == [.right, .bottom])
+    #expect(layout.zones[1].displayUUID == "wide")
+    // Right edge of the laptop and the bottom edge of the monitor above the tablet both hand off.
+    let viaRight = HandoffZoneDetector.zone(at: CGPoint(x: 1439.5, y: 100), delta: CGVector(dx: 3, dy: 0),
+                                            zones: layout.zones, displays: [laptop, wide])
+    #expect(viaRight?.side == .right)
+    let viaBottom = HandoffZoneDetector.zone(at: CGPoint(x: 1500, y: -0.5), delta: CGVector(dx: 0, dy: 3),
+                                             zones: layout.zones, displays: [laptop, wide])
+    #expect(viaBottom?.side == .bottom)
+    #expect(viaBottom?.deviceID == tablet.id)
+    // The part of the monitor's bottom edge above the laptop is not a zone: there the cursor goes to the laptop.
+    #expect(HandoffZoneDetector.zone(at: CGPoint(x: 700, y: -0.5), delta: CGVector(dx: 0, dy: 3),
+                                     zones: layout.zones, displays: [laptop, wide]) == nil)
+}
+
+@Test func deviceOnOneEdgeHasOneZone() throws {
+    let layout = try #require(ArrangementLayout.layout(DeviceArrangement(devices: [phone(.right, offset: 0.4)]), displays: [laptop]).first)
+    #expect(layout.zones.count == 1)
+    #expect(layout.zones[0] == layout.zone)
+}

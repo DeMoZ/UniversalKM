@@ -182,7 +182,7 @@ final class AppStateManager {
     }
 
     private func pushToInput() {
-        input.update(zones: layouts.map(\.zone), displays: displays)
+        input.update(zones: layouts.flatMap(\.zones), displays: displays)
         input.update(targets: arrangement.devices.compactMap { device in
             guard let peer = device.hostPeerID else { return nil }
             return CaptureTarget(deviceID: device.id, peerID: peer, isConnected: subscribedPeers.contains(peer),

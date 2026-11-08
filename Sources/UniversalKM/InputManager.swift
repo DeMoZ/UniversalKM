@@ -31,6 +31,8 @@ final class InputManager: @unchecked Sendable {
         var hotkey = Hotkey.default
         var targets: [UUID: CaptureTarget] = [:]
         var captureOrigin: CGPoint?
+        /// The zone the cursor went through: the cursor waits at that edge.
+        var captureZone: HandoffZone?
         var swallowKeyUp: UInt16?
         var buttons: MouseButtons = []
         var scrollRemainder = (vertical: 0.0, horizontal: 0.0)
@@ -155,12 +157,14 @@ final class InputManager: @unchecked Sendable {
             guard type == .mouseMoved || type == .leftMouseDragged || type == .rightMouseDragged || type == .otherMouseDragged else {
                 return .pass
             }
-            guard let device = HandoffZoneDetector.device(at: location, delta: delta, zones: shared.zones, displays: shared.displays)
+            guard let zone = HandoffZoneDetector.zone(at: location, delta: delta, zones: shared.zones, displays: shared.displays)
             else { return .pass }
+            let device = zone.deviceID
             let connected = shared.targets[device]?.isConnected ?? false
             let effects = shared.machine.handle(.zoneHit(device: device, hostConnected: connected))
             guard shared.machine.remoteDevice == device else { return .pass }
             shared.captureOrigin = location
+            shared.captureZone = zone
             shared.buttons = []
             shared.scrollRemainder = (0, 0)
             shared.motionSum = (0, 0)
@@ -308,8 +312,7 @@ final class InputManager: @unchecked Sendable {
     /// Freezes the cursor 2 points inside the display from the zone edge; deltas keep coming (design D9).
     private func lockCursor() {
         let (origin, zone, displays) = state.withLock { shared -> (CGPoint?, HandoffZone?, [DisplayInfo]) in
-            let device = shared.machine.remoteDevice
-            return (shared.captureOrigin, shared.zones.first { $0.deviceID == device }, shared.displays)
+            return (shared.captureOrigin, shared.captureZone, shared.displays)
         }
         guard var point = origin else { return }
         if let zone, let frame = displays.first(where: { $0.uuid == zone.displayUUID })?.frame {
