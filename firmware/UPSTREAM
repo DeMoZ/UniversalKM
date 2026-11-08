@@ -1,0 +1,4 @@
+# ChameleonUltra firmware this HID mode is built on (design D15). Sourced by scripts/firmware-*.sh.
+# Changing the commit is a separate task: re-check that every patch in firmware/patches/ still applies.
+UPSTREAM_URL=https://github.com/RfidResearchGroup/ChameleonUltra.git
+UPSTREAM_COMMIT=4c5bc2cb6b023d23f7bbc383c9b2b5e39f95419e
