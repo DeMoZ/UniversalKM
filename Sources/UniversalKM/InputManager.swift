@@ -9,6 +9,10 @@ struct CaptureTarget: Equatable, Sendable {
     var peerID: UInt16
     var isConnected: Bool
     var pointerSpeed: Double
+    /// The device rectangle on the arrangement (global coordinates) and its screen in device points.
+    var rect: CGRect
+    var screen: CGSize
+    var returnThroughEdge: Bool
 }
 
 /// The global event tap (design D7, D9, D10, D11).
@@ -33,6 +37,8 @@ final class InputManager: @unchecked Sendable {
         var captureOrigin: CGPoint?
         /// The zone the cursor went through: the cursor waits at that edge.
         var captureZone: HandoffZone?
+        /// Estimate of the pointer on the device, for the return through the edge (design D11a).
+        var virtualCursor: VirtualCursor?
         var swallowKeyUp: UInt16?
         var buttons: MouseButtons = []
         var scrollRemainder = (vertical: 0.0, horizontal: 0.0)
@@ -165,6 +171,14 @@ final class InputManager: @unchecked Sendable {
             guard shared.machine.remoteDevice == device else { return .pass }
             shared.captureOrigin = location
             shared.captureZone = zone
+            if let target = shared.targets[device], target.returnThroughEdge, target.rect.width > 0, target.rect.height > 0 {
+                let fraction = zone.side.isVertical
+                    ? Double((location.y - target.rect.minY) / target.rect.height)
+                    : Double((location.x - target.rect.minX) / target.rect.width)
+                shared.virtualCursor = VirtualCursor(screen: target.screen, side: zone.side, entryFraction: fraction)
+            } else {
+                shared.virtualCursor = nil
+            }
             shared.buttons = []
             shared.scrollRemainder = (0, 0)
             shared.motionSum = (0, 0)
@@ -219,7 +233,13 @@ final class InputManager: @unchecked Sendable {
             let dx = event.getDoubleValueField(.mouseEventDeltaX) * target.pointerSpeed
             let dy = event.getDoubleValueField(.mouseEventDeltaY) * target.pointerSpeed
             transport.moveMouse(dx: dx, dy: dy, to: peer)
-            logMotion(dx: dx, dy: dy)
+            logMotion(dx: dx, dy: dy, location: event.location)
+            if returnedThroughEdge(dx: dx, dy: dy, target: target) {
+                log.info("back to the Mac through the edge")
+                release(.releaseRequested)
+                return
+            }
+            holdCursor()
         case .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp:
             transport.setButtons(buttons, to: peer)
         case .scrollWheel:
@@ -268,7 +288,7 @@ final class InputManager: @unchecked Sendable {
         return (vertical, horizontal)   // fractions carry over in the transport's MouseAccumulator
     }
 
-    private func logMotion(dx: Double, dy: Double) {
+    private func logMotion(dx: Double, dy: Double, location: CGPoint) {
         let line: String? = state.withLock { shared in
             shared.motionSum.dx += abs(dx)
             shared.motionSum.dy += abs(dy)
@@ -278,9 +298,12 @@ final class InputManager: @unchecked Sendable {
                 shared.motionWindowStart = Date()
             }
             guard shared.motionSum.dx + shared.motionSum.dy > 0 else { return nil }
-            return String(format: "motion per second: |dx| %.0f, |dy| %.0f", shared.motionSum.dx, shared.motionSum.dy)
+            return String(format: "motion per second: |dx| %.0f, |dy| %.0f; Mac cursor at %.0f,%.0f (held at %.0f,%.0f)",
+                          shared.motionSum.dx, shared.motionSum.dy, location.x, location.y,
+                          shared.captureOrigin?.x ?? -1, shared.captureOrigin?.y ?? -1)
         }
-        if let line { log.debug("\(line, privacy: .public)") }
+        // Remote-mode diagnostics: the Mac cursor must stay hidden and frozen at the capture point.
+        if let line { log.info("\(line, privacy: .public)") }
     }
 
     // MARK: Effects
@@ -309,6 +332,46 @@ final class InputManager: @unchecked Sendable {
         }
     }
 
+    /// Moves the estimate of the device pointer; when it was pushed back through the Mac-facing edge, the
+    /// Mac cursor is set to the matching place of that display edge and true is returned (design D11a).
+    private func returnedThroughEdge(dx: Double, dy: Double, target: CaptureTarget) -> Bool {
+        state.withLock { shared in
+            guard var cursor = shared.virtualCursor, let zone = shared.captureZone,
+                  let display = shared.displays.first(where: { $0.uuid == zone.displayUUID })?.frame else { return false }
+            let back = cursor.move(dx: dx, dy: dy)
+            shared.virtualCursor = cursor
+            guard back else { return false }
+            let rect = target.rect
+            var along = zone.side.isVertical
+                ? Double(rect.minY) + cursor.exitFraction * Double(rect.height)
+                : Double(rect.minX) + cursor.exitFraction * Double(rect.width)
+            // Stay inside the zone (the cursor enters the display through it).
+            let lo = zone.segments.map(\.lowerBound).min() ?? along, hi = zone.segments.map(\.upperBound).max() ?? along
+            along = min(max(along, lo + 1), hi - 1)
+            shared.captureOrigin = switch zone.side {
+            case .right: CGPoint(x: display.maxX - 3, y: along)
+            case .left: CGPoint(x: display.minX + 2, y: along)
+            case .top: CGPoint(x: along, y: display.minY + 2)
+            case .bottom: CGPoint(x: along, y: display.maxY - 3)
+            }
+            shared.virtualCursor = nil
+            return true
+        }
+    }
+
+    /// CGAssociateMouseAndMouseCursorPosition(0) holds only while the app is active, and a menu bar agent
+    /// cannot take the focus on macOS 14+ (checked: the cursor kept moving). So after every motion event in
+    /// remote mode the cursor goes back to where it is held. Warping would otherwise mute local events for
+    /// 0.25 s; the event source's suppression interval is set to 0 once.
+    private func holdCursor() {
+        guard let point = state.withLock({ $0.captureOrigin }) else { return }
+        CGWarpMouseCursorPosition(point)
+    }
+
+    private static let noSuppression: Void = {
+        CGEventSource(stateID: .combinedSessionState)?.localEventsSuppressionInterval = 0
+    }()
+
     /// Freezes the cursor 2 points inside the display from the zone edge; deltas keep coming (design D9).
     private func lockCursor() {
         let (origin, zone, displays) = state.withLock { shared -> (CGPoint?, HandoffZone?, [DisplayInfo]) in
@@ -326,6 +389,7 @@ final class InputManager: @unchecked Sendable {
         // The cursor comes back here: next to the capture point, not on the edge (no instant re-capture).
         let returnPoint = point
         state.withLock { $0.captureOrigin = returnPoint }
+        _ = Self.noSuppression
         CGWarpMouseCursorPosition(returnPoint)
         CGAssociateMouseAndMouseCursorPosition(0)
     }
@@ -339,20 +403,30 @@ final class InputManager: @unchecked Sendable {
     }
 }
 
-/// Hiding the cursor from a background menu bar agent (design D9, variant b): WindowServer hides the
-/// cursor only for the active application, so UniversalKM becomes active while input goes to a device
-/// and gives the focus back to the previous application on return.
+/// Hiding the cursor from a background menu bar agent (design D9, variant c, approved by the user):
+/// WindowServer hides the cursor only for the active application, and an agent cannot become active on
+/// macOS 14+. The private connection property "SetsCursorInBackground" lifts that. If a future macOS drops
+/// it, the cursor just stays visible; capture keeps working.
 @MainActor
 enum CursorVisibility {
-    private static var previous: NSRunningApplication?
     private static var hidden = false
+    private static var allowedInBackground = false
+
+    private typealias ConnectionID = Int32
+    @_silgen_name("_CGSDefaultConnection") private static func defaultConnection() -> ConnectionID
+    @_silgen_name("CGSSetConnectionProperty")
+    private static func setConnectionProperty(_ cid: ConnectionID, _ target: ConnectionID, _ key: CFString, _ value: CFTypeRef) -> CGError
 
     static func hide() {
         guard !hidden else { return }
         hidden = true
-        let front = NSWorkspace.shared.frontmostApplication
-        if front?.processIdentifier != ProcessInfo.processInfo.processIdentifier { previous = front }
-        NSApp.activate()
+        if !allowedInBackground {
+            let cid = defaultConnection()
+            let result = setConnectionProperty(cid, cid, "SetsCursorInBackground" as CFString, kCFBooleanTrue)
+            allowedInBackground = result == .success
+            Logger(subsystem: "com.universalkm.UniversalKM", category: "input")
+                .info("SetsCursorInBackground: \(result.rawValue)")
+        }
         CGDisplayHideCursor(CGMainDisplayID())
     }
 
@@ -360,7 +434,5 @@ enum CursorVisibility {
         guard hidden else { return }
         hidden = false
         CGDisplayShowCursor(CGMainDisplayID())
-        previous?.activate()
-        previous = nil
     }
 }

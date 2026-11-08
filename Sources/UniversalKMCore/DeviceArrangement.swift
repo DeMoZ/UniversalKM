@@ -15,7 +15,7 @@ public enum DeviceOrientation: String, Codable, Sendable {
 public enum DisplaySide: String, Codable, Sendable, CaseIterable {
     case left, right, top, bottom
 
-    var isVertical: Bool { self == .left || self == .right }
+    public var isVertical: Bool { self == .left || self == .right }
 }
 
 /// A device on the arrangement (design D8).
@@ -38,6 +38,17 @@ public struct PlacedDevice: Codable, Hashable, Identifiable, Sendable {
     public var screenPixels: CGSize?
     /// Physical long side; nil = the default for the kind (design D8).
     public var longSideMillimeters: Double?
+    /// Return to the Mac by moving back through the edge (design D11a); nil = on.
+    public var returnThroughEdge: Bool?
+
+    public var isReturnThroughEdgeOn: Bool { returnThroughEdge ?? true }
+
+    /// Screen in device points in the current orientation (typical size when unknown), for VirtualCursor.
+    public var screenInPoints: CGSize {
+        let portrait = screenPoints ?? VirtualCursor.defaultScreen(for: kind)
+        let short = min(portrait.width, portrait.height), long = max(portrait.width, portrait.height)
+        return orientation == .portrait ? CGSize(width: short, height: long) : CGSize(width: long, height: short)
+    }
 
     public static let pointerSpeedRange = 0.25...4.0
     public static let longSideRange = 60.0...400.0

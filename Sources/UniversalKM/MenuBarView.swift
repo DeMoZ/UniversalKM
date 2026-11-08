@@ -215,6 +215,11 @@ struct MenuBarView: View {
             Text("Ускорение мыши на Mac: \(state.isMacMouseAccelerationOn ? "вкл." : "выкл.")")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+            Toggle("Возврат на Mac движением через край", isOn: Binding(
+                get: { device.isReturnThroughEdgeOn },
+                set: { state.setReturnThroughEdge($0, of: device.id) }
+            ))
+            .help("Ведите мышь на устройстве обратно к Mac и дальше за край. Горячая клавиша работает всегда.")
             screenFields(device)
         }
         .font(.callout)
