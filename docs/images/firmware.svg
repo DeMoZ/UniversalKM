@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6378"/>
+    </marker>
+  </defs>
+  <rect width="960" height="300" rx="18" fill="#f6f8ff"/>
+
+  <!-- inputs -->
+  <rect x="30" y="30" width="250" height="70" rx="12" fill="#ffffff" stroke="#c7cddb"/>
+  <text x="50" y="58" font-size="15" font-weight="700" fill="#2b3245">Upstream ChameleonUltra</text>
+  <text x="50" y="80" font-size="12" fill="#5a6378">RfidResearchGroup · commit 4c5bc2cb</text>
+
+  <rect x="30" y="115" width="250" height="70" rx="12" fill="#ffffff" stroke="#c7cddb"/>
+  <text x="50" y="143" font-size="15" font-weight="700" fill="#2b3245">firmware/src/</text>
+  <text x="50" y="165" font-size="12" fill="#5a6378">ukm_hid.c · ukm_report_map.h</text>
+
+  <rect x="30" y="200" width="250" height="70" rx="12" fill="#ffffff" stroke="#c7cddb"/>
+  <text x="50" y="228" font-size="15" font-weight="700" fill="#2b3245">firmware/patches/</text>
+  <text x="50" y="250" font-size="12" fill="#5a6378">8 patches: 0001 … 0008</text>
+
+  <path d="M286 65 C 330 65, 330 150, 362 150" fill="none" stroke="#5a6378" stroke-width="2.5" marker-end="url(#a)"/>
+  <path d="M286 150 L 362 150" fill="none" stroke="#5a6378" stroke-width="2.5" marker-end="url(#a)"/>
+  <path d="M286 235 C 330 235, 330 150, 362 150" fill="none" stroke="#5a6378" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- build -->
+  <rect x="368" y="95" width="210" height="110" rx="14" fill="#3b4cc0"/>
+  <text x="473" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">firmware-build.sh</text>
+  <text x="473" y="152" text-anchor="middle" font-size="12" fill="#e9ecff">Arm GNU Toolchain 12.2</text>
+  <text x="473" y="172" text-anchor="middle" font-size="12" fill="#e9ecff">nRF5 SDK 17 · S140 7.2.0</text>
+  <text x="473" y="192" text-anchor="middle" font-size="12" fill="#e9ecff">no Docker</text>
+
+  <line x1="584" y1="150" x2="632" y2="150" stroke="#5a6378" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <rect x="638" y="105" width="130" height="90" rx="12" fill="#ffffff" stroke="#c7cddb"/>
+  <text x="703" y="138" text-anchor="middle" font-size="14" font-weight="700" fill="#2b3245">DFU package</text>
+  <text x="703" y="160" text-anchor="middle" font-size="11" fill="#5a6378">chameleon-ultra-hid-</text>
+  <text x="703" y="175" text-anchor="middle" font-size="11" fill="#5a6378">dfu-app-*.zip</text>
+
+  <line x1="774" y1="150" x2="812" y2="150" stroke="#5a6378" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="793" y="138" text-anchor="middle" font-size="11" fill="#5a6378">nrfutil</text>
+
+  <rect x="818" y="95" width="120" height="110" rx="14" fill="#1f9d8a"/>
+  <text x="878" y="135" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">Chameleon</text>
+  <text x="878" y="157" text-anchor="middle" font-size="12" fill="#d8f5ef">USB DFU</text>
+  <text x="878" y="177" text-anchor="middle" font-size="11" fill="#d8f5ef">bootloader</text>
+  <text x="878" y="191" text-anchor="middle" font-size="11" fill="#d8f5ef">untouched</text>
+</svg>

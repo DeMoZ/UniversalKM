@@ -10,12 +10,12 @@ struct DonateView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Поддержать UniversalKM").font(.subheadline.weight(.semibold))
+                Text("Support UniversalKM").font(.subheadline.weight(.semibold))
                 Spacer()
                 if model.isLoading { ProgressView().controlSize(.small) }
                 Button { close() } label: { Image(systemName: "xmark.circle") }
                     .buttonStyle(.borderless)
-                    .help("Закрыть")
+                    .help("Close")
             }
             if let info = model.info {
                 if let message = info.message?.resolved(for: model.languages) {
@@ -40,7 +40,7 @@ struct DonateView: View {
                     .help(method.url.absoluteString)
                 }
             } else if !model.isLoading {
-                Text("Не удалось загрузить способы поддержки. Проверьте интернет и откройте ещё раз.")
+                Text("Could not load the ways to support. Check your internet connection and open this again.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

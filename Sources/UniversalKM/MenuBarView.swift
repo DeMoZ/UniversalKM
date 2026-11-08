@@ -15,7 +15,12 @@ struct MenuBarView: View {
     @State private var newName = ""
     @State private var newHostPeerID: UInt16?
 
-    static let readmeFirmware = URL(string: "https://github.com/DeMoZ/UniversalKM#chameleonultra-прошивка-с-режимом-клавиатуры-и-мыши")!
+    /// The firmware section of the README in the user's language (Russian or English).
+    static var readmeFirmware: URL {
+        Locale.preferredLanguages.first?.hasPrefix("ru") == true
+            ? URL(string: "https://github.com/DeMoZ/UniversalKM/blob/main/README.ru.md#chameleonultra-сборка-и-прошивка")!
+            : URL(string: "https://github.com/DeMoZ/UniversalKM#chameleonultra-build-and-flash")!
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -34,7 +39,7 @@ struct MenuBarView: View {
                     Button {
                         state.releaseToMac()
                     } label: {
-                        Label("Вернуть на Mac (сейчас: \(device.name))", systemImage: "arrow.uturn.backward")
+                        Label("Back to the Mac (now: \(device.name))", systemImage: "arrow.uturn.backward")
                     }
                 }
             }
@@ -68,7 +73,7 @@ struct MenuBarView: View {
             }
             Text("UniversalKM").font(.headline)
             Spacer()
-            Text(state.currentDevice.map { "Ввод: \($0.name)" } ?? "Ввод: Mac")
+            Text(state.currentDevice.map { String(localized: "Input: \($0.name)") } ?? String(localized: "Input: Mac"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -84,34 +89,34 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 4) {
             switch state.transportStatus {
             case .notConnected:
-                Label("Chameleon не подключён", systemImage: "cable.connector.slash")
+                Label("Chameleon not connected", systemImage: "cable.connector.slash")
                     .foregroundStyle(.orange)
             case .unsupportedFirmware:
                 HStack(spacing: 4) {
-                    Label("Прошивка Chameleon без режима клавиатуры и мыши", systemImage: "exclamationmark.triangle")
+                    Label("Chameleon firmware has no keyboard and mouse mode", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
-                    Link("Как прошить", destination: Self.readmeFirmware)
+                    Link("How to flash", destination: Self.readmeFirmware)
                 }
             case .ready:
                 ForEach(state.arrangement.devices) { device in
                     HStack(spacing: 6) {
                         Circle().fill(state.isConnected(device) ? Color.green : Color.gray).frame(width: 7, height: 7)
                         Text(device.name).fontWeight(.medium)
-                        Text(state.isConnected(device) ? "— подключено" : "— ожидание подключения…")
+                        Text(state.isConnected(device) ? String(localized: "— connected") : String(localized: "— waiting for connection…"))
                             .foregroundStyle(.secondary)
                     }
                 }
                 if state.arrangement.devices.isEmpty {
-                    Text("Добавьте устройство кнопкой «+» и сопрягите его с ChameleonUltra в настройках Bluetooth.")
+                    Text("Add a device with the “+” button and pair it with ChameleonUltra in its Bluetooth settings.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(state.unboundHosts, id: \.self) { peer in
                     HStack(spacing: 6) {
                         Image(systemName: "plus.circle").foregroundStyle(.tint)
-                        Text("Подключено новое устройство #\(peer)")
+                        Text("New device connected #\(Int(peer))")
                         Spacer()
-                        Button("Добавить…") {
+                        Button("Add…") {
                             newHostPeerID = peer
                             newName = ""
                             adding = true
@@ -126,10 +131,10 @@ struct MenuBarView: View {
 
     private var permissionRow: some View {
         HStack(spacing: 6) {
-            Label("Нет доступа «Универсальный доступ»", systemImage: "lock")
+            Label("No Accessibility access", systemImage: "lock")
                 .foregroundStyle(.orange)
             Spacer()
-            Button("Открыть настройки") {
+            Button("Open Settings") {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
             }
         }
@@ -147,22 +152,22 @@ struct MenuBarView: View {
                     adding = true
                 } label: { Image(systemName: "plus") }
                     .disabled(!state.arrangement.canAddDevice || adding)
-                    .help(state.arrangement.canAddDevice ? "Добавить устройство" : "Chameleon держит не больше трёх устройств")
+                    .help(state.arrangement.canAddDevice ? String(localized: "Add a device") : String(localized: "Chameleon holds at most three devices"))
                 Button {
                     if let id = selection { state.removeDevice(id) }
                     selection = nil
                 } label: { Image(systemName: "minus") }
                     .disabled(selection == nil)
-                    .help("Удалить выбранное устройство")
+                    .help("Remove the selected device")
             }
             .controlGroupStyle(.navigation)
             .fixedSize()
             if let device = selectedDevice {
-                Button("Перепривязать") { state.rebind(device.id) }
-                    .help("Следующее подключившееся устройство станет «\(device.name)»")
+                Button("Rebind") { state.rebind(device.id) }
+                    .help("The next device to connect becomes “\(device.name)”")
             }
             Spacer()
-            Text("Перетащите устройство к краю дисплея")
+            Text("Drag a device next to a display edge")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -172,17 +177,17 @@ struct MenuBarView: View {
     private var addForm: some View {
         HStack(spacing: 8) {
             Picker("", selection: $newKind) {
-                Text("Телефон").tag(DeviceKind.phone)
-                Text("Планшет").tag(DeviceKind.tablet)
+                Text("Phone").tag(DeviceKind.phone)
+                Text("Tablet").tag(DeviceKind.tablet)
             }
             .labelsHidden()
             .pickerStyle(.segmented)
             .fixedSize()
-            TextField("Имя", text: $newName)
+            TextField("Name", text: $newName)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(addDevice)
-            Button("Добавить", action: addDevice).keyboardShortcut(.defaultAction)
-            Button("Отмена") { adding = false }
+            Button("Add", action: addDevice).keyboardShortcut(.defaultAction)
+            Button("Cancel") { adding = false }
         }
         .font(.callout)
     }
@@ -201,7 +206,7 @@ struct MenuBarView: View {
         )
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Скорость указателя «\(device.name)»")
+                Text("Pointer speed for “\(device.name)”")
                 Spacer()
                 Text(String(format: "%.2g×", device.pointerSpeed)).monospacedDigit().foregroundStyle(.secondary)
             }
@@ -212,14 +217,14 @@ struct MenuBarView: View {
             } maximumValueLabel: {
                 Text("4×").font(.caption2)
             }
-            Text("Ускорение мыши на Mac: \(state.isMacMouseAccelerationOn ? "вкл." : "выкл.")")
+            Text(state.isMacMouseAccelerationOn ? String(localized: "Mac mouse acceleration: on") : String(localized: "Mac mouse acceleration: off"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            Toggle("Возврат на Mac движением через край", isOn: Binding(
+            Toggle("Return to the Mac through the edge", isOn: Binding(
                 get: { device.isReturnThroughEdgeOn },
                 set: { state.setReturnThroughEdge($0, of: device.id) }
             ))
-            .help("Ведите мышь на устройстве обратно к Mac и дальше за край. Горячая клавиша работает всегда.")
+            .help("Move the mouse on the device back towards the Mac and past the edge. The hotkey always works.")
             screenFields(device)
         }
         .font(.callout)
@@ -229,14 +234,14 @@ struct MenuBarView: View {
     private func screenFields(_ device: PlacedDevice) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Text("Экран, точки").frame(width: 96, alignment: .leading)
+                Text("Screen, points").frame(width: 96, alignment: .leading)
                 SizeField(size: device.screenPoints) { state.setScreen(points: $0, pixels: device.screenPixels, of: device.id) }
             }
             HStack(spacing: 6) {
-                Text("Экран, пиксели").frame(width: 96, alignment: .leading)
+                Text("Screen, pixels").frame(width: 96, alignment: .leading)
                 SizeField(size: device.screenPixels) { state.setScreen(points: device.screenPoints, pixels: $0, of: device.id) }
             }
-            Text(String(format: "Длинная сторона %.0f мм, пропорции %.2f:1 — тяните уголок на схеме, чтобы подогнать размер",
+            Text(String(format: String(localized: "Long side %.0f mm, aspect ratio %.2f:1 — drag the corner in the layout to match the size"),
                         device.effectiveLongSideMillimeters, device.aspectRatio))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -252,16 +257,16 @@ struct MenuBarView: View {
                 showDonate.toggle()
                 if showDonate { donate.load() }
             } label: {
-                Label("Поддержать", systemImage: "heart.fill")
+                Label("Support", systemImage: "heart.fill")
             }
             .foregroundStyle(.pink)
-            Button("Обновления") { app.checkForUpdates() }
-                .help("Проверить обновления")
+            Button("Updates") { app.checkForUpdates() }
+                .help("Check for updates")
             Spacer()
             if !app.version.isEmpty {
                 Text("v\(app.version)").foregroundStyle(.tertiary)
             }
-            Button("Выход") { app.quit() }
+            Button("Quit") { app.quit() }
         }
         .buttonStyle(.borderless)
         .font(.caption)
@@ -277,9 +282,9 @@ private struct SizeField: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            TextField("ширина", text: $width).frame(width: 64).onSubmit(save)
+            TextField("width", text: $width).frame(width: 64).onSubmit(save)
             Text("×").foregroundStyle(.secondary)
-            TextField("высота", text: $height).frame(width: 64).onSubmit(save)
+            TextField("height", text: $height).frame(width: 64).onSubmit(save)
         }
         .textFieldStyle(.roundedBorder)
         .onAppear(perform: load)
