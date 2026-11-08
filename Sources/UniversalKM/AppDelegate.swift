@@ -20,87 +20,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         setUpStatusItem()
         transport.start()
         startCapture()
+        // `--open-panel`: opens the panel on launch (manual UI checks and window snapshots).
+        if CommandLine.arguments.contains("--open-panel") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.togglePanel() }
+        }
     }
 
-    // MARK: Input capture (step 2; AppStateManager takes this over in task 3.2)
+    // MARK: State (design D13)
 
-    private let displaysProvider = DisplayLayoutProvider()
-    private(set) lazy var input = InputManager(transport: transport)
-    private var arrangement = DeviceArrangement()
-    private var subscribedPeers: [UInt16] = []
-    private var permissionTimer: Timer?
-    private static let arrangementKey = "arrangement"
+    private(set) lazy var state = AppStateManager(transport: transport)
 
     private func startCapture() {
-        if let data = UserDefaults.standard.data(forKey: Self.arrangementKey),
-           let saved = try? JSONDecoder().decode(DeviceArrangement.self, from: data) {
-            arrangement = saved
+        state.onModeChange = { [weak self] device in
+            self?.statusItem?.button?.image = NSImage(
+                systemSymbolName: device == nil ? "desktopcomputer" : (device?.kind == .tablet ? "ipad" : "iphone"),
+                accessibilityDescription: "UniversalKM")
         }
-        if arrangement.devices.isEmpty, !displaysProvider.displays.isEmpty {
-            // Until the panel has the arrangement (task 3.4): one phone right of the rightmost display.
-            let displays = displaysProvider.displays
-            let size = ArrangementLayout.size(kind: .phone, orientation: .portrait,
-                                              mainDisplayHeight: Double(displays.first(where: \.isMain)?.frame.height ?? 1080))
-            let place = ArrangementLayout.defaultPlacement(size: size, displays: displays, occupied: [])
-            arrangement.devices = [PlacedDevice(name: "Телефон", kind: .phone, anchorDisplayUUID: place.displayUUID,
-                                                side: place.side, offset: place.offset)]
-            saveArrangement()
-        }
-        displaysProvider.onChange = { [weak self] _ in self?.updateCapture() }
-        input.onModeChange = { [weak self] mode in self?.modeChanged(mode) }
-        updateCapture()
-        startTapWhenPermitted()
-    }
-
-    private func startTapWhenPermitted() {
-        if input.start() { return }
-        // Shows the system prompt once; then poll until the user enables the switch (design D12).
-        // kAXTrustedCheckOptionPrompt is a mutable C global; its value is this constant string.
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-        permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, self.input.start() else { return }
-                self.permissionTimer?.invalidate()
-                self.permissionTimer = nil
-            }
-        }
-    }
-
-    private func saveArrangement() {
-        if let data = try? JSONEncoder().encode(arrangement) {
-            UserDefaults.standard.set(data, forKey: Self.arrangementKey)
-        }
-    }
-
-    private func hostsChanged(_ status: TransportStatus) {
-        if case .ready(let state) = status {
-            subscribedPeers = state.hosts.compactMap { $0.state == .subscribed ? $0.peerID : nil }
-        } else {
-            subscribedPeers = []
-        }
-        if arrangement.bindHosts(subscribed: subscribedPeers) {
-            log.info("bound hosts: \(self.arrangement.devices.map { "\($0.name)=\($0.hostPeerID.map(String.init) ?? "-")" }, privacy: .public)")
-            saveArrangement()
-        }
-        updateCapture()
-    }
-
-    private func updateCapture() {
-        let displays = displaysProvider.displays
-        let layouts = ArrangementLayout.layout(arrangement, displays: displays)
-        input.update(zones: layouts.map(\.zone), displays: displays)
-        input.update(targets: arrangement.devices.compactMap { device in
-            guard let peer = device.hostPeerID else { return nil }
-            return CaptureTarget(deviceID: device.id, peerID: peer, isConnected: subscribedPeers.contains(peer),
-                                 pointerSpeed: device.pointerSpeed)
-        })
-    }
-
-    private func modeChanged(_ mode: CaptureStateMachine.Mode) {
-        let device = mode == .local ? nil : arrangement.devices.first { $0.id == input.currentDeviceID }
-        statusItem?.button?.image = NSImage(systemSymbolName: device == nil ? "desktopcomputer" : (device?.kind == .tablet ? "ipad" : "iphone"),
-                                            accessibilityDescription: "UniversalKM")
+        state.start()
     }
 
     // MARK: ChameleonUltra (design D5)
@@ -112,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         Task { @MainActor in
             self?.transportStatus = status
             self?.demo?.statusChanged(status)
-            self?.hostsChanged(status)
+            self?.state.transportChanged(status)
         }
     }
 
@@ -135,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         panel.behavior = .transient
         panel.animates = false
         panel.delegate = self
-        let content = NSHostingController(rootView: MenuBarView(app: self, donate: donateModel))
+        let content = NSHostingController(rootView: MenuBarView(app: self, state: state, donate: donateModel))
         // The popover follows the SwiftUI content's size (e.g. when the donate section opens).
         content.sizingOptions = [.preferredContentSize]
         panel.contentViewController = content
@@ -165,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationWillTerminate(_ notification: Notification) {
         log.info("terminating")
         // Cursor back on the Mac first, then hosts get neutral reports and are disconnected (design D13).
-        input.release(.quit)
+        state.input.release(.quit)
         transport.shutdown(timeout: 0.3)
     }
 
