@@ -82,7 +82,7 @@ struct ArrangementView: View {
             if display.isMain {
                 Rectangle().fill(Color.white.opacity(0.7)).frame(height: ArrangementStyle.menuBarHeight)
             }
-            Text(state.displayNames[display.uuid] ?? "Дисплей")
+            Text(state.displayNames[display.uuid] ?? String(localized: "Display"))
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -93,7 +93,7 @@ struct ArrangementView: View {
         .frame(width: rect.width, height: rect.height)
         .clipShape(RoundedRectangle(cornerRadius: ArrangementStyle.displayCorner))
         .overlay(RoundedRectangle(cornerRadius: ArrangementStyle.displayCorner).stroke(ArrangementStyle.displayBorder, lineWidth: 1))
-        .help("Расположение мониторов меняется в настройках macOS → Мониторы")
+        .help("Change the display arrangement in macOS Settings → Displays")
         .offset(x: rect.minX, y: rect.minY)
         .allowsHitTesting(true)   // only for the tooltip: no gestures, no selection
     }
@@ -146,7 +146,7 @@ struct ArrangementView: View {
             .foregroundStyle(.white)
             .frame(width: 13, height: 13)
             .background(Circle().fill(Color.accentColor))
-            .help("Потяните, чтобы изменить размер")
+            .help("Drag to resize")
             .onHover { inside in
                 if inside { NSCursor.crosshair.push() } else { NSCursor.pop() }
             }
@@ -244,7 +244,7 @@ struct ArrangementView: View {
                     Image(systemName: "rotate.right").font(.system(size: 9, weight: .semibold))
                 }
                 .buttonStyle(.borderless)
-                .help("Повернуть")
+                .help("Rotate")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(3)
             }
@@ -258,7 +258,7 @@ struct ArrangementView: View {
         .scaleEffect(isDragging ? ArrangementStyle.dragScale : 1)
         .shadow(color: .black.opacity(isDragging ? 0.3 : 0), radius: isDragging ? 6 : 0, y: isDragging ? 3 : 0)
         .opacity(isDragging ? ArrangementStyle.dragOpacity : 1)
-        .help("\(device.name): \(connected ? "подключено" : "ожидание подключения") — перетащите к краю дисплея")
+        .help(connected ? String(localized: "\(device.name): connected — drag next to a display edge") : String(localized: "\(device.name): waiting for connection — drag next to a display edge"))
         .offset(x: rect.minX, y: rect.minY)
         .onHover { inside in
             hovered = inside ? device.id : (hovered == device.id ? nil : hovered)
