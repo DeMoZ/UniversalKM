@@ -80,6 +80,9 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         var asked = false
     }
     private var adbDevices: [String: ADBDevice] = [:]
+    /// Network transports whose heartbeat stopped: adb may still list them as "device" for a long
+    /// time, so they are disconnected and not used until adb lists them anew.
+    private var deadTransports: Set<String> = []
 
     private enum Active {
         case usb(UInt64, AOALink)
@@ -95,6 +98,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private var active: [UInt16: Active] = [:]
     /// ADB links being started, by peer.
     private var starting: [UInt16: ADBLink] = [:]
+    /// Peers whose channel was lost while another one is there: they count as connected (input stays
+    /// on the device, events wait in the queue) until the other channel is registered (design D7).
+    private var switching: [UInt16: (channel: AndroidChannel, since: TimeInterval)] = [:]
+    private static let switchTimeout: TimeInterval = 3
 
     private struct Sender {
         var events: [[UInt8]] = []
@@ -143,7 +150,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             startADB()
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.schedule(deadline: .now() + Self.reconnectInterval, repeating: Self.reconnectInterval)
-            timer.setEventHandler { [weak self] in self?.reconnectWiFi() }
+            timer.setEventHandler { [weak self] in
+                self?.reconnectWiFi()
+                if self?.switching.isEmpty == false { self?.reconcile() }
+            }
             timer.resume()
             self.timer = timer
             publish()
@@ -168,7 +178,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     func moveMouse(dx: Double, dy: Double, to peerID: UInt16) {
         queue.async { [self] in
-            guard active[peerID] != nil else { return }
+            guard takesInput(peerID) else { return }
             senders[peerID, default: Sender()].mouse.addMotion(dx: dx, dy: dy)
             pump(peerID)
         }
@@ -176,7 +186,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     func scroll(wheel: Double, pan: Double, to peerID: UInt16) {
         queue.async { [self] in
-            guard active[peerID] != nil else { return }
+            guard takesInput(peerID) else { return }
             senders[peerID, default: Sender()].mouse.addScroll(wheel: wheel, pan: pan)
             pump(peerID)
         }
@@ -184,7 +194,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     func setButtons(_ buttons: MouseButtons, to peerID: UInt16) {
         queue.async { [self] in
-            guard active[peerID] != nil else { return }
+            guard takesInput(peerID) else { return }
             senders[peerID, default: Sender()].mouse.setButtons(buttons)
             pump(peerID)
         }
@@ -192,7 +202,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     func key(usage: UInt8, isDown: Bool, to peerID: UInt16) {
         queue.async { [self] in
-            guard active[peerID] != nil else { return }
+            guard takesInput(peerID) else { return }
             var sender = senders[peerID, default: Sender()]
             if sender.keyboard.apply(usage: usage, isDown: isDown) {
                 sender.events.append(AndroidHIDEvent.keyboard(sender.keyboard.report))
@@ -204,10 +214,15 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     func sendNeutral(to peerID: UInt16) {
         queue.async { [self] in
-            guard active[peerID] != nil else { return }
+            guard takesInput(peerID) else { return }
             queueNeutral(peerID)
             pump(peerID)
         }
+    }
+
+    /// Registered, or between two channels.
+    private func takesInput(_ peer: UInt16) -> Bool {
+        active[peer] != nil || switching[peer] != nil
     }
 
     func shutdown(timeout: TimeInterval) {
@@ -347,6 +362,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         }
         let gone = Set(adbDevices.keys).subtracting(next.keys)
         adbDevices = next
+        deadTransports.subtract(gone)
         for serial in gone { log.info("ADB \(serial, privacy: .public) gone") }
         for (peer, link) in active {
             if case .adb(let serial, _, _) = link, adbDevices[serial]?.device.state != "device" { channelLost(peer) }
@@ -439,7 +455,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         for (id, device) in usb where device.key == key && (device.aoaVersion ?? 0) >= AOAHID.minimumProtocol {
             list.append((.usb, String(id)))
         }
-        let adb = adbDevices.values.filter { $0.key == key && $0.device.state == "device" }
+        let adb = adbDevices.values.filter { $0.key == key && $0.device.state == "device" && !deadTransports.contains($0.device.serial) }
         list += adb.filter(\.device.isNetwork).map { (.wifi, $0.device.serial) }
         list += adb.filter { !$0.device.isNetwork }.map { (.adbUSB, $0.device.serial) }
         return list
@@ -455,7 +471,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             device.hasUSB = channels.contains { $0.0 == .usb }
             device.hasWiFi = channels.contains { $0.0 == .wifi }
             device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
-            device.active = active[peer]?.channel
+            device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
             devices.append(device)
         }
@@ -466,9 +482,15 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     // MARK: Choosing the channel
 
     private func reconcile() {
+        let now = ProcessInfo.processInfo.systemUptime
         for (key, peer) in registry.peers {
             let wanted = enabled && bound.contains(peer)
             let best = wanted ? candidates(key).first : nil
+            if let pending = switching[peer], best == nil || now - pending.since > Self.switchTimeout {
+                log.info("peer \(peer): no other channel; disconnected")
+                switching[peer] = nil
+                senders[peer] = nil
+            }
             let current = active[peer]
             switch (current, best) {
             case (nil, nil):
@@ -478,7 +500,12 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             case (let current, .some(let best)):
                 if let current, current.channel == best.0, isSame(current, best.1) { continue }
                 // A better channel (or the first one): register there, then drop the old one (design D7).
-                if starting[peer] != nil { continue }
+                // USB does not wait for an ADB link that is still starting.
+                if let pending = starting[peer] {
+                    guard best.0 == .usb else { continue }
+                    pending.stop(timeout: 0)
+                    starting[peer] = nil
+                }
                 activate(peer, best.0, best.1)
             }
         }
@@ -514,6 +541,11 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
                 self.starting[peer] = nil
                 guard ok else {
                     self.log.error("hid over ADB \(id, privacy: .public) did not start")
+                    if self.switching[peer] != nil {
+                        self.switching[peer] = nil
+                        self.senders[peer] = nil
+                    }
+                    self.publish()
                     return
                 }
                 link.onLost = { [weak self] in self?.adbLinkLost(peer, link) }
@@ -530,11 +562,11 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         active[peer] = new
         log.info("peer \(peer) → \(new.channel.rawValue, privacy: .public)")
         if let old { remove(old) }
-        // The new device starts with nothing pressed; the queue goes on behind it.
+        switching[peer] = nil
+        // Neutral reports first, then what was queued during the switch. The pressed-key state is kept:
+        // its reports are full states, so keys held across the switch stay held and are released later.
         var sender = senders[peer, default: Sender()]
         sender.events.insert(contentsOf: AndroidHIDEvent.neutral, at: 0)
-        sender.keyboard.reset()
-        sender.mouse.reset()
         sender.busy = false
         if case .usb = new { sender.notBefore = ProcessInfo.processInfo.systemUptime + Self.aoaSettle }
         senders[peer] = sender
@@ -543,7 +575,8 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     }
 
     private func deactivate(_ peer: UInt16) {
-        guard let old = active.removeValue(forKey: peer) else { return }
+        switching[peer] = nil
+        guard let old = active.removeValue(forKey: peer) else { senders[peer] = nil; return }
         log.info("peer \(peer) unregistered")
         senders[peer] = nil
         remove(old)
@@ -567,10 +600,20 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         if case .adb(_, let link, _) = lost { link.stop(timeout: 0) }
         senders[peer]?.busy = false
         // reconcile() picks another channel or leaves the device unregistered (input returns to the Mac).
+        if let key = registry.key(for: peer), enabled, bound.contains(peer), !candidates(key).isEmpty {
+            switching[peer] = (lost.channel, ProcessInfo.processInfo.systemUptime)
+        } else {
+            senders[peer] = nil
+        }
     }
 
     private func adbLinkLost(_ peer: UInt16, _ link: ADBLink) {
-        guard case .adb(_, let current, _) = active[peer], current === link else { return }
+        guard case .adb(let serial, let current, let channel) = active[peer], current === link else { return }
+        if channel == .wifi, let adb {
+            // The phone left the network (or adb lost it): drop the transport; reconnectWiFi() brings it back.
+            deadTransports.insert(serial)
+            adb.run(["disconnect", serial], timeout: 5, on: queue) { _ in }
+        }
         channelLost(peer)
         reconcile()
     }
