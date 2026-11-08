@@ -26,8 +26,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @Published private(set) var transportStatus = TransportStatus.notConnected
 
     private(set) lazy var transport: HIDTransport = ChameleonHIDTransport { [weak self] status in
-        Task { @MainActor in self?.transportStatus = status }
+        Task { @MainActor in
+            self?.transportStatus = status
+            self?.demo?.statusChanged(status)
+        }
     }
+
+    /// `--ble-demo` only (task 1.12).
+    private lazy var demo: BLEDemo? = isBLEDemo ? BLEDemo(transport: transport) : nil
 
     // MARK: Menu bar icon and panel (design D13)
 

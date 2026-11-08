@@ -63,7 +63,7 @@ static ukm_link_t m_links[NRF_SDH_BLE_PERIPHERAL_LINK_COUNT];
 static bool m_keep_adv_stopped = false; // HID mode turned off: stay out of the scan list
 
 // Report counters (UKM_HID_COUNTERS): since reset.
-static struct { uint32_t last_err; uint32_t ok; uint32_t busy; uint32_t failed; uint32_t hvn_complete; } m_cnt;
+static struct { uint32_t last_err; uint32_t ok; uint32_t busy; uint32_t failed; uint32_t hvn_complete; uint32_t last_fail_err; uint32_t last_fail_index; } m_cnt;
 
 static ukm_link_t *link_find(uint16_t conn_handle) {
     if (conn_handle == BLE_CONN_HANDLE_INVALID) return NULL;
@@ -273,8 +273,10 @@ static uint8_t link_state(ukm_link_t const *link) {
     }
     bool subscribed = link->boot_mode
                       ? cccd_enabled(link->conn_handle, m_hids.boot_kb_inp_rep_handles.cccd_handle)
+                      // Hosts enable the two input reports one after the other: subscribed means both,
+                      // otherwise the first mouse reports fail with NRF_ERROR_INVALID_STATE.
                       : (cccd_enabled(link->conn_handle, m_hids.inp_rep_array[INPUT_REP_KEYBOARD_INDEX].char_handles.cccd_handle)
-                         || cccd_enabled(link->conn_handle, m_hids.inp_rep_array[INPUT_REP_MOUSE_INDEX].char_handles.cccd_handle));
+                         && cccd_enabled(link->conn_handle, m_hids.inp_rep_array[INPUT_REP_MOUSE_INDEX].char_handles.cccd_handle));
     return subscribed ? UKM_HID_STATE_SUBSCRIBED : UKM_HID_STATE_CONNECTED;
 }
 
@@ -311,6 +313,8 @@ static uint16_t send_input(ukm_link_t *link, uint8_t index, uint8_t *p_data, uin
             return UKM_STATUS_BUSY;
         default:
             m_cnt.failed++;
+            m_cnt.last_fail_err = err;
+            m_cnt.last_fail_index = index;
             // NRF_ERROR_INVALID_STATE (not subscribed), BLE_ERROR_GATTS_SYS_ATTR_MISSING,
             // NRF_ERROR_FORBIDDEN (link not encrypted yet), BLE_ERROR_INVALID_CONN_HANDLE: no crash, report it.
             return UKM_STATUS_NOT_CONNECTED;
@@ -611,11 +615,12 @@ data_frame_tx_t *ukm_hid_cmd_diag(uint16_t cmd, uint16_t status, uint16_t length
     return data_frame_make(cmd, STATUS_SUCCESS, n, out);
 }
 
-// [last_err, ok, busy, failed, hvn_complete] u32 BE each
+// [last_err, ok, busy, failed, hvn_complete, last_fail_err, last_fail_index] u32 BE each
 data_frame_tx_t *ukm_hid_cmd_counters(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    static uint8_t out[20];
-    uint32_t v[5] = {m_cnt.last_err, m_cnt.ok, m_cnt.busy, m_cnt.failed, m_cnt.hvn_complete};
-    for (int i = 0; i < 5; i++) {
+    static uint8_t out[28];
+    uint32_t v[7] = {m_cnt.last_err, m_cnt.ok, m_cnt.busy, m_cnt.failed, m_cnt.hvn_complete,
+                     m_cnt.last_fail_err, m_cnt.last_fail_index};
+    for (int i = 0; i < 7; i++) {
         out[4 * i] = (uint8_t)(v[i] >> 24);
         out[4 * i + 1] = (uint8_t)(v[i] >> 16);
         out[4 * i + 2] = (uint8_t)(v[i] >> 8);

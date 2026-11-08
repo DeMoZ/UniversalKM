@@ -325,6 +325,9 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
                 }
                 return
             }
+            if status != .success {
+                log.error("report to host \(peer) refused: status 0x\(String(frame.status, radix: 16), privacy: .public), host state \(ChameleonReportReply(frame.data)?.targetState ?? 0)")
+            }
             if status == .notConnected {
                 // The host left or has not subscribed: forget what was pending for it.
                 keyboards[peer] = nil
