@@ -2,3 +2,4 @@
 # Changing the commit is a separate task: re-check that every patch in firmware/patches/ still applies.
 UPSTREAM_URL=https://github.com/RfidResearchGroup/ChameleonUltra.git
 UPSTREAM_COMMIT=4c5bc2cb6b023d23f7bbc383c9b2b5e39f95419e
+OFFICIAL_TAG=v2.1.0   # rollback package for scripts/firmware-flash.sh --official (the version the device came with)
