@@ -27,6 +27,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BIN_DIR/UniversalKM" "$APP/Contents/MacOS/UniversalKM"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+# App icon, drawn by scripts/make-icon.swift.
+cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 # Sparkle (app updates).
 ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"

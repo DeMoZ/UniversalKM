@@ -56,9 +56,16 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: modeIcon)
-                .font(.title2)
-                .foregroundStyle(.tint)
+            if state.currentDevice == nil {
+                // The app icon from the bundle; a `swift run` build has none and shows the generic one.
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 28, height: 28)
+            } else {
+                Image(systemName: modeIcon)
+                    .font(.title2)
+                    .foregroundStyle(.tint)
+            }
             Text("UniversalKM").font(.headline)
             Spacer()
             Text(state.currentDevice.map { "Ввод: \($0.name)" } ?? "Ввод: Mac")

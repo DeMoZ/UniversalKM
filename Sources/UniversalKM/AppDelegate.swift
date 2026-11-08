@@ -32,8 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func startCapture() {
         state.onModeChange = { [weak self] device in
-            self?.statusItem?.button?.image = NSImage(
-                systemSymbolName: device == nil ? "desktopcomputer" : (device?.kind == .tablet ? "ipad" : "iphone"),
+            // Mac mode: the app's own menu bar icon; Device mode: the kind of device input goes to.
+            self?.statusItem?.button?.image = device == nil ? StatusIcon.make() : NSImage(
+                systemSymbolName: device?.kind == .tablet ? "ipad" : "iphone",
                 accessibilityDescription: "UniversalKM")
         }
         state.start()
@@ -62,7 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "desktopcomputer", accessibilityDescription: "UniversalKM")
+        item.button?.image = StatusIcon.make()
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         statusItem = item
