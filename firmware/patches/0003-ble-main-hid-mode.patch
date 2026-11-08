@@ -1,5 +1,5 @@
 diff --git a/firmware/application/src/ble_main.c b/firmware/application/src/ble_main.c
-index 505548a..ddeb22a 100644
+index 505548a..10c58a8 100644
 --- a/firmware/application/src/ble_main.c
 +++ b/firmware/application/src/ble_main.c
 @@ -23,6 +23,8 @@
@@ -11,7 +11,37 @@ index 505548a..ddeb22a 100644
  
  #define NRF_LOG_MODULE_NAME ble_main
  #include "nrf_log.h"
-@@ -347,6 +349,10 @@ static void services_init(void) {
+@@ -181,6 +183,10 @@ static void on_bas_evt(ble_bas_t *p_bas, ble_bas_evt_t *p_evt) {
+  */
+ /**@snippet [Handling the data received over BLE] */
+ static void nus_data_handler(ble_nus_evt_t *p_evt) {
++    // UniversalKM: the link that subscribes to NUS is the Mac app's control channel.
++    if (p_evt->type == BLE_NUS_EVT_COMM_STARTED || p_evt->type == BLE_NUS_EVT_COMM_STOPPED) {
++        ukm_hid_on_nus_comm(p_evt->conn_handle, p_evt->type == BLE_NUS_EVT_COMM_STARTED);
++    }
+     if (p_evt->type == BLE_NUS_EVT_RX_DATA) {
+         NRF_LOG_DEBUG("Received data from BLE NUS.");
+         NRF_LOG_HEXDUMP_DEBUG(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+@@ -196,9 +202,16 @@ void nus_data_response(uint8_t *p_data, uint16_t length) {
+     ret_code_t err_code;
+     uint16_t remain = length;
+     uint16_t count = 0;
++    // UniversalKM: with several links, reply to the NUS client, not to the newest link.
++    uint16_t conn_handle = ukm_hid_controller_conn_handle();
++    if (conn_handle == BLE_CONN_HANDLE_INVALID) {
++        conn_handle = m_conn_handle;
++    }
++    // The chunk must fit this link's ATT MTU (m_ble_nus_max_data_len follows the newest link only).
++    uint16_t max_len = nrf_ble_gatt_eff_mtu_get(&m_gatt, conn_handle) - OPCODE_LENGTH - HANDLE_LENGTH;
+     do {
+-        remain = MIN(m_ble_nus_max_data_len, remain);
+-        err_code = ble_nus_data_send(&m_nus, p_data + count, &remain, m_conn_handle);
++        remain = MIN(max_len, remain);
++        err_code = ble_nus_data_send(&m_nus, p_data + count, &remain, conn_handle);
+         // NRF_LOG_INFO("Data send length(amount): %d", remain);
+         if (err_code == NRF_SUCCESS) {
+             count += remain;
+@@ -347,6 +360,10 @@ static void services_init(void) {
  
      err_code = ble_bas_init(&m_bas, &bas_init_obj);
      APP_ERROR_CHECK(err_code);
@@ -22,7 +52,7 @@ index 505548a..ddeb22a 100644
  }
  
  /**@brief Function for handling an event from the Connection Parameters Module.
-@@ -364,7 +370,8 @@ static void on_conn_params_evt(ble_conn_params_evt_t *p_evt) {
+@@ -364,7 +381,8 @@ static void on_conn_params_evt(ble_conn_params_evt_t *p_evt) {
      uint32_t err_code;
  
      if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED) {
@@ -32,7 +62,7 @@ index 505548a..ddeb22a 100644
          APP_ERROR_CHECK(err_code);
      }
  }
-@@ -439,8 +446,11 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
+@@ -439,8 +457,11 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
          case BLE_GAP_EVT_DISCONNECTED:
              NRF_LOG_INFO("Disconnected");
              // LED indication will be changed when advertising starts.
@@ -46,7 +76,7 @@ index 505548a..ddeb22a 100644
              // call sleep_timer_start *after* unsetting g_is_ble_connected
              sleep_timer_start(SLEEP_DELAY_MS_BLE_DISCONNECTED);
              break;
-@@ -459,10 +469,10 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
+@@ -459,10 +480,10 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
          case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
              // Pairing not supported? No, is supported now, hahahaha...
              // But... the pairing is enable?
@@ -59,7 +89,7 @@ index 505548a..ddeb22a 100644
                  APP_ERROR_CHECK(err_code);
              }
              break;
-@@ -477,7 +487,7 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
+@@ -477,7 +498,7 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
  
          case BLE_GATTS_EVT_SYS_ATTR_MISSING:
              // No system attributes have been stored.
@@ -68,7 +98,7 @@ index 505548a..ddeb22a 100644
              APP_ERROR_CHECK(err_code);
              break;
  
-@@ -577,6 +587,42 @@ static void advertising_init(void) {
+@@ -577,6 +598,56 @@ static void advertising_init(void) {
      ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
  }
  
@@ -94,6 +124,20 @@ index 505548a..ddeb22a 100644
 +        advdata.uuids_complete.p_uuids = hid_uuids;
 +        srdata.uuids_complete.uuid_cnt = ARRAY_SIZE(hid_uuids);
 +        srdata.uuids_complete.p_uuids = hid_uuids;
++        // The device address (most significant byte first, as DATA_CMD_GET_DEVICE_ADDRESS returns it):
++        // the Mac app finds its own Chameleon among others nearby before using it over Bluetooth.
++        static uint8_t addr_be[BLE_GAP_ADDR_LEN];
++        static ble_advdata_manuf_data_t manuf;
++        ble_gap_addr_t addr;
++        if (sd_ble_gap_addr_get(&addr) == NRF_SUCCESS) {
++            for (int i = 0; i < BLE_GAP_ADDR_LEN; i++) {
++                addr_be[i] = addr.addr[BLE_GAP_ADDR_LEN - 1 - i];
++            }
++            manuf.company_identifier = 0xFFFF;
++            manuf.data.p_data = addr_be;
++            manuf.data.size = sizeof(addr_be);
++            srdata.p_manuf_specific_data = &manuf;
++        }
 +    } else {
 +        advdata.name_type = BLE_ADVDATA_FULL_NAME;
 +        srdata.uuids_complete.uuid_cnt = ARRAY_SIZE(m_adv_uuids);
@@ -111,7 +155,7 @@ index 505548a..ddeb22a 100644
  /**@brief Clear bond information from persistent storage.
   */
  void delete_bonds_all(void) {
-@@ -613,8 +659,15 @@ void advertising_start(bool erase_bonds) {
+@@ -613,8 +684,15 @@ void advertising_start(bool erase_bonds) {
          // So we don't call `ble_advertising_start()` after `delete_bonds_all()`.
          delete_bonds_all();
      } else {
@@ -129,7 +173,7 @@ index 505548a..ddeb22a 100644
              return;
          }
          if (settings_get_ble_pairing_enable_first_load()) {
-@@ -637,13 +690,18 @@ void advertising_stop(void) {
+@@ -637,13 +715,18 @@ void advertising_stop(void) {
   * @param[in] p_evt  Peer Manager event.
   */
  static void pm_evt_handler(pm_evt_t const *p_evt) {

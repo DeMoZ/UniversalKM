@@ -61,6 +61,7 @@ typedef struct {
 static bool m_enabled = false;
 static ukm_link_t m_links[NRF_SDH_BLE_PERIPHERAL_LINK_COUNT];
 static bool m_keep_adv_stopped = false; // HID mode turned off: stay out of the scan list
+static uint16_t m_controller = BLE_CONN_HANDLE_INVALID; // the Mac app over NUS: not a HID host
 
 // Report counters (UKM_HID_COUNTERS): since reset.
 static struct { uint32_t last_err; uint32_t ok; uint32_t busy; uint32_t failed; uint32_t hvn_complete; uint32_t last_fail_err; uint32_t last_fail_index; } m_cnt;
@@ -85,6 +86,19 @@ static uint8_t link_count(void) {
     uint8_t n = 0;
     for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
         if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) n++;
+    }
+    return n;
+}
+
+static bool is_host(ukm_link_t const *link) {
+    return link->conn_handle != BLE_CONN_HANDLE_INVALID && link->conn_handle != m_controller;
+}
+
+// Links that are HID hosts (the Mac's control link is not one).
+static uint8_t host_count(void) {
+    uint8_t n = 0;
+    for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
+        if (is_host(&m_links[i])) n++;
     }
     return n;
 }
@@ -349,17 +363,38 @@ static void send_neutral(ukm_link_t *link) {
 
 static void send_neutral_all(void) {
     for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
-        if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) {
+        if (is_host(&m_links[i])) {
             send_neutral(&m_links[i]);
         }
     }
 }
 
+static void set_enabled(bool enabled);
+
 void ukm_hid_on_usb_lost(void) {
-    if (m_enabled) {
-        NRF_LOG_INFO("USB lost: neutral reports");
-        send_neutral_all();
+    if (!m_enabled) {
+        return;
     }
+    if (m_controller != BLE_CONN_HANDLE_INVALID) {
+        NRF_LOG_INFO("USB lost: neutral reports, the Mac goes on over Bluetooth");
+        send_neutral_all();
+    } else {
+        // Nobody can drive the keyboard now: let the hosts show their on-screen keyboards again.
+        NRF_LOG_INFO("USB lost without a Bluetooth link to the Mac: HID mode off");
+        set_enabled(false);
+    }
+}
+
+void ukm_hid_on_nus_comm(uint16_t conn_handle, bool started) {
+    if (started) {
+        m_controller = conn_handle;
+    } else if (m_controller == conn_handle) {
+        m_controller = BLE_CONN_HANDLE_INVALID;
+    }
+}
+
+uint16_t ukm_hid_controller_conn_handle(void) {
+    return m_controller;
 }
 
 static void request_fast_conn_params(uint16_t conn_handle) {
@@ -404,7 +439,7 @@ static void set_enabled(bool enabled) {
         advertising_stop();
         ble_advertising_hid_mode_set(false);
         for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
-            if (m_links[i].conn_handle != BLE_CONN_HANDLE_INVALID) {
+            if (is_host(&m_links[i])) {   // the Mac's control link stays
                 ret_code_t err = sd_ble_gap_disconnect(m_links[i].conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
                 if (err != NRF_SUCCESS && err != NRF_ERROR_INVALID_STATE) {
                     APP_ERROR_CHECK(err);
@@ -457,6 +492,9 @@ static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
 
         case BLE_GAP_EVT_DISCONNECTED: {
             m_diag.disconnect_reason = p_ble_evt->evt.gap_evt.params.disconnected.reason;
+            if (conn_handle == m_controller) {
+                m_controller = BLE_CONN_HANDLE_INVALID;
+            }
             ukm_link_t *link = link_find(conn_handle);
             if (link != NULL) {
                 memset(link, 0, sizeof(*link));
@@ -528,7 +566,7 @@ data_frame_tx_t *ukm_hid_cmd_get_info(uint16_t cmd, uint16_t status, uint16_t le
     uint8_t payload[4] = {
         UKM_HID_PROTOCOL_VERSION,
         m_enabled ? 1 : 0,
-        link_count(),
+        host_count(),
         NRF_SDH_BLE_PERIPHERAL_LINK_COUNT,
     };
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), payload);
@@ -550,7 +588,7 @@ static data_frame_tx_t *cmd_report(uint16_t cmd, uint16_t length, uint8_t *data,
     }
     ukm_link_t *link = link_by_peer((pm_peer_id_t)((data[0] << 8) | data[1]));
     uint16_t result = send_input(link, index, &data[2], report_len);
-    uint8_t payload[2] = {link_state(link), link_count()};
+    uint8_t payload[2] = {link_state(link), host_count()};
     return data_frame_make(cmd, result, sizeof(payload), payload);
 }
 
@@ -568,10 +606,10 @@ data_frame_tx_t *ukm_hid_cmd_state(uint16_t cmd, uint16_t status, uint16_t lengt
     uint16_t n = 0;
     payload[n++] = m_enabled ? 1 : 0;
     payload[n++] = ukm_hid_link_available() ? 1 : 0;
-    payload[n++] = link_count();
+    payload[n++] = host_count();
     for (size_t i = 0; i < ARRAY_SIZE(m_links); i++) {
         ukm_link_t const *link = &m_links[i];
-        if (link->conn_handle == BLE_CONN_HANDLE_INVALID) continue;
+        if (!is_host(link)) continue;
         payload[n++] = (uint8_t)(link->peer_id >> 8);
         payload[n++] = (uint8_t)(link->peer_id & 0xFF);
         memcpy(&payload[n], link->addr.addr, BLE_GAP_ADDR_LEN);

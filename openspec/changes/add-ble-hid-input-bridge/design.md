@@ -59,7 +59,7 @@
 | `LSMinimumSystemVersion` | `14.0` | |
 | `LSUIElement` | `true` | нет значка в Dock, только строка меню |
 
-Для Accessibility и Input Monitoring ключей в Info.plist нет — они выдаются в System Settings. Приложение само Bluetooth не использует, поэтому `NSBluetoothAlwaysUsageDescription` не нужен (ключ, добавленный в задаче 1.2, удаляется).
+Для Accessibility и Input Monitoring ключей в Info.plist нет — они выдаются в System Settings. Ключ спайка из задачи 1.2 удалён в 1.4, а в 1.15 возвращён с новым текстом: приложение подключается к Chameleon по Bluetooth как GATT‑клиент (канал управления NUS), а macOS спрашивает разрешение Bluetooth и без ключа завершает приложение.
 `Resources/UniversalKM.entitlements`: без App Sandbox, hardened runtime. Доступ к USB‑serial (`/dev/cu.*`) вне песочницы entitlements не требует.
 
 ### D3. GATT‑структура HOGP — в прошивке Chameleon

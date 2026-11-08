@@ -11,6 +11,10 @@ import UniversalKMCore
 /// - BUSY (BLE queue full) → the same frame is sent again after 2 ms; new motion keeps accumulating.
 /// - The host list comes from the state byte of report replies and from polling UKM_HID_STATE
 ///   every 250 ms when idle; the device sends nothing unsolicited.
+/// - Channel: USB while the port is open; the Bluetooth control link (ChameleonBLELink, same frames
+///   over NUS) is kept connected as a standby and takes over when USB goes away, so the HID mode and
+///   the hosts survive unplugging. The firmware answers on USB while its port is open, so Bluetooth is
+///   used only when USB is gone.
 final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "transport")
     private let queue = DispatchQueue(label: "ukm.serial", qos: .userInteractive)
@@ -18,8 +22,12 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
 
     // Everything below is touched only on `queue`.
     private lazy var watcher = ChameleonDeviceWatcher(queue: queue)
+    private lazy var ble = ChameleonBLELink(queue: queue)
     private var devicePath: String?
     private var port: SerialPort?
+    private enum Channel { case usb, bluetooth }
+    private var channel: Channel?
+    private static let addressKey = "chameleonAddress"
     private var parser = ChameleonFrameParser()
     private var phase = Phase.disconnected
     private var desiredEnabled = true
@@ -28,13 +36,14 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
     private enum Phase { case disconnected, probing, ready, unsupported }
 
     private enum Request {
-        case info, enable(Bool), state
+        case info, address, enable(Bool), state
         case keyboard(UInt16, KeyboardReport)
         case mouse(UInt16, MouseReport)
 
         var frame: ChameleonFrame {
             switch self {
             case .info: ChameleonFrame(.hidGetInfo)
+            case .address: ChameleonFrame(command: 1012)   // DATA_CMD_GET_DEVICE_ADDRESS
             case .enable(let on): ChameleonHID.setEnabled(on)
             case .state: ChameleonFrame(.hidState)
             case .keyboard(let peer, let report): ChameleonHID.keyboard(report, to: peer)
@@ -55,6 +64,8 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
     private var timer: DispatchSourceTimer?
 
     private static let replyTimeout: TimeInterval = 0.5
+    /// Over Bluetooth the reply shares the Chameleon radio with the hosts.
+    private static let bluetoothReplyTimeout: TimeInterval = 2
     private static let busyRetry: TimeInterval = 0.002
     private static let pollInterval: TimeInterval = 0.25
 
@@ -70,6 +81,18 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
             watcher.onAppear = { [weak self] path in self?.deviceAppeared(path) }
             watcher.onDisappear = { [weak self] path in self?.deviceDisappeared(path) }
             watcher.start()
+            if let hex = UserDefaults.standard.string(forKey: Self.addressKey) {
+                ble.targetAddress = stride(from: 0, to: hex.count, by: 2).compactMap {
+                    UInt8(hex.dropFirst($0).prefix(2), radix: 16)
+                }
+            }
+            ble.onReady = { [weak self] in self?.bluetoothReady() }
+            ble.onLost = { [weak self] in self?.bluetoothLost() }
+            ble.onData = { [weak self] bytes in
+                guard let self, self.channel == .bluetooth else { return }
+                self.received(bytes)
+            }
+            ble.start()
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.schedule(deadline: .now() + Self.pollInterval, repeating: Self.pollInterval)
             timer.setEventHandler { [weak self] in self?.tick() }
@@ -135,7 +158,13 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
         queue.sync { [self] in
             timer?.cancel()
             timer = nil
-            guard phase == .ready, let port else { return }
+            guard phase == .ready else { return }
+            if channel == .bluetooth {
+                // CoreBluetooth answers on this queue, so the reply cannot be awaited here: send and go.
+                _ = ble.write(ChameleonHID.setEnabled(false).encoded)
+                return
+            }
+            guard let port else { return }
             // The firmware sends neutral reports to every host, then disconnects them and stops advertising.
             port.write(ChameleonHID.setEnabled(false).encoded)
             var shutdownParser = ChameleonFrameParser()
@@ -176,25 +205,73 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
             log.error("cannot open \(path, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return
         }
-        port.onData = { [weak self] bytes in self?.received(bytes) }
+        port.onData = { [weak self] bytes in
+            guard let self, self.channel == .usb else { return }
+            self.received(bytes)
+        }
         port.onClose = { [weak self] in self?.portClosed() }
         self.port = port
+        log.info("using USB")
+        activate(.usb, probe: [.info, .address])
+    }
+
+    /// Switches the channel: the request in flight is dropped (no reply will come on the new channel),
+    /// queued reports and pending motion stay.
+    private func activate(_ new: Channel, probe: [Request]) {
+        channel = new
         parser.reset()
+        inFlight = nil
+        inFlightToken &+= 1
+        retryPending = false
         phase = .probing
         probeAttempts = 0
-        control = [.info]
+        control = probe
         pump()
     }
 
     private func portClosed() {
         port = nil
-        resetLink()
+        usbGone()
     }
 
     private func closePort() {
         port?.close()
         port = nil
+        usbGone()
+    }
+
+    private func usbGone() {
+        guard channel == .usb || channel == nil else { return }
+        if ble.isReady {
+            log.info("USB gone: going on over Bluetooth")
+            activate(.bluetooth, probe: [.info])
+        } else {
+            channel = nil
+            resetLink()
+        }
+    }
+
+    private func bluetoothReady() {
+        log.info("Bluetooth control link ready\(self.channel == .usb ? " (standby)" : "")")
+        if channel == nil {
+            log.info("using Bluetooth")
+            activate(.bluetooth, probe: [.info])
+        }
+    }
+
+    private func bluetoothLost() {
+        guard channel == .bluetooth else { return }
+        log.info("Bluetooth control link lost")
+        channel = nil
         resetLink()
+    }
+
+    private func write(_ bytes: [UInt8]) -> Bool {
+        switch channel {
+        case .usb: port?.write(bytes) ?? false
+        case .bluetooth: ble.write(bytes)
+        case nil: false
+        }
     }
 
     private func resetLink() {
@@ -210,10 +287,11 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
     }
 
     private func tick() {
-        if port == nil {
+        if port == nil && devicePath != nil {
             openPort()
             return
         }
+        guard channel != nil else { return }
         if phase == .ready && inFlight == nil && control.isEmpty && reports.isEmpty && mouseTurn.isEmpty {
             control.append(.state)
             pump()
@@ -246,16 +324,17 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
     }
 
     private func pump() {
-        guard inFlight == nil, !retryPending, let port, let request = nextRequest() else { return }
-        send(request, on: port)
+        guard inFlight == nil, !retryPending, channel != nil, let request = nextRequest() else { return }
+        send(request)
     }
 
-    private func send(_ request: Request, on port: SerialPort) {
+    private func send(_ request: Request) {
         inFlight = request
         inFlightToken &+= 1
         let token = inFlightToken
-        guard port.write(request.frame.encoded) else { return }   // onClose resets the link
-        queue.asyncAfter(deadline: .now() + Self.replyTimeout) { [weak self] in self?.timedOut(token) }
+        guard write(request.frame.encoded) else { return }   // the channel's loss handler takes over
+        let timeout = channel == .bluetooth ? Self.bluetoothReplyTimeout : Self.replyTimeout
+        queue.asyncAfter(deadline: .now() + timeout) { [weak self] in self?.timedOut(token) }
     }
 
     private func timedOut(_ token: Int) {
@@ -306,6 +385,13 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
                 publish(.unsupportedFirmware(version))
             }
 
+        case .address:
+            if status == .success, frame.data.count == 6 {
+                let hex = frame.data.map { String(format: "%02x", $0) }.joined()
+                UserDefaults.standard.set(hex, forKey: Self.addressKey)
+                ble.targetAddress = frame.data
+            }
+
         case .enable, .state:
             if case .state = request, status == .success, let state = ChameleonHIDState(frame.data) {
                 publish(.ready(state))
@@ -318,10 +404,10 @@ final class ChameleonHIDTransport: HIDTransport, @unchecked Sendable {
                 retryPending = true
                 inFlight = request
                 queue.asyncAfter(deadline: .now() + Self.busyRetry) { [weak self] in
-                    guard let self, self.retryPending, let port = self.port, let request = self.inFlight else { return }
+                    guard let self, self.retryPending, let request = self.inFlight else { return }
                     self.retryPending = false
                     self.inFlight = nil
-                    self.send(request, on: port)
+                    self.send(request)
                 }
                 return
             }

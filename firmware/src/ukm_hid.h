@@ -52,9 +52,17 @@ void ukm_hid_on_pm_evt(pm_evt_t const *p_evt);
 // Peer Manager hook: remembers the peer of the current link.
 void ukm_hid_on_conn_sec_succeeded(pm_evt_t const *p_evt);
 
-// USB hook: the host closed the serial port or USB power went away.
-// Sends neutral (all released) reports, so nothing stays pressed on the phone.
+// USB hook: the host closed the serial port or USB power went away. With the Mac's Bluetooth control
+// link up, only neutral (all released) reports go out and work goes on over Bluetooth; without it the
+// HID mode turns off (neutral reports, hosts disconnected, advertising stopped).
 void ukm_hid_on_usb_lost(void);
+
+// NUS hook: a link enabled (started) or disabled notifications on the Nordic UART TX characteristic.
+// That link is the Mac app's Bluetooth control channel.
+void ukm_hid_on_nus_comm(uint16_t conn_handle, bool started);
+
+// The Mac app's Bluetooth control link, or BLE_CONN_HANDLE_INVALID. NUS replies go to it.
+uint16_t ukm_hid_controller_conn_handle(void);
 
 // Command processors for the app_cmd.c table.
 data_frame_tx_t *ukm_hid_cmd_get_info(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data);
