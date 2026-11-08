@@ -33,8 +33,28 @@ public struct PlacedDevice: Codable, Hashable, Identifiable, Sendable {
     public var pointerSpeed: Double
     /// Peer ID of the bound Bluetooth host (design D6); nil while the device waits for one.
     public var hostPeerID: UInt16?
+    /// Screen size in points and in pixels, portrait (either may be unknown): they give the proportions.
+    public var screenPoints: CGSize?
+    public var screenPixels: CGSize?
+    /// Physical long side; nil = the default for the kind (design D8).
+    public var longSideMillimeters: Double?
 
     public static let pointerSpeedRange = 0.25...4.0
+    public static let longSideRange = 60.0...400.0
+
+    /// Long side / short side of the screen: by points, else pixels, else the kind (9:19.5, 3:4).
+    public var aspectRatio: Double {
+        for size in [screenPoints, screenPixels] {
+            if let size, size.width > 0, size.height > 0 {
+                return Double(max(size.width, size.height) / min(size.width, size.height))
+            }
+        }
+        return kind == .phone ? 19.5 / 9 : 4.0 / 3.0
+    }
+
+    public var effectiveLongSideMillimeters: Double {
+        longSideMillimeters ?? (kind == .phone ? 150 : 250)
+    }
 
     public init(id: UUID = UUID(), name: String, kind: DeviceKind, orientation: DeviceOrientation = .portrait,
                 anchorDisplayUUID: String, side: DisplaySide, offset: Double, pointerSpeed: Double = 1,

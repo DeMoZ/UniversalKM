@@ -215,8 +215,28 @@ struct MenuBarView: View {
             Text("Ускорение мыши на Mac: \(state.isMacMouseAccelerationOn ? "вкл." : "выкл.")")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+            screenFields(device)
         }
         .font(.callout)
+    }
+
+    /// Screen size of the device (portrait): points and, if known, pixels; the proportions follow it.
+    private func screenFields(_ device: PlacedDevice) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Экран, точки").frame(width: 96, alignment: .leading)
+                SizeField(size: device.screenPoints) { state.setScreen(points: $0, pixels: device.screenPixels, of: device.id) }
+            }
+            HStack(spacing: 6) {
+                Text("Экран, пиксели").frame(width: 96, alignment: .leading)
+                SizeField(size: device.screenPixels) { state.setScreen(points: device.screenPoints, pixels: $0, of: device.id) }
+            }
+            Text(String(format: "Длинная сторона %.0f мм, пропорции %.2f:1 — тяните уголок на схеме, чтобы подогнать размер",
+                        device.effectiveLongSideMillimeters, device.aspectRatio))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: Footer
@@ -240,5 +260,37 @@ struct MenuBarView: View {
         }
         .buttonStyle(.borderless)
         .font(.caption)
+    }
+}
+
+/// "1280 × 800": two number fields; empty means unknown.
+private struct SizeField: View {
+    let size: CGSize?
+    let commit: (CGSize?) -> Void
+    @State private var width = ""
+    @State private var height = ""
+
+    var body: some View {
+        HStack(spacing: 4) {
+            TextField("ширина", text: $width).frame(width: 64).onSubmit(save)
+            Text("×").foregroundStyle(.secondary)
+            TextField("высота", text: $height).frame(width: 64).onSubmit(save)
+        }
+        .textFieldStyle(.roundedBorder)
+        .onAppear(perform: load)
+        .onChange(of: size) { load() }
+    }
+
+    private func load() {
+        width = size.map { String(Int($0.width)) } ?? ""
+        height = size.map { String(Int($0.height)) } ?? ""
+    }
+
+    private func save() {
+        if let w = Double(width), let h = Double(height), w > 0, h > 0 {
+            commit(CGSize(width: w, height: h))
+        } else if width.isEmpty && height.isEmpty {
+            commit(nil)
+        }
     }
 }

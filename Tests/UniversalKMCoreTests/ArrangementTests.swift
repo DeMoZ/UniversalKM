@@ -68,10 +68,11 @@ private func zoneLength(_ zone: HandoffZone) -> Double {
     // across that part keeps only the rest of its side as a zone.
     let device = PlacedDevice(name: "P", kind: .tablet, anchorDisplayUUID: "monitor", side: .left, offset: 0.5)
     let layout = try #require(ArrangementLayout.layout(DeviceArrangement(devices: [device]), displays: [laptop, monitor]).first)
-    // The tablet spans y 720…1211; the laptop covers 0…982 of that edge → only 982…1211 remains.
+    // The tablet starts at y 720; the laptop covers 0…982 of that edge → only 982 up to the tablet's
+    // (or the edge's) end remains.
     #expect(layout.zone.segments.count == 1)
     #expect(abs(layout.zone.segments[0].lowerBound - 982) < 0.01)
-    #expect(abs(layout.zone.segments[0].upperBound - Double(layout.rect.maxY)) < 0.01)
+    #expect(abs(layout.zone.segments[0].upperBound - min(Double(layout.rect.maxY), Double(monitor.frame.maxY))) < 0.01)
 }
 
 @Test func missingAnchorUsesDefaultAndIsTemporary() throws {
@@ -242,4 +243,52 @@ private func zoneLength(_ zone: HandoffZone) -> Double {
     let layout = try #require(ArrangementLayout.layout(DeviceArrangement(devices: [phone(.right, offset: 0.4)]), displays: [laptop]).first)
     #expect(layout.zones.count == 1)
     #expect(layout.zones[0] == layout.zone)
+}
+
+// MARK: Device size (task 3.9)
+
+@Test func proportionsFromPointsThenPixelsThenKind() {
+    var tablet = PlacedDevice(name: "T", kind: .tablet, anchorDisplayUUID: "laptop", side: .right, offset: 0)
+    #expect(abs(tablet.aspectRatio - 4.0 / 3.0) < 1e-9)
+    tablet.screenPixels = CGSize(width: 1600, height: 2560)
+    #expect(abs(tablet.aspectRatio - 1.6) < 1e-9)
+    tablet.screenPoints = CGSize(width: 1280, height: 800)            // points win over pixels
+    #expect(abs(tablet.aspectRatio - 1.6) < 1e-9)
+    tablet.screenPoints = CGSize(width: 1194, height: 834)
+    #expect(abs(tablet.aspectRatio - 1194.0 / 834.0) < 1e-9)
+}
+
+@Test func longSideFromMillimetresAndDisplayDensity() {
+    let display = DisplayInfo(uuid: "d", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), millimetersPerPoint: 0.25)
+    var phone = PlacedDevice(name: "P", kind: .phone, anchorDisplayUUID: "d", side: .right, offset: 0)
+    phone.longSideMillimeters = 160
+    let size = ArrangementLayout.size(of: phone, on: display)
+    #expect(abs(Double(size.height) - 640) < 1e-9)                      // 160 mm / 0.25 mm per point
+    #expect(abs(Double(size.width) - 640 * 9 / 19.5) < 1e-9)
+    phone.orientation = .landscape
+    #expect(abs(Double(ArrangementLayout.size(of: phone, on: display).width) - 640) < 1e-9)
+}
+
+@Test func resolutionChangeKeepsPhysicalSize() {
+    // The same 30 cm-tall laptop screen at two resolutions (as when a monitor is attached).
+    let sharp = DisplayInfo(uuid: "l", frame: CGRect(x: 0, y: 0, width: 1680, height: 1050), millimetersPerPoint: 196.0 / 1050)
+    let large = DisplayInfo(uuid: "l", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), millimetersPerPoint: 196.0 / 900)
+    let tablet = PlacedDevice(name: "T", kind: .tablet, anchorDisplayUUID: "l", side: .right, offset: 0)
+    let a = ArrangementLayout.size(of: tablet, on: sharp), b = ArrangementLayout.size(of: tablet, on: large)
+    // Relative to the display height the tablet stays the same.
+    #expect(abs(Double(a.height) / 1050 - Double(b.height) / 900) < 1e-9)
+}
+
+@Test func resizingConvertsPointsBackToMillimetres() {
+    let display = DisplayInfo(uuid: "d", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), millimetersPerPoint: 0.2)
+    #expect(abs(ArrangementLayout.longSideMillimeters(forLongSidePoints: 1000, on: display) - 200) < 1e-9)
+    #expect(ArrangementLayout.longSideMillimeters(forLongSidePoints: 10, on: display) == PlacedDevice.longSideRange.lowerBound)
+}
+
+@Test func oldSavedArrangementStillDecodes() throws {
+    // JSON written by 0.1.0, before the size fields existed.
+    let json = #"{"devices":[{"id":"7A1D0B4E-9C1F-4C2D-8E0A-2B6F3C9D1E5A","name":"Планшет","kind":"tablet","orientation":"portrait","anchorDisplayUUID":"B0583346","side":"right","offset":0.4,"pointerSpeed":1,"hostPeerID":1}]}"#
+    let arrangement = try JSONDecoder().decode(DeviceArrangement.self, from: Data(json.utf8))
+    #expect(arrangement.devices[0].screenPoints == nil)
+    #expect(arrangement.devices[0].effectiveLongSideMillimeters == 250)
 }
