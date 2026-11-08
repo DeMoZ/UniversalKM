@@ -14,14 +14,12 @@ let package = Package(
     ],
     targets: [
         // Pure logic: HID descriptors and report encoding, key maps, arrangement,
-        // state machine. No CoreBluetooth and no event taps, so it is unit-testable.
+        // state machine. No I/O and no event taps, so it is unit-testable.
         .target(name: "UniversalKMCore"),
-        // Tiny Objective-C helper: catches NSExceptions raised by CoreBluetooth.
-        .target(name: "ObjCSupport"),
         // The menu bar app: event tap, Chameleon transport, SwiftUI panel, Sparkle updates.
         .executableTarget(
             name: "UniversalKM",
-            dependencies: ["UniversalKMCore", "ObjCSupport", .product(name: "Sparkle", package: "Sparkle")]
+            dependencies: ["UniversalKMCore", .product(name: "Sparkle", package: "Sparkle")]
         ),
         .testTarget(
             name: "UniversalKMCoreTests",

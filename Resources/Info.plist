@@ -28,8 +28,6 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>UniversalKM работает Bluetooth‑клавиатурой и мышью для вашего телефона.</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/DeMoZ/UniversalKM/releases/latest/download/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
