@@ -1,5 +1,5 @@
 diff --git a/firmware/application/src/ble_main.c b/firmware/application/src/ble_main.c
-index 505548a..aa9c9c4 100644
+index 505548a..749fa71 100644
 --- a/firmware/application/src/ble_main.c
 +++ b/firmware/application/src/ble_main.c
 @@ -23,6 +23,7 @@
@@ -73,7 +73,14 @@ index 505548a..aa9c9c4 100644
  /**@brief Clear bond information from persistent storage.
   */
  void delete_bonds_all(void) {
-@@ -643,7 +684,11 @@ static void pm_evt_handler(pm_evt_t const *p_evt) {
+@@ -637,13 +678,18 @@ void advertising_stop(void) {
+  * @param[in] p_evt  Peer Manager event.
+  */
+ static void pm_evt_handler(pm_evt_t const *p_evt) {
++    ukm_hid_on_pm_evt(p_evt);
+     pm_handler_on_pm_evt(p_evt);
+     pm_handler_disconnect_on_sec_failure(p_evt);
+     pm_handler_flash_clean(p_evt);
  
      switch (p_evt->evt_id) {
          case PM_EVT_CONN_SEC_SUCCEEDED:

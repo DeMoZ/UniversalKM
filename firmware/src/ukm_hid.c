@@ -56,6 +56,45 @@ static ble_gap_addr_t m_peer_addr;
 static bool m_neutral_pending = false;  // neutral reports still to be sent (queue was full)
 static bool m_keep_adv_stopped = false; // HID mode turned off: stay out of the scan list
 
+// --- Diagnostics: what happened on the last connection (UKM_HID_DIAG) -----------------------------
+
+#define DIAG_BLE_EVTS   48
+#define DIAG_PM_EVTS    16
+static struct {
+    uint8_t ble_count;                  // events recorded since the last connection (saturates)
+    uint16_t ble_evts[DIAG_BLE_EVTS];   // first DIAG_BLE_EVTS BLE event IDs of the connection
+    uint8_t pm_count;
+    uint8_t pm_evts[DIAG_PM_EVTS];      // first DIAG_PM_EVTS Peer Manager event IDs
+    uint8_t auth_status;                // BLE_GAP_EVT_AUTH_STATUS
+    uint8_t auth_error_src;
+    uint8_t auth_bonded;
+    uint8_t disconnect_reason;
+    uint16_t sec_failed_error;          // PM_EVT_CONN_SEC_FAILED
+    uint8_t sec_failed_procedure;
+    uint32_t sec_params_reply_err;      // pm_conn_sec_params_reply()
+    uint8_t sec_params_replied;
+    uint8_t peer_io_caps;               // from BLE_GAP_EVT_SEC_PARAMS_REQUEST
+    uint8_t peer_flags;                 // bond | mitm << 1 | lesc << 2
+} m_diag;
+
+static void diag_ble(uint16_t evt_id) {
+    if (m_diag.ble_count < DIAG_BLE_EVTS) {
+        m_diag.ble_evts[m_diag.ble_count] = evt_id;
+    }
+    if (m_diag.ble_count < 0xFF) m_diag.ble_count++;
+}
+
+void ukm_hid_on_pm_evt(pm_evt_t const *p_evt) {
+    if (m_diag.pm_count < DIAG_PM_EVTS) {
+        m_diag.pm_evts[m_diag.pm_count] = (uint8_t)p_evt->evt_id;
+    }
+    if (m_diag.pm_count < 0xFF) m_diag.pm_count++;
+    if (p_evt->evt_id == PM_EVT_CONN_SEC_FAILED) {
+        m_diag.sec_failed_error = p_evt->params.conn_sec_failed.error;
+        m_diag.sec_failed_procedure = p_evt->params.conn_sec_failed.procedure;
+    }
+}
+
 // --- Services -----------------------------------------------------------------------------------
 
 static void hids_evt_handler(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
@@ -300,7 +339,24 @@ static void set_enabled(bool enabled) {
 // --- Events -------------------------------------------------------------------------------------
 
 static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
+    if (p_ble_evt->header.evt_id == BLE_GAP_EVT_CONNECTED) {
+        memset(&m_diag, 0, sizeof(m_diag));
+    }
+    diag_ble(p_ble_evt->header.evt_id);
     switch (p_ble_evt->header.evt_id) {
+        case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
+            ble_gap_sec_params_t const *peer = &p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params;
+            m_diag.peer_io_caps = peer->io_caps;
+            m_diag.peer_flags = peer->bond | (peer->mitm << 1) | (peer->lesc << 2);
+            break;
+        }
+
+        case BLE_GAP_EVT_AUTH_STATUS:
+            m_diag.auth_status = p_ble_evt->evt.gap_evt.params.auth_status.auth_status;
+            m_diag.auth_error_src = p_ble_evt->evt.gap_evt.params.auth_status.error_src;
+            m_diag.auth_bonded = p_ble_evt->evt.gap_evt.params.auth_status.bonded;
+            break;
+
         case BLE_GAP_EVT_CONNECTED:
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             m_peer_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
@@ -312,6 +368,7 @@ static void on_ble_evt(ble_evt_t const *p_ble_evt, void *p_context) {
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
+            m_diag.disconnect_reason = p_ble_evt->evt.gap_evt.params.disconnected.reason;
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
             m_peer_id = PM_PEER_ID_INVALID;
             m_neutral_pending = false;
@@ -354,6 +411,8 @@ bool ukm_hid_on_sec_params_req(pm_evt_t const *p_evt) {
     just_works.kdist_peer.id = 1;
     ret_code_t err = pm_conn_sec_params_reply(p_evt->conn_handle, &just_works,
                                               p_evt->params.conn_sec_params_req.p_context);
+    m_diag.sec_params_replied = 1;
+    m_diag.sec_params_reply_err = err;
     APP_ERROR_CHECK(err);
     return true;
 }
@@ -414,4 +473,38 @@ data_frame_tx_t *ukm_hid_cmd_state(uint16_t cmd, uint16_t status, uint16_t lengt
         memset(&payload[3], 0, BLE_GAP_ADDR_LEN);
     }
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), payload);
+}
+
+// [ble_count, pm_count, auth_status, auth_error_src, auth_bonded, disconnect_reason,
+//  sec_failed_procedure, sec_failed_error u16 BE, sec_params_replied, sec_params_reply_err u32 BE,
+//  peer_io_caps, peer_flags, ble_evts u16 BE x min(ble_count, 48), pm_evts u8 x min(pm_count, 16)]
+data_frame_tx_t *ukm_hid_cmd_diag(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    static uint8_t out[16 + DIAG_BLE_EVTS * 2 + DIAG_PM_EVTS];
+    uint16_t n = 0;
+    out[n++] = m_diag.ble_count;
+    out[n++] = m_diag.pm_count;
+    out[n++] = m_diag.auth_status;
+    out[n++] = m_diag.auth_error_src;
+    out[n++] = m_diag.auth_bonded;
+    out[n++] = m_diag.disconnect_reason;
+    out[n++] = m_diag.sec_failed_procedure;
+    out[n++] = (uint8_t)(m_diag.sec_failed_error >> 8);
+    out[n++] = (uint8_t)(m_diag.sec_failed_error & 0xFF);
+    out[n++] = m_diag.sec_params_replied;
+    out[n++] = (uint8_t)(m_diag.sec_params_reply_err >> 24);
+    out[n++] = (uint8_t)(m_diag.sec_params_reply_err >> 16);
+    out[n++] = (uint8_t)(m_diag.sec_params_reply_err >> 8);
+    out[n++] = (uint8_t)(m_diag.sec_params_reply_err & 0xFF);
+    out[n++] = m_diag.peer_io_caps;
+    out[n++] = m_diag.peer_flags;
+    uint8_t ble = m_diag.ble_count < DIAG_BLE_EVTS ? m_diag.ble_count : DIAG_BLE_EVTS;
+    for (uint8_t i = 0; i < ble; i++) {
+        out[n++] = (uint8_t)(m_diag.ble_evts[i] >> 8);
+        out[n++] = (uint8_t)(m_diag.ble_evts[i] & 0xFF);
+    }
+    uint8_t pm = m_diag.pm_count < DIAG_PM_EVTS ? m_diag.pm_count : DIAG_PM_EVTS;
+    for (uint8_t i = 0; i < pm; i++) {
+        out[n++] = m_diag.pm_evts[i];
+    }
+    return data_frame_make(cmd, STATUS_SUCCESS, n, out);
 }

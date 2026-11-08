@@ -20,6 +20,7 @@
 #define DATA_CMD_UKM_HID_KEYBOARD   (9002)  // [8-byte keyboard report] -> [state u8]
 #define DATA_CMD_UKM_HID_MOUSE      (9003)  // [7-byte mouse report] -> [state u8]
 #define DATA_CMD_UKM_HID_STATE      (9004)  // -> [state u8, peer_id u16 BE, peer_addr 6 bytes LE]
+#define DATA_CMD_UKM_HID_DIAG       (9005)  // -> event history of the last connection (debugging, see ukm_hid.c)
 
 // Statuses besides STATUS_SUCCESS (0x68) and STATUS_PAR_ERR (0x60).
 #define UKM_STATUS_BUSY             (0xA0)  // BLE notification queue full: retry shortly
@@ -41,6 +42,9 @@ bool ukm_hid_is_enabled(void);
 // Returns true when it replied.
 bool ukm_hid_on_sec_params_req(pm_evt_t const *p_evt);
 
+// Peer Manager hook for every event (diagnostics).
+void ukm_hid_on_pm_evt(pm_evt_t const *p_evt);
+
 // Peer Manager hook: remembers the peer of the current link.
 void ukm_hid_on_conn_sec_succeeded(pm_evt_t const *p_evt);
 
@@ -54,5 +58,6 @@ data_frame_tx_t *ukm_hid_cmd_set_enabled(uint16_t cmd, uint16_t status, uint16_t
 data_frame_tx_t *ukm_hid_cmd_keyboard(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data);
 data_frame_tx_t *ukm_hid_cmd_mouse(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data);
 data_frame_tx_t *ukm_hid_cmd_state(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data);
+data_frame_tx_t *ukm_hid_cmd_diag(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data);
 
 #endif // UKM_HID_H
