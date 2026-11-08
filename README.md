@@ -8,13 +8,14 @@
 
 <p align="center">
   <b>Your Mac's mouse and keyboard for any phone or tablet.</b><br>
-  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices.
+  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.
 </p>
 
 <p align="center">
   <a href="https://github.com/DeMoZ/UniversalKM/releases/latest"><img src="https://img.shields.io/github/v/release/DeMoZ/UniversalKM?color=3b4cc0" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-2b3245?logo=apple" alt="macOS 14+">
   <img src="https://img.shields.io/badge/Swift-6-f05138?logo=swift&logoColor=white" alt="Swift 6">
+  <img src="https://img.shields.io/badge/Android-USB%20%7C%20Wi--Fi-3ddc84?logo=android&logoColor=white" alt="Android over USB or Wi-Fi">
   <img src="https://img.shields.io/badge/BLE%20HID-ChameleonUltra-1f9d8a" alt="ChameleonUltra">
 </p>
 
@@ -33,21 +34,80 @@
 | 👻 **The Mac cursor stays out of the way** | While you control a device, the Mac cursor is hidden and does not move. |
 | 📱 **Up to three devices** | Three devices connect at once, each with its own zone in the layout. |
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
-| 🔌 **USB or Bluetooth** | The Chameleon runs over USB. Unplug the cable and the app carries on over Bluetooth. |
+| 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
+| 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
 | 🌍 **Your language** | The interface follows the system language: English, Russian, German, French, Spanish, Portuguese (Brazil), Italian, Chinese (Simplified), Japanese, Korean. |
 
 ## How it works
 
 <p align="center">
-  <img src="docs/images/architecture.svg" alt="A Mac running UniversalKM connects to a ChameleonUltra over USB-C (Bluetooth as fallback); the Chameleon acts as a BLE HID keyboard and mouse for a phone, a tablet and an iPhone">
+  <img src="docs/images/architecture.svg" alt="A Mac running UniversalKM reaches an Android phone over a USB cable (AOA) or over Wi-Fi (ADB), and an Android phone or iPhone through a ChameleonUltra on USB acting as a Bluetooth keyboard and mouse">
 </p>
 
-1. **UniversalKM** lives in the menu bar. It captures the mouse and keyboard when the cursor enters a device's zone and forwards key presses and motion.
-2. **ChameleonUltra** is plugged into the Mac over USB. The UniversalKM firmware turns it into an ordinary Bluetooth keyboard and mouse (BLE HID).
-3. **The phone** sees a standard Bluetooth keyboard and mouse. Nothing needs to be installed on it.
+UniversalKM lives in the menu bar. It captures the mouse and keyboard when the cursor enters a device's zone and sends key presses and motion to that device in one of three ways:
 
-## Why not the Mac's built-in Bluetooth
+| Way | Devices | What you need | Delay |
+|---|---|---|---|
+| **USB cable** | Android | A cable that carries data. Nothing to switch on. | ≈ 1 ms |
+| **Wi‑Fi (ADB)** | Android | Developer options on the phone, `adb` on the Mac | ≈ 5 ms¹ |
+| **ChameleonUltra** or a similar board | Android, iPhone | The board on USB with the UniversalKM firmware | 15–30 ms |
+
+The device always sees an ordinary keyboard and mouse: nothing is installed on it. The cable and Wi‑Fi come first because they need no extra hardware. One phone can use both, and the app moves between them by itself.
+
+¹ Half of the adb round trip, 8 ms median on a home network (Samsung Galaxy S10e).
+
+## Install
+
+1. Download `UniversalKM-<version>.zip` from the [latest release](https://github.com/DeMoZ/UniversalKM/releases/latest) and move the app to Applications. First launch: right-click → Open.
+2. Grant Accessibility access.
+3. Connect a device:
+   - **Android over a cable:** plug it in and press "Add…" next to it in the panel ([Android over USB](#android-over-usb)).
+   - **Android over Wi‑Fi:** see [Android over Wi-Fi (ADB)](#android-over-wi-fi-adb).
+   - **iPhone, or Android without developer options:** flash a ChameleonUltra with `chameleon-ultra-hid-dfu-app-<version>.zip` from the same release and pair the device with it ([iPhone: ChameleonUltra and similar boards](#iphone-chameleonultra-and-similar-boards)). The app asks for Bluetooth access.
+4. Drag the device next to a display edge in the layout.
+
+**Requirements:** macOS 14 or later, Apple Silicon. Building needs Xcode 27 and Swift 6.
+
+## Android over USB
+
+The Mac becomes an ordinary wired keyboard and mouse for the phone through the Android Open Accessory 2 protocol (AOA2 HID), the mechanism `scrcpy --otg` uses too. USB debugging is not needed, and nothing is installed on the phone.
+
+1. Connect the phone or tablet with a cable that carries data (with a charge-only cable nothing shows up).
+2. The panel lists it with an "Add…" button. Until you add it, the app leaves the phone alone: a phone plugged in just to charge keeps its on-screen keyboard.
+3. Press "Add…", then drag the device next to a display edge.
+
+- The phone is known by its serial number, so it keeps its place after unplugging, after a restart and in any USB mode (file transfer, charging only, tethering, photo transfer).
+- Unplugging the cable returns input to the Mac, unless the phone is also on Wi‑Fi: then work carries on over Wi‑Fi.
+- Quitting the app removes the keyboard and mouse from the phone, and its on-screen keyboard comes back.
+- It needs AOA 2, which practically every phone since Android 4.1 has. Some vendors leave AOA out; such a device is skipped, and Wi‑Fi or the Chameleon still work.
+- Tested on a Samsung Galaxy S10e (Android 12).
+
+How it works on the Mac: AOA is a handful of vendor control requests to the device on endpoint 0. IOKit lets any app send those without claiming an interface, so the app needs no libusb, no root and no special entitlement.
+
+## Android over Wi-Fi (ADB)
+
+Without a cable the app drives the phone over ADB: Android's built-in `hid` tool (`/system/bin/hid`) creates a virtual keyboard and mouse on the phone through UHID. No root and no app on the phone, but it needs developer options on the phone and `adb` on the Mac.
+
+1. Install adb: `brew install android-platform-tools` (or Android Studio). The app finds it in `/opt/homebrew/bin`, `/usr/local/bin` and `~/Library/Android/sdk/platform-tools`; without it the panel shows how to install it.
+2. On the phone, unlock developer options: Settings → About phone → tap "Build number" seven times.
+3. Connect the phone one of two ways:
+   - **Wireless debugging (Android 11 and later):** Developer options → Wireless debugging → "Pair device with pairing code" (not the QR code). In the panel press "Pair with code…" and enter the IP address with port and the six-digit code from that screen. From then on the app finds the phone on the network by itself whenever wireless debugging is on.
+   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and press "Enable Wi‑Fi" next to it in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and press "Enable Wi‑Fi" again.
+4. Add the device in the panel ("Add…") and place it next to a display edge.
+
+- A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.
+- If the phone leaves the network, input returns to the Mac within about 3 seconds. When it is back, the app reconnects by itself.
+- Delay: the adb round trip over Wi‑Fi was 8 ms median (12 ms at the 90th percentile, rare spikes of 100 ms) on a home network. The cable is faster.
+- With developer options and wireless debugging on, every computer you allowed can control the phone. Turn wireless debugging on only on networks you trust; Android turns it off when you change networks.
+
+## iPhone: ChameleonUltra and similar boards
+
+iOS accepts no keyboard from a USB host and has no ADB, so an iPhone (or an Android phone without developer options) needs a Bluetooth keyboard the Mac can drive. That is a separate board on USB; this project uses a ChameleonUltra. The UniversalKM firmware turns it into an ordinary Bluetooth keyboard and mouse (BLE HID), and the device pairs with it like with any Bluetooth keyboard.
+
+An iPad works the same way, but with the same Apple ID on both, Apple's Universal Control already does this without extra hardware.
+
+### Why not the Mac's built-in Bluetooth
 
 The obvious approach is for the Mac itself to pose as a Bluetooth keyboard. macOS does not allow it:
 
@@ -55,17 +115,17 @@ The obvious approach is for the Mac itself to pose as a Bluetooth keyboard. macO
 - **Classic Bluetooth.** IOBluetooth has no supported API for the HID device role: a Mac can connect keyboards but cannot be one.
 - **Universal Control** only works between a Mac and an iPad signed in to the same Apple ID.
 
-### A plain USB Bluetooth dongle does not help either
+#### A plain USB Bluetooth dongle does not help either
 
 Plugging in a second Bluetooth adapter and driving it directly sounds simple. On macOS it does not work:
 
 - macOS only uses its own Bluetooth controller and has no drivers for third-party USB adapters;
-- claiming a USB device from your own program requires the restricted entitlement `com.apple.vm.device-access`, so libusb is refused even as root;
+- claiming a USB interface of a device from your own program requires the restricted entitlement `com.apple.vm.device-access`, so libusb is refused even as root (plain control requests to a device, which Android over USB uses, need no claim);
 - cheap "Wi‑Fi + Bluetooth" adapters such as the AIC8800 show up as a Windows driver disk.
 
 This was checked with an AIC 88M80 adapter: it never switched into Bluetooth mode.
 
-### What does work
+#### What does work
 
 You need a separate microcontroller with Bluetooth LE that acts as an HID keyboard by itself and talks to the Mac over a USB port:
 
@@ -76,9 +136,9 @@ You need a separate microcontroller with Bluetooth LE that acts as an HID keyboa
 | ESP32‑S3 / ESP32‑C3 (any board with USB) | ESP32 | The cheapest option: BLE HID with NimBLE, USB serial to the Mac. |
 | Raspberry Pi Pico W / Pico 2 W | RP2040 / RP2350 + CYW43439 | BLE HID with BTstack. |
 
-The app supports only the ChameleonUltra for now. The transport is behind the `HIDTransport` protocol, so another board can be added with its own firmware and transport.
+Of these boards, the app supports only the ChameleonUltra for now. The transport is behind the `HIDTransport` protocol, so another board can be added with its own firmware and transport.
 
-## The device used here: ChameleonUltra
+### The device used here: ChameleonUltra
 
 [ChameleonUltra](https://github.com/RfidResearchGroup/ChameleonUltra) by RfidResearchGroup is an open-source, keyfob-sized NFC/RFID card emulator and reader. Inside is a **Nordic nRF52840**: a Cortex‑M4F with Bluetooth 5, everything a BLE keyboard needs. It was already at hand, so there was no need to buy an ESP32.
 
@@ -90,7 +150,7 @@ The app supports only the ChameleonUltra for now. The transport is behind the `H
 | **Flashed with** | `nrfutil` over USB through the Chameleon's stock DFU bootloader. The bootloader is never changed. |
 | **Built with** | Arm GNU Toolchain 12.2 and `make`, no Docker (`scripts/firmware-build.sh`) |
 
-### What the firmware adds
+#### What the firmware adds
 
 <p align="center">
   <img src="docs/images/firmware.svg" alt="Upstream ChameleonUltra, the project's firmware/src and 8 patches are built by firmware-build.sh into a DFU package, which nrfutil flashes to the Chameleon over USB DFU">
@@ -111,16 +171,7 @@ The project's own code is in `firmware/src/` (`ukm_hid.c`, `ukm_report_map.h`). 
 
 HID reports: keyboard (ID 1, 8 bytes, plus LEDs) and mouse (ID 2, buttons, 16‑bit X/Y, wheel and horizontal scroll). Cards, slots, buttons and the stock Chameleon client keep working. The keyboard and mouse mode is turned on only by the app.
 
-## Install
-
-1. Download `UniversalKM-<version>.zip` from the [latest release](https://github.com/DeMoZ/UniversalKM/releases/latest) and move the app to Applications. First launch: right-click → Open.
-2. Flash the Chameleon with `chameleon-ultra-hid-dfu-app-<version>.zip` from the same release (see below), or build the firmware yourself.
-3. Grant Accessibility and Bluetooth access.
-4. Pair the phone with `ChameleonUltra` in its Bluetooth settings, then place the device next to a display edge in the layout ("+" button).
-
-**Requirements:** macOS 14 or later, Apple Silicon. Building needs Xcode 27 and Swift 6.
-
-## ChameleonUltra: build and flash
+### ChameleonUltra: build and flash
 
 ```bash
 scripts/firmware-build.sh       # build/ultra-dfu-app.zip
@@ -131,7 +182,7 @@ scripts/firmware-flash.sh       # flash over USB (stock DFU)
 - **Flash.** Quit the stock Chameleon client and UniversalKM: only one program can hold the port. The script puts the Chameleon into DFU by itself. If that fails, switch the Chameleon off, hold button B and plug in USB (LEDs 4 and 5 blink); the script waits.
 - **Roll back to the official firmware:** `scripts/firmware-flash.sh --official` (the default version is `OFFICIAL_TAG` in `firmware/UPSTREAM`) or `scripts/firmware-flash.sh --official v2.3.0`.
 
-## Pairing a phone or tablet
+### Pairing a phone or tablet
 
 While UniversalKM runs, the Chameleon advertises itself as a Bluetooth keyboard named `ChameleonUltra`. Up to three devices connect at once. Reports go to the device that has the input.
 
@@ -142,7 +193,7 @@ While UniversalKM runs, the Chameleon advertises itself as a Bluetooth keyboard 
 - **Pairing is remembered:** after the app or the Chameleon restarts, devices reconnect by themselves. To remove a pairing: "Forget device" on the phone, `hw settings bleclearbonds` on the Chameleon.
 - **When the app is closed,** the Chameleon disconnects the devices and stops advertising until the next launch, and the phone's on-screen keyboard comes back.
 
-## USB and Bluetooth between the Mac and the Chameleon
+### USB and Bluetooth between the Mac and the Chameleon
 
 The app finds the Chameleon over USB by itself and keeps a Bluetooth connection to it at the same time (the stock Nordic UART link; this is not macOS pairing).
 
@@ -192,4 +243,4 @@ The app checks for updates once a day; the "Updates" button at the bottom of the
 
 UniversalKM is free. The "♥ Support" button at the bottom of the panel shows ways to support it. They are loaded from [DeMoZ/donations](https://github.com/DeMoZ/donations) (`universalkm.json`), so the links change without a new release.
 
-> Plan and requirements: `openspec/changes/add-ble-hid-input-bridge/`.
+> Plan and requirements: `openspec/changes/add-ble-hid-input-bridge/`; Android over USB and Wi‑Fi: `openspec/changes/add-android-usb-transport/`.

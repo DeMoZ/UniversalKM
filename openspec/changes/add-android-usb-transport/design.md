@@ -94,7 +94,7 @@ README.md и README.ru.md (одинаковая структура):
 1. Шапка и Features: «Android по кабелю или по Wi‑Fi, без дополнительных устройств; iPhone и iPad — через ChameleonUltra».
 2. «How it works» — три способа, таблица: **USB** (кабель, ничего не включать, ~1 мс), **Wi‑Fi (ADB)** (режим разработчика и `adb`, ~5 мс), **ChameleonUltra / nRF52840 / ESP32** (Android + iPhone + iPad, без отладки, 15–30 мс). `docs/images/architecture.svg` — три пути.
 3. Разделы «Android по проводу» и «Android по Wi‑Fi» (установка `brew install android-platform-tools`, «Отладка по Wi‑Fi» и сопряжение по коду, `adb tcpip`, ограничения).
-4. Затем существующие разделы про Chameleon блоком «iPhone, iPad и без отладки: ChameleonUltra и похожие платы». Фраза про libusb уточняется.
+4. Затем существующие разделы про Chameleon блоком «iPhone: ChameleonUltra и похожие платы» (iPad там упомянут одной строкой: при одном Apple ID его покрывает «Универсальное управление»). Фраза про libusb уточняется.
 
 ## Risks / Trade-offs
 
