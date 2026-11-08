@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "desktopcomputer", accessibilityDescription: "UniversalKM")
+        item.button?.image = StatusIcon.make()
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         statusItem = item

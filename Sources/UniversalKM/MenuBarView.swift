@@ -32,9 +32,10 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "desktopcomputer")
-                .font(.title2)
-                .foregroundStyle(.tint)
+            // The app icon from the bundle; a `swift run` build has none and shows the generic one.
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 28, height: 28)
             Text("UniversalKM").font(.headline)
             Spacer()
         }
