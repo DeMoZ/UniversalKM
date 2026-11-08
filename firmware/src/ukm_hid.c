@@ -271,10 +271,15 @@ static void set_enabled(bool enabled) {
     m_neutral_pending = false;
     if (enabled) {
         m_keep_adv_stopped = false;
-        ble_advertising_hid_mode_set(true);
         if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
+            // Not advertising: the new data is used when advertising restarts after this link.
+            ble_advertising_hid_mode_set(true);
             request_fast_conn_params();
         } else {
+            // ble_advertising_start() reconfigures the advertising set, which the SoftDevice refuses
+            // (NRF_ERROR_INVALID_STATE -> APP_ERROR_CHECK -> reset) while advertising runs: stop first.
+            advertising_stop();
+            ble_advertising_hid_mode_set(true);
             advertising_start(false);
         }
     } else {
