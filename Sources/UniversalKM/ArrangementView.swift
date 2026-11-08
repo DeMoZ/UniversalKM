@@ -220,7 +220,7 @@ struct ArrangementView: View {
                     .rotationEffect(.degrees(device.orientation == .landscape ? 90 : 0))
                     .foregroundStyle(.tint)
                 if rect.height > 48 {
-                    Text(device.name).font(.system(size: 9, weight: .medium)).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(device.displayName).font(.system(size: 9, weight: .medium)).lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
             .padding(2)
@@ -258,7 +258,7 @@ struct ArrangementView: View {
         .scaleEffect(isDragging ? ArrangementStyle.dragScale : 1)
         .shadow(color: .black.opacity(isDragging ? 0.3 : 0), radius: isDragging ? 6 : 0, y: isDragging ? 3 : 0)
         .opacity(isDragging ? ArrangementStyle.dragOpacity : 1)
-        .help(connected ? String(localized: "\(device.name): connected — drag next to a display edge") : String(localized: "\(device.name): waiting for connection — drag next to a display edge"))
+        .help(connected ? String(localized: "\(device.displayName): connected — drag next to a display edge") : String(localized: "\(device.displayName): waiting for connection — drag next to a display edge"))
         .offset(x: rect.minX, y: rect.minY)
         .onHover { inside in
             hovered = inside ? device.id : (hovered == device.id ? nil : hovered)
