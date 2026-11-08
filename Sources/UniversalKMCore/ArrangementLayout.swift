@@ -27,11 +27,15 @@ public struct HandoffZone: Equatable, Sendable {
     public var isEmpty: Bool { segments.isEmpty }
 }
 
-/// Where a device is drawn and where its zone is.
+/// Where a device is drawn and where its zones are.
 public struct DeviceLayout: Equatable, Sendable {
     public var device: PlacedDevice
     public var rect: CGRect
+    /// Zone on the edge the device is snapped to (the first of `zones`).
     public var zone: HandoffZone
+    /// Every display edge the device touches flush, the snapped one first: a device in a corner
+    /// between two displays takes input through both.
+    public var zones: [HandoffZone]
     /// The anchor display is not connected: the device is shown in the default place for now.
     public var isTemporary: Bool
 }
@@ -73,9 +77,8 @@ public enum ArrangementLayout {
                 rect = snapped.rect
             }
             placed.append(rect)
-            result.append(DeviceLayout(device: device, rect: rect,
-                                       zone: zone(device: placement, rect: rect, displays: displays),
-                                       isTemporary: temporary))
+            let all = zones(device: placement, rect: rect, displays: displays)
+            result.append(DeviceLayout(device: device, rect: rect, zone: all[0], zones: all, isTemporary: temporary))
         }
         return result
     }
@@ -95,15 +98,41 @@ public enum ArrangementLayout {
     /// The device side's overlap with the anchor display's edge, minus parts where another display
     /// touches that edge (there the cursor simply moves on to that display).
     public static func zone(device: PlacedDevice, rect: CGRect, displays: [DisplayInfo]) -> HandoffZone {
-        var zone = HandoffZone(deviceID: device.id, displayUUID: device.anchorDisplayUUID, side: device.side, segments: [])
-        guard let display = displays.first(where: { $0.uuid == device.anchorDisplayUUID })?.frame else { return zone }
-        let (edgeStart, edgeEnd) = edgeRange(display, device.side)
-        let (devStart, devEnd) = device.side.isVertical ? (Double(rect.minY), Double(rect.maxY)) : (Double(rect.minX), Double(rect.maxX))
+        zone(deviceID: device.id, displayUUID: device.anchorDisplayUUID, side: device.side, rect: rect, displays: displays)
+    }
+
+    /// Zones on every display edge the device rectangle is flush against: the snapped edge first,
+    /// then the others (a device in the corner between two displays).
+    public static func zones(device: PlacedDevice, rect: CGRect, displays: [DisplayInfo]) -> [HandoffZone] {
+        var result = [zone(device: device, rect: rect, displays: displays)]
+        let epsilon = 0.5
+        for display in displays {
+            let d = display.frame
+            for side in DisplaySide.allCases where !(display.uuid == device.anchorDisplayUUID && side == device.side) {
+                let flush: Bool = switch side {
+                case .right: abs(rect.minX - d.maxX) < epsilon
+                case .left: abs(rect.maxX - d.minX) < epsilon
+                case .top: abs(rect.maxY - d.minY) < epsilon
+                case .bottom: abs(rect.minY - d.maxY) < epsilon
+                }
+                guard flush else { continue }
+                let extra = zone(deviceID: device.id, displayUUID: display.uuid, side: side, rect: rect, displays: displays)
+                if !extra.isEmpty { result.append(extra) }
+            }
+        }
+        return result
+    }
+
+    static func zone(deviceID: UUID, displayUUID: String, side: DisplaySide, rect: CGRect, displays: [DisplayInfo]) -> HandoffZone {
+        var zone = HandoffZone(deviceID: deviceID, displayUUID: displayUUID, side: side, segments: [])
+        guard let display = displays.first(where: { $0.uuid == displayUUID })?.frame else { return zone }
+        let (edgeStart, edgeEnd) = edgeRange(display, side)
+        let (devStart, devEnd) = side.isVertical ? (Double(rect.minY), Double(rect.maxY)) : (Double(rect.minX), Double(rect.maxX))
         let start = max(edgeStart, devStart), end = min(edgeEnd, devEnd)
         guard end > start else { return zone }
         var segments = [start...end]
         for other in displays where other.frame != display {
-            guard let blocked = touchingRange(display, device.side, other.frame) else { continue }
+            guard let blocked = touchingRange(display, side, other.frame) else { continue }
             segments = segments.flatMap { subtract(blocked, from: $0) }
         }
         zone.segments = segments
@@ -215,9 +244,14 @@ public enum ArrangementLayout {
 /// Does a mouse event push into a handoff zone? (design D8)
 public enum HandoffZoneDetector {
     /// The device whose zone the point is in while the motion goes outward; nil otherwise.
+    public static func device(at point: CGPoint, delta: CGVector, zones: [HandoffZone], displays: [DisplayInfo]) -> UUID? {
+        zone(at: point, delta: delta, zones: zones, displays: displays)?.deviceID
+    }
+
+    /// The zone the point is in while the motion goes outward; nil otherwise.
     /// The point must be on the last pixel of the zone's side, inside one of its segments, and the
     /// delta must point away from the display — a cursor merely resting at the edge does not count.
-    public static func device(at point: CGPoint, delta: CGVector, zones: [HandoffZone], displays: [DisplayInfo]) -> UUID? {
+    public static func zone(at point: CGPoint, delta: CGVector, zones: [HandoffZone], displays: [DisplayInfo]) -> HandoffZone? {
         for zone in zones where !zone.isEmpty {
             guard let display = displays.first(where: { $0.uuid == zone.displayUUID })?.frame else { continue }
             let x = Double(point.x), y = Double(point.y)
@@ -229,7 +263,7 @@ public enum HandoffZoneDetector {
             case .bottom: atEdge = y >= Double(display.maxY) - 1 && y < Double(display.maxY) + 1; outward = delta.dy > 0; along = x
             }
             if atEdge && outward && zone.segments.contains(where: { $0.contains(along) }) {
-                return zone.deviceID
+                return zone
             }
         }
         return nil

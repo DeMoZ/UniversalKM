@@ -44,7 +44,9 @@ struct ArrangementView: View {
                     displayView(display, map: map)
                 }
                 ForEach(state.layouts, id: \.device.id) { layout in
-                    zoneView(layout.zone, map: map, dashed: false)
+                    ForEach(Array(layout.zones.enumerated()), id: \.offset) { _, zone in
+                        zoneView(zone, map: map, dashed: false)
+                    }
                 }
                 if let id = dragging, let preview = dragPreview(id, map: map) {
                     ghostView(preview, map: map)
@@ -142,13 +144,15 @@ struct ArrangementView: View {
 
     private func ghostView(_ preview: (snap: ArrangementLayout.Snap, device: PlacedDevice), map: Mapping) -> some View {
         let rect = map.view(preview.snap.rect)
-        let zone = ArrangementLayout.zone(device: preview.device, rect: preview.snap.rect, displays: state.displays)
+        let zones = ArrangementLayout.zones(device: preview.device, rect: preview.snap.rect, displays: state.displays)
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: ArrangementStyle.deviceCorner)
                 .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 .frame(width: rect.width, height: rect.height)
                 .offset(x: rect.minX, y: rect.minY)
-            zoneView(zone, map: map, dashed: true)
+            ForEach(Array(zones.enumerated()), id: \.offset) { _, zone in
+                zoneView(zone, map: map, dashed: true)
+            }
         }
         .allowsHitTesting(false)
     }
