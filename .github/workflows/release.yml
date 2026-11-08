@@ -28,6 +28,26 @@ jobs:
       - name: Unit tests
         run: swift test
 
+      # The project's self-signed certificate: a stable signature keeps the Accessibility grant across
+      # updates (macOS ties it to the certificate). Without the secrets the app is signed ad-hoc.
+      - name: Import the signing certificate
+        env:
+          SIGNING_CERTIFICATE_P12: ${{ secrets.SIGNING_CERTIFICATE_P12 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          if [[ -z "$SIGNING_CERTIFICATE_P12" ]]; then echo "::warning::no signing certificate, signing ad-hoc"; exit 0; fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -hex 16)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$SIGNING_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -f pkcs12 -P "$SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security find-identity -p codesigning "$keychain" | grep "UniversalKM Self-Signed"
+
       - name: Build the app (build/UniversalKM-<version>.zip)
         run: scripts/build-app.sh --zip
 

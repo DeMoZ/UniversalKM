@@ -34,25 +34,33 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS/UniversalKM" 2>/dev/null || true
 
+# Identity: SIGN_IDENTITY, else an Apple Development certificate, else the project's self-signed
+# certificate "UniversalKM Self-Signed" (README, "Подпись"), else ad-hoc. Any stable certificate keeps
+# the Accessibility grant across rebuilds and updates: macOS ties it to the certificate, not the build.
+SELF_SIGNED="UniversalKM Self-Signed"
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
   SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | sed -nE 's/.*"(Apple Development: [^"]+)".*/\1/p' | head -n 1)"
 fi
+if [[ -z "$SIGN_IDENTITY" ]] && security find-identity -p codesigning 2>/dev/null | grep -q "\"$SELF_SIGNED\""; then
+  SIGN_IDENTITY="$SELF_SIGNED"
+fi
 if [[ -z "$SIGN_IDENTITY" ]]; then
   SIGN_IDENTITY="-"
-  echo "WARNING: no 'Apple Development' signing identity found; signing ad-hoc." >&2
+  echo "WARNING: no signing certificate found; signing ad-hoc." >&2
   echo "WARNING: macOS will forget the Accessibility / Input Monitoring grants after every rebuild or update." >&2
   echo "WARNING: set SIGN_IDENTITY to a stable identity to keep them (see README)." >&2
 fi
 
 sign() { # sign <path> [extra codesign options]
-  if [[ "$SIGN_IDENTITY" == "-" ]]; then
-    # Ad-hoc: no hardened runtime. Its library validation needs a Team ID, which ad-hoc signatures
-    # lack, so dyld would refuse to load Sparkle.framework (as in EnhanceCapCut).
-    codesign --force --sign - "${@:2}" "$1"
-  else
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "${@:2}" "$1"
-  fi
+  case "$SIGN_IDENTITY" in
+    "Apple Development:"*|"Developer ID Application:"*)
+      codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "${@:2}" "$1" ;;
+    *)
+      # Ad-hoc or self-signed: no hardened runtime. Its library validation needs a Team ID, which these
+      # signatures lack, so dyld would refuse to load Sparkle.framework (as in EnhanceCapCut).
+      codesign --force --sign "$SIGN_IDENTITY" "${@:2}" "$1" ;;
+  esac
 }
 
 echo "==> codesign ($SIGN_IDENTITY)"
