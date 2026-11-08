@@ -17,6 +17,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("launched \(self.version, privacy: .public), arguments: \(CommandLine.arguments, privacy: .public)")
         setUpStatusItem()
+        transport.start()
+    }
+
+    // MARK: ChameleonUltra (design D5)
+
+    /// Latest transport status, for the panel (task 3.3) and the BLE demo (task 1.12).
+    @Published private(set) var transportStatus = TransportStatus.notConnected
+
+    private(set) lazy var transport: HIDTransport = ChameleonHIDTransport { [weak self] status in
+        Task { @MainActor in self?.transportStatus = status }
     }
 
     // MARK: Menu bar icon and panel (design D13)
@@ -64,6 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func applicationWillTerminate(_ notification: Notification) {
         log.info("terminating")
+        // Hosts get neutral reports and are disconnected; the Chameleon leaves the scan list (design D13).
+        transport.shutdown(timeout: 0.3)
     }
 
     func quit() {
