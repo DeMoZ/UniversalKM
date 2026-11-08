@@ -10,6 +10,18 @@
 - **Дескриптор и отчёты готовы.** `HIDReportDescriptor.reportMap` — составной: клавиатура (Report ID 1, 8 байт, LED‑выход) и мышь (Report ID 2, 7 байт: кнопки, X/Y int16, колесо, AC Pan). `KeyboardReport`/`MouseReport` кодируют байты, `MouseAccumulator` переносит дробные части.
 - **USB: AOA2 HID проверен 2026‑11‑09** (Samsung S10e `04e8:6860`, пробник на libusb): `GET_PROTOCOL` (51) → 2; `REGISTER_HID` (54, value = id, index = длина дескриптора), `SET_HID_REPORT_DESC` (56), `SEND_HID_EVENT` (57), `UNREGISTER_HID` (55) — vendor‑запросы по нулевой конечной точке, без режима accessory, без отладки, без диалога на телефоне. libusb без root работал: нужны только управляющие запросы к устройству, без захвата интерфейса.
 - **Wi‑Fi: ADB + `/system/bin/hid` проверен 2026‑11‑09** (тот же телефон, Android 12, кабель отключён): `adb shell hid -` читает поток JSON‑объектов (`{"id":1,"command":"register","name":…,"vid":…,"pid":…,"bus":"bluetooth","descriptor":[…]}`, затем `{"id":1,"command":"report","report":[…]}`) и создаёт UHID‑устройство; составной дескриптор с Report ID принят; пользователь `shell` в группе `uhid`. 360 отчётов мыши за 3,5 с прошли, текст набрался. Время ADB‑shell туда‑обратно по Wi‑Fi: медиана 8 мс, p90 12 мс, редкие выбросы ~100 мс. `ro.serialno` = серийный номер USB (`R28M303RHET`). `adb tcpip 5555` + `adb connect <ip>:5555` работают; адрес — из `ip -4 addr show wlan0`.
+- **USB через IOKit без libusb — проверено (задачи 1.1–1.2).** `IOCreatePlugInInterfaceForService(kIOUSBDeviceUserClientTypeID)` → `IOUSBDeviceInterface650`, `DeviceRequestTO` без `USBDeviceOpen`, без root: `GET_PROTOCOL` = 2, одно HID с составным `reportMap` (140 байт) принято; курсор, прокрутка и «Hello 123» работают (`scripts/aoa-probe.c` + `Sources/UKMUSB`). `UNREGISTER_HID` для незарегистрированного id отвечает stall (`0xe000404f`) — не ошибка.
+- **Режимы USB Samsung S10e (задача 1.3):**
+
+  | Режим | PID | Интерфейсы | AOA |
+  |---|---|---|---|
+  | Передача файлов, отладка вкл. | `6860` | MTP `06/01/01`, CDC ACM, `FF/40/02`, ADB `FF/42/01` | 2 |
+  | Только зарядка | `6860` | MTP, ADB | 2 |
+  | USB‑модем | `6864` | RNDIS `E0/01/03` + данные, ADB | 2 |
+  | Передача изображений | `6866` | PTP `06/01/01`, ADB | 2 |
+  | Передача файлов, отладка выкл. | `6860` | MTP, CDC ACM | 2 |
+
+  Серийный номер `R28M303RHET` во всех режимах. Правило опроса D4 покрывает все режимы; запасной список vendor ID не нужен.
 - **Встроенный Bluetooth Mac не может быть HID‑периферией** (`CBPeripheralManager` отказывает для `0x1812`, проверено 2026‑11‑08).
 
 ## Goals / Non-Goals
