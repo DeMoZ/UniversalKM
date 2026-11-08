@@ -87,46 +87,66 @@ struct MenuBarView: View {
     @ViewBuilder
     private var status: some View {
         VStack(alignment: .leading, spacing: 4) {
-            switch state.transportStatus {
-            case .notConnected:
-                Label("Chameleon not connected", systemImage: "cable.connector.slash")
-                    .foregroundStyle(.orange)
-            case .unsupportedFirmware:
-                HStack(spacing: 4) {
-                    Label("Chameleon firmware has no keyboard and mouse mode", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                    Link("How to flash", destination: Self.readmeFirmware)
-                }
-            case .ready:
-                ForEach(state.arrangement.devices) { device in
-                    HStack(spacing: 6) {
-                        Circle().fill(state.isConnected(device) ? Color.green : Color.gray).frame(width: 7, height: 7)
-                        Text(device.displayName).fontWeight(.medium)
-                        Text(state.isConnected(device) ? String(localized: "— connected") : String(localized: "— waiting for connection…"))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if state.arrangement.devices.isEmpty {
-                    Text("Add a device with the “+” button and pair it with ChameleonUltra in its Bluetooth settings.")
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                ForEach(state.unboundHosts, id: \.self) { peer in
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle").foregroundStyle(.tint)
-                        Text("New device connected #\(Int(peer))")
-                        Spacer()
-                        Button("Add…") {
-                            newHostPeerID = peer
-                            newName = ""
-                            adding = true
-                        }
-                        .disabled(!state.arrangement.canAddDevice)
-                    }
+            ForEach(state.arrangement.devices) { device in
+                HStack(spacing: 6) {
+                    Circle().fill(state.isConnected(device) ? Color.green : Color.gray).frame(width: 7, height: 7)
+                    Text(device.displayName).fontWeight(.medium)
+                    Text(connectionText(device)).foregroundStyle(.secondary)
                 }
             }
+            if state.arrangement.devices.isEmpty {
+                Text("Connect an Android phone or tablet with a cable or over Wi‑Fi, or pair a device with ChameleonUltra, then add it with the “+” button.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(state.unboundHosts, id: \.self) { peer in
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle").foregroundStyle(.tint)
+                    Text(state.hostName(peer))
+                    Spacer()
+                    Button("Add…") {
+                        newHostPeerID = peer
+                        newName = state.androidStatus.device(peer)?.name ?? ""
+                        adding = true
+                    }
+                    .disabled(!state.arrangement.canAddDevice)
+                }
+            }
+            chameleonStatus
         }
         .font(.callout)
+    }
+
+    private func connectionText(_ device: PlacedDevice) -> String {
+        switch state.connection(of: device) {
+        case .usb: String(localized: "— USB")
+        case .wifi: String(localized: "— Wi‑Fi")
+        case .chameleon: String(localized: "— Bluetooth via Chameleon")
+        case nil: String(localized: "— waiting for connection…")
+        }
+    }
+
+    /// ChameleonUltra comes second (add-android-usb-transport): an error only when the layout needs it.
+    @ViewBuilder
+    private var chameleonStatus: some View {
+        switch state.transportStatus {
+        case .notConnected:
+            if state.usesChameleon {
+                Label("Chameleon not connected", systemImage: "cable.connector.slash")
+                    .foregroundStyle(.orange)
+            }
+        case .unsupportedFirmware:
+            HStack(spacing: 4) {
+                Label("Chameleon firmware has no keyboard and mouse mode", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Link("How to flash", destination: Self.readmeFirmware)
+            }
+            .font(.caption)
+        case .ready:
+            Label("ChameleonUltra connected", systemImage: "dot.radiowaves.left.and.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var permissionRow: some View {

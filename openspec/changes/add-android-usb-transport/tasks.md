@@ -17,8 +17,8 @@
 
 ## 3. Android‑транспорт: каркас и USB‑канал
 
-- [ ] 3.1 `AndroidUSBDeviceWatcher.swift`: появление и пропажа `IOUSBHostDevice`, vendor/product/серийный/интерфейсы, фильтр 2.1, `GET_PROTOCOL` (design D2, D4). Проверка: в журнале `scripts/run.sh` при подключении Samsung — «AOA 2, available» за ≤ 2 с; Chameleon и кейс Apple — без запросов AOA; выдёргивание — «gone».
-- [ ] 3.2 `AOALink.swift` и `AndroidHIDTransport.swift` (`HIDTransport`, design D1, D4, D6): хосты по peer ID, каналы, регистрация только для привязанных peer ID при `setEnabled(true)`, очередь клавиатуры без потерь, слияние мыши (`MouseAccumulator`, 250 Гц), `sendNeutral`, снятие, `shutdown(timeout:)` ≤ 0,3 с, `UNREGISTER_HID` при запуске; `AndroidStatus` через обработчик. Проверка: `scripts/run.sh --ble-demo` рисует квадрат, щёлкает и печатает «hello» на Samsung по USB без Chameleon.
+- [x] 3.1 `AndroidUSBDeviceWatcher.swift`: появление и пропажа `IOUSBHostDevice`, vendor/product/серийный/интерфейсы, фильтр 2.1, `GET_PROTOCOL` (design D2, D4). Проверка: в журнале `scripts/run.sh` при подключении Samsung — «AOA 2, available» за ≤ 2 с; Chameleon и кейс Apple — без запросов AOA; выдёргивание — «gone».
+- [x] 3.2 `AOALink.swift` и `AndroidHIDTransport.swift` (`HIDTransport`, design D1, D4, D6): хосты по peer ID, каналы, регистрация только для привязанных peer ID при `setEnabled(true)`, очередь клавиатуры без потерь, слияние мыши (`MouseAccumulator`, 250 Гц), `sendNeutral`, снятие, `shutdown(timeout:)` ≤ 0,3 с, `UNREGISTER_HID` при запуске; `AndroidStatus` через обработчик. Проверка: `scripts/run.sh --ble-demo` рисует квадрат, щёлкает и печатает «hello» на Samsung по USB без Chameleon.
 - [ ] 3.3 Ошибки и отключение USB (design D5, D7): `NoDevice/NotResponding` и `kIOTerminatedNotification` → канал потерян; тот же серийный снова → регистрация. Проверка: 5 раз выдернуть и вставить кабель во время демо — демо продолжается; смена режима USB — снова `registered` с тем же peer ID.
 
 ## 4. Два транспорта в приложении

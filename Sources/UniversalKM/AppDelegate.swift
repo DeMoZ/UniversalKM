@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     // MARK: State (design D13)
 
-    private(set) lazy var state = AppStateManager(transport: transport)
+    private(set) lazy var state: AppStateManager = AppStateManager(transport: transport, android: android, demoBindsAll: isBLEDemo)
 
     private func startCapture() {
         state.onModeChange = { [weak self] device in
@@ -40,18 +40,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         state.start()
     }
 
-    // MARK: ChameleonUltra (design D5)
+    // MARK: Transports: Android (USB, Wi‑Fi) and ChameleonUltra (design D5; add-android-usb-transport D1)
 
-    /// Latest transport status, for the panel (task 3.3) and the BLE demo (task 1.12).
+    /// Latest Chameleon status, for the panel (task 3.3).
     @Published private(set) var transportStatus = TransportStatus.notConnected
 
-    private(set) lazy var transport: HIDTransport = ChameleonHIDTransport { [weak self] status in
+    private lazy var chameleon: ChameleonHIDTransport = ChameleonHIDTransport { [weak self] status in
         Task { @MainActor in
             self?.transportStatus = status
-            self?.demo?.statusChanged(status)
             self?.state.transportChanged(status)
+            self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
         }
     }
+
+    private(set) lazy var android: AndroidHIDTransport = AndroidHIDTransport { [weak self] status in
+        Task { @MainActor in
+            self?.state.androidChanged(status)
+            self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
+        }
+    }
+
+    private(set) lazy var transport: HIDTransport = CompositeHIDTransport(chameleon: chameleon, android: android)
 
     /// `--ble-demo` only (task 1.12).
     private lazy var demo: BLEDemo? = isBLEDemo ? BLEDemo(transport: transport) : nil

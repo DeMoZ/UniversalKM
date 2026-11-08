@@ -2,8 +2,9 @@ import Foundation
 import os
 import UniversalKMCore
 
-/// `UniversalKM --ble-demo` (task 1.12): checks the whole chain Mac → Chameleon → phone without the
-/// event tap. Each host that subscribes to reports gets, one host at a time: a square drawn with the
+/// `UniversalKM --ble-demo` (task 1.12): checks the whole chain Mac → Chameleon or Android → phone
+/// without the event tap; every available Android device is bound for it. Each host that subscribes
+/// to reports gets, one host at a time: a square drawn with the
 /// pointer, a left click, "hello" typed, then neutral reports. A host that reconnects gets it again.
 @MainActor
 final class BLEDemo {
@@ -17,13 +18,9 @@ final class BLEDemo {
         self.transport = transport
     }
 
-    func statusChanged(_ status: TransportStatus) {
-        guard case .ready(let state) = status else {
-            subscribed = []
-            waiting = []
-            return
-        }
-        let now = state.subscribedPeerIDs
+    /// Hosts that take reports right now: Chameleon subscribers and registered Android devices.
+    func peersChanged(_ peers: [UInt16]) {
+        let now = Set(peers)
         for peer in now.subtracting(subscribed).sorted() where !waiting.contains(peer) {
             log.info("host \(peer) subscribed: demo queued")
             waiting.append(peer)
