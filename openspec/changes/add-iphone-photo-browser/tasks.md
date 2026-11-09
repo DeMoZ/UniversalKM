@@ -2,11 +2,19 @@
 
 ## 1. Проверка на настоящем iPhone (design D1, D3, D5, D6)
 
-- [ ] 1.1 Временная проба в scratchpad (не в проекте): `ICDeviceBrowser` → `ICCameraDevice` iPhone пользователя по кабелю. Записать: нужен ли ключ Info.plist или окно разрешения macOS; что видно при заблокированном и недоверенном iPhone (`isLocked`, `isAccessRestrictedAppleDevice`); `iCloudPhotosEnabled`, есть ли `ICCameraDeviceCanDeleteOneFile`; как идёт Live Photo (`groupUUID`/`relatedUUID`, `sidecarFiles`); скорость скачивания видео; удаление одного тестового снимка, снятого для пробы, и попадает ли он в «Недавно удалённые». Результат — в этом пункте и при расхождении с дизайном — правка design.md до продолжения.
+- [x] 1.1 Временная проба в scratchpad (не в проекте): `ICDeviceBrowser` → `ICCameraDevice` iPhone пользователя по кабелю. Записать: нужен ли ключ Info.plist или окно разрешения macOS; что видно при заблокированном и недоверенном iPhone (`isLocked`, `isAccessRestrictedAppleDevice`); `iCloudPhotosEnabled`, есть ли `ICCameraDeviceCanDeleteOneFile`; как идёт Live Photo (`groupUUID`/`relatedUUID`, `sidecarFiles`); скорость скачивания видео; удаление одного тестового снимка, снятого для пробы, и попадает ли он в «Недавно удалённые». Результат — в этом пункте и при расхождении с дизайном — правка design.md до продолжения.
+  - 2026-11-10, iPhone пользователя по USB, проба из терминала:
+    - Разрешение: окна разрешения macOS не было, ключ Info.plist не понадобился (у приложения проверить в 4.3).
+    - Доступ: после разблокировки iPhone сессия сначала отвечает -9943 «Please unlock», через 0,1 с приходит `cameraDeviceDidRemoveAccessRestriction` и весь каталог (192 файла за 0,1 с).
+    - Новые снимки: iPhone составляет каталог в момент подключения. Снятое при подключённом кабеле не приходит ни через `didAdd`, ни после перезапуска `ptpcamerad`, «Захват изображений» тоже не видит. Видно только после переподключения кабеля. → сценарий «Новое фото» заменён.
+    - `iCloudPhotosEnabled` = false (у пользователя «Фото iCloud» выключены), есть `ICCameraDeviceCanDeleteOneFile`.
+    - Live Photo: в `mediaFiles` только HEIC, у него `groupUUID` и `sidecarFiles` = [IMG_xxxx.MOV]; опция `ICDownloadSidecarFiles` скачивает оба файла рядом. Отдельной пары в каталоге нет.
+    - Скорость: видео 52 МБ за 1,5 с (34,5 МБ/с), HEIC 0,9 МБ за 0,1 с. Даты файлов на Mac — даты съёмки.
+    - Удаление IMG_6163 (обычное) и IMG_6165 (Live): `ICDeleteSuccessful` для обоих, `didRemove` сразу, в каталоге 190. Попадают ли в «Недавно удалённые» и ушло ли видео Live Photo — смотрит пользователь.
 
 ## 2. Логика в `UniversalKMCore`
 
-- [ ] 2.1 `PhotoItem` (имя, дата, размер, длительность, тип, id) и группировка в снимки: Live Photo (HEIC + MOV по `groupUUID`/`relatedUUID` или базовому имени, по итогам 1.1) — одна ячейка с двумя файлами; сортировка новые сверху; свободные имена на Mac (`FileNames.unique`). Проверка: тесты.
+- [ ] 2.1 `PhotoItem` (имя, дата, размер, длительность, тип, id, имена файлов-спутников Live Photo из `sidecarFiles`); сортировка новые сверху; одно свободное имя на Mac для HEIC и его MOV (на основе `FileNames.unique`). Проверка: тесты.
 
 ## 3. Общий код с окном Android (design D7)
 
