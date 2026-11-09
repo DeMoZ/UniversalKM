@@ -433,13 +433,15 @@ final class PhotoBrowserModel: NSObject, ObservableObject {
 
     private func requestDelete(_ ids: Set<String>) {
         guard let camera else { return }
-        let targets = ids.compactMap { files[$0] }
+        // A Live Photo goes with its video: the photo alone is answered "deleted" but stays on the iPhone
+        // (task 1.1).
+        let targets: [ICCameraItem] = ids.compactMap { files[$0] }.flatMap { [$0] + ($0.sidecarFiles ?? []) }
         guard !targets.isEmpty else { return }
         _ = camera.requestDeleteFiles(targets, deleteFailed: { failed in
             let names = failed.values.compactMap(\.name)
             Task { @MainActor in log.error("photos: delete failed for \(names.count) items") }
         }, completion: { [weak self] result, error in
-            let failedIDs = UncheckedSendable((result[.failed] ?? []).map(Self.id))
+            let failedIDs = UncheckedSendable((result[.failed] ?? []).filter { $0.name.map { PhotoItem.kind(ofName: $0) } != nil }.map(Self.id))
             let message = error?.localizedDescription
             Task { @MainActor in
                 guard let self else { return }

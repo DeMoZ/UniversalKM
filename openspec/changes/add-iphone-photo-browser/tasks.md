@@ -10,7 +10,7 @@
     - `iCloudPhotosEnabled` = false (у пользователя «Фото iCloud» выключены), есть `ICCameraDeviceCanDeleteOneFile`.
     - Live Photo: в `mediaFiles` только HEIC, у него `groupUUID` и `sidecarFiles` = [IMG_xxxx.MOV]; опция `ICDownloadSidecarFiles` скачивает оба файла рядом. Отдельной пары в каталоге нет.
     - Скорость: видео 52 МБ за 1,5 с (34,5 МБ/с), HEIC 0,9 МБ за 0,1 с. Даты файлов на Mac — даты съёмки.
-    - Удаление IMG_6163 (обычное) и IMG_6165 (Live): `ICDeleteSuccessful` для обоих, `didRemove` сразу, в каталоге 190. Попадают ли в «Недавно удалённые» и ушло ли видео Live Photo — смотрит пользователь.
+    - Удаление IMG_6163 (обычное) и IMG_6165 (Live): `ICDeleteSuccessful` для обоих, `didRemove` сразу, в каталоге 190. Пользователь на iPhone: IMG_6163 удалён; IMG_6165 остался — Live Photo, удалённое одним HEIC, iPhone не удаляет, хотя отвечает «удалено» (после переподключения оно снова в каталоге, а IMG_6166 появился в двух папках). Повторное удаление IMG_6165 вместе с `sidecarFiles` (IMG_6165.MOV) — пропал и на iPhone. → design D6: удалять со спутниками.
 
 ## 2. Логика в `UniversalKMCore`
 
