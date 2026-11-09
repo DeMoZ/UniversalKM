@@ -109,8 +109,8 @@
 "Copy" = "Kopieren";
 "Copying %lld items…" = "%lld Objekte werden kopiert …";
 "Copied. Paste in Finder with ⌘V." = "Kopiert. Im Finder mit ⌘V einsetzen.";
-"Photos…" = "Fotos …";
-"Photos and videos of the iPhone on the cable: copy them to the Mac, delete them from the iPhone" = "Fotos und Videos des iPhone am Kabel: auf den Mac kopieren, vom iPhone löschen";
+"iPhone Photos…" = "iPhone-Fotos …";
+"Photos and videos of “%@” on the cable: copy them to the Mac, delete them from the iPhone" = "Fotos und Videos von „%@“ am Kabel: auf den Mac kopieren, vom iPhone löschen";
 "iPhone Photos" = "iPhone-Fotos";
 "Photos on %@" = "Fotos auf %@";
 "The connection to the iPhone was lost" = "Verbindung zum iPhone verloren";

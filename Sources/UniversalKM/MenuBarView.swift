@@ -59,12 +59,6 @@ struct MenuBarView: View {
         device.hostPeerID.flatMap(state.androidStatus.device)?.fileTransport != nil
     }
 
-    /// Not an Android device: an iPhone or iPad through Chameleon, or one still waiting for its host
-    /// (add-iphone-photo-browser design D2).
-    private func hasPhotos(_ device: PlacedDevice) -> Bool {
-        device.hostPeerID.flatMap(state.androidStatus.device) == nil
-    }
-
     private var selectedDevice: PlacedDevice? {
         state.arrangement.devices.first { $0.id == selection }
     }
@@ -201,10 +195,10 @@ struct MenuBarView: View {
                     Button("Files…") { app.openFiles(device) }
                         .help("Files on “\(device.displayName)”: copy them to and from the Mac")
                 }
-                if hasPhotos(device) {
-                    Button("Photos…") { app.openPhotos() }
-                        .help("Photos and videos of the iPhone on the cable: copy them to the Mac, delete them from the iPhone")
-                }
+            }
+            if let name = app.appleDeviceOnCable {
+                Button("iPhone Photos…") { app.openPhotos() }
+                    .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
             }
             Spacer()
             Text("Drag a device next to a display edge")

@@ -170,9 +170,7 @@ final class PhotoBrowserModel: NSObject, ObservableObject {
         if let next = devices.first { deviceID = next.id; open() } else { reset(.noDevice) }
     }
 
-    private func isApple(_ camera: ICCameraDevice) -> Bool {
-        camera.usbVendorID == 0x05AC || ["iPhone", "iPad", "iPod"].contains(where: { camera.productKind?.contains($0) == true })
-    }
+    private func isApple(_ camera: ICCameraDevice) -> Bool { AppleDevicesOnCable.isApple(camera) }
 
     // MARK: Thumbnails (design D4)
 
@@ -520,4 +518,45 @@ extension PhotoBrowserModel: ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {}
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {}
+}
+
+/// Watches for an iPhone or iPad on the cable without opening a session (design D2), so the panel can
+/// offer "iPhone Photos…" whatever device is selected, even with no iPhone on the layout.
+@MainActor
+final class AppleDevicesOnCable: NSObject, ICDeviceBrowserDelegate {
+    private let browser = ICDeviceBrowser()
+    private var names: [String: String] = [:]
+    private let changed: (String?) -> Void
+
+    init(changed: @escaping (String?) -> Void) {
+        self.changed = changed
+        super.init()
+        browser.delegate = self
+        browser.browsedDeviceTypeMask = ICDeviceTypeMask(rawValue:
+            ICDeviceTypeMask.camera.rawValue | ICDeviceLocationTypeMask.local.rawValue)!
+    }
+
+    func start() { browser.start() }
+
+    static func isApple(_ device: ICDevice) -> Bool {
+        device.usbVendorID == 0x05AC || ["iPhone", "iPad", "iPod"].contains { device.productKind?.contains($0) == true }
+    }
+
+    private func update(_ device: ICDevice, present: Bool) {
+        guard Self.isApple(device), let id = device.uuidString else { return }
+        names[id] = present ? (device.name ?? "iPhone") : nil
+        changed(names.values.sorted().first)
+    }
+
+    nonisolated func deviceBrowser(_ browser: ICDeviceBrowser, didAdd device: ICDevice, moreComing: Bool) {
+        let device = UncheckedSendable(device)
+        Task { @MainActor in self.update(device.value, present: true) }
+    }
+
+    nonisolated func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
+        let device = UncheckedSendable(device)
+        Task { @MainActor in self.update(device.value, present: false) }
+    }
+
+    nonisolated func didRemove(_ device: ICDevice) {}
 }

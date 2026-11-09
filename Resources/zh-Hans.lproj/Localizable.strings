@@ -109,8 +109,8 @@
 "Copy" = "拷贝";
 "Copying %lld items…" = "正在拷贝 %lld 个项目…";
 "Copied. Paste in Finder with ⌘V." = "已拷贝。在访达中按 ⌘V 粘贴。";
-"Photos…" = "照片…";
-"Photos and videos of the iPhone on the cable: copy them to the Mac, delete them from the iPhone" = "通过线缆连接的 iPhone 上的照片和视频：拷贝到 Mac，从 iPhone 删除";
+"iPhone Photos…" = "iPhone 照片…";
+"Photos and videos of “%@” on the cable: copy them to the Mac, delete them from the iPhone" = "通过线缆连接的“%@”上的照片和视频：拷贝到 Mac，从 iPhone 删除";
 "iPhone Photos" = "iPhone 照片";
 "Photos on %@" = "“%@”上的照片";
 "The connection to the iPhone was lost" = "与 iPhone 的连接已断开";

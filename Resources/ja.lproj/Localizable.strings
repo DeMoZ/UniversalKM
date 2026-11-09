@@ -109,8 +109,8 @@
 "Copy" = "コピー";
 "Copying %lld items…" = "%lld 項目をコピー中…";
 "Copied. Paste in Finder with ⌘V." = "コピーしました。Finder で ⌘V でペーストします。";
-"Photos…" = "写真…";
-"Photos and videos of the iPhone on the cable: copy them to the Mac, delete them from the iPhone" = "ケーブル接続した iPhone の写真とビデオ：Mac にコピー、iPhone から削除";
+"iPhone Photos…" = "iPhone の写真…";
+"Photos and videos of “%@” on the cable: copy them to the Mac, delete them from the iPhone" = "ケーブル接続した“%@”の写真とビデオ：Mac にコピー、iPhone から削除";
 "iPhone Photos" = "iPhone の写真";
 "Photos on %@" = "%@ の写真";
 "The connection to the iPhone was lost" = "iPhone との接続が切れました";

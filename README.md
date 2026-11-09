@@ -119,7 +119,7 @@ Select an Android device in the panel's layout and press “Files…”. A windo
 
 ## iPhone photos
 
-Select an iPhone or iPad on the layout in the panel and click "Photos…". Connect the iPhone to the Mac with a cable and unlock it; if the iPhone asks, tap "Trust". A window opens with the iPhone's photos and videos, newest first. Videos show their length, Live Photos a LIVE badge.
+Connect an iPhone or iPad to the Mac with a cable and unlock it, then click "iPhone Photos…" in the panel. The button is there while the iPhone is on the cable, even if it is not on the layout; if the iPhone asks, tap "Trust". A window opens with the iPhone's photos and videos, newest first. Videos show their length, Live Photos a LIVE badge.
 
 - **Cable only:** photos are read over USB through the same system service as Image Capture. Over Bluetooth (Chameleon) and Wi‑Fi they are not visible.
 - **To the Mac:** drag items from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says "Copied"), or click "Download…" and choose a folder. Files are copied as they are, in the iPhone's formats (HEIC, MOV, JPG), with the capture date. A Live Photo is copied as a pair: the photo and its short video with the same name.
