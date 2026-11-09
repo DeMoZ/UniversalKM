@@ -111,7 +111,7 @@ When an Android device of the layout has an adb connection (Wireless debugging a
 - **Passwords stay on the Mac.** Content that password managers mark as concealed (`org.nspasteboard.ConcealedType` and similar markers) is not sent. Any other text is, including a password copied by hand from an ordinary window.
 - **While the phone is locked,** Android hides its clipboard but still takes text from the Mac: it is there after unlocking.
 - **Over the cable without USB debugging** (AOA) there is no shared clipboard: the panel says it needs USB debugging or Wi‑Fi.
-- **Android 13 and newer** may show its own "copied" pop-up each time text arrives from the Mac.
+- **Android 13 and newer** shows its own "copied" pop-up each time text arrives from the Mac (seen on Android 16); this is the system's and cannot be turned off.
 - **Turn it off** per device: select the device in the layout and clear "Shared clipboard".
 - The app never writes clipboard text to its log, only its length.
 
