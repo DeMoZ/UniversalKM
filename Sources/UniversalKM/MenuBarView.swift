@@ -54,6 +54,11 @@ struct MenuBarView: View {
         .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
     }
 
+    /// An Android device reachable through adb now (add-android-file-browser design D2).
+    private func hasFiles(_ device: PlacedDevice) -> Bool {
+        device.hostPeerID.flatMap(state.androidStatus.device)?.fileTransport != nil
+    }
+
     private var selectedDevice: PlacedDevice? {
         state.arrangement.devices.first { $0.id == selection }
     }
@@ -186,6 +191,10 @@ struct MenuBarView: View {
             if let device = selectedDevice {
                 Button("Rebind") { state.rebind(device.id) }
                     .help("The next device to connect becomes “\(device.displayName)”")
+                if hasFiles(device) {
+                    Button("Files…") { app.openFiles(device) }
+                        .help("Files on “\(device.displayName)”: copy them to and from the Mac")
+                }
             }
             Spacer()
             Text("Drag a device next to a display edge")

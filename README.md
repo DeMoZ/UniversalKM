@@ -35,6 +35,7 @@
 | 📱 **Up to three devices** | Three devices connect at once, each with its own zone in the layout. |
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
 | 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
+| 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
 | 🌍 **Your language** | The interface follows the system language: English, Russian, German, French, Spanish, Portuguese (Brazil), Italian, Chinese (Simplified), Japanese, Korean. |
@@ -101,6 +102,19 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 - Delay: the adb round trip over Wi‑Fi was 8 ms median (12 ms at the 90th percentile, rare spikes of 100 ms) on a home network. The cable is faster.
 - **macOS asks once whether `adb` may find devices on your local network: allow it.** The app starts the adb server as its own process, so the server keeps working after the app quits (otherwise macOS cuts its network the moment UniversalKM closes, and `adb` in Terminal shows the phone `offline`). If you said no: System Settings → Privacy & Security → Local Network → turn on `adb`. The question comes back once after an update of platform-tools, because the path to `adb` contains its version.
 - With developer options and wireless debugging on, every computer you allowed can control the phone. Turn wireless debugging on only on networks you trust; Android turns it off when you change networks.
+
+## Android files
+
+Select an Android device in the panel's layout and press “Files…”. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
+
+- **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
+- **Mac to phone:** drag files or folders from Finder into the window (onto a folder in the list to put them there), or copy them in Finder and press ⌘V in the window, or press “Upload…”. If the name exists, the window asks whether to replace or skip.
+- **On the phone:** new folder (⇧⌘N), rename (Return), delete (Delete). **Deleting removes the files from the phone at once, without a Trash.**
+- Progress shows at the bottom of the window, and any transfer can be cancelled. A cancelled or broken transfer leaves no partial file under the real name, on the Mac or on the phone.
+- The list refreshes by itself every 10 seconds and with ⌘R. Hidden files (names starting with a dot) are not shown, as in Finder.
+- If the connection drops, the window shows “The device is not connected” and opens the folder again by itself when the phone is back over Wi‑Fi or the cable.
+- Speed: 11–17 MB/s over home Wi‑Fi (measured on a Galaxy S10e and a Galaxy Tab A9); faster over the cable with USB debugging. With both a cable and Wi‑Fi, files go over the cable. A video of several gigabytes takes minutes over Wi‑Fi.
+- Files are available while UniversalKM runs. The phone does not appear in Finder's sidebar: macOS requires an Apple Developer ID certificate for that.
 
 ## iPhone: ChameleonUltra and similar boards
 

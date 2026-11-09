@@ -1,0 +1,3 @@
+UniversalKM fixture: Привет, adb!
+UniversalKM fixture: Привет, adb!
+UniversalKM fixture: Привет, adb!
