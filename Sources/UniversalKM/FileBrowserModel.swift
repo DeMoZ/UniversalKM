@@ -41,6 +41,8 @@ final class FileBrowserModel: ObservableObject {
     @Published private(set) var transfers: [FileTransfer] = []
     /// Last error of an action (rename, new folder, delete), shown under the list.
     @Published var actionError: String?
+    /// A short note under the list ("Copied…").
+    @Published var notice: String?
     @Published var sortKey = DeviceFileEntry.SortKey.name { didSet { resort() } }
     @Published var ascending = true { didSet { resort() } }
     /// Names selected in the list.
@@ -224,6 +226,39 @@ final class FileBrowserModel: ObservableObject {
                 try Self.download(folder.appending(entry.name), isDirectory: entry.isDirectory,
                                   into: url.deletingLastPathComponent(), name: url.lastPathComponent,
                                   client: client, transfer: transfer)
+            }
+        }
+    }
+
+    /// ⌘C (design D8a): downloads the selection into a fresh temporary folder and puts those files on
+    /// the clipboard once all are there, so ⌘V in Finder copies them. Nothing goes on the clipboard if one fails.
+    func copyToClipboard(_ selected: [DeviceFileEntry]) {
+        guard !selected.isEmpty else { return }
+        let folder = Self.temporaryRoot.appendingPathComponent("Copied").appendingPathComponent(UUID().uuidString)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        } catch {
+            actionError = error.localizedDescription
+            return
+        }
+        notice = String(localized: "Copying \(selected.count) items…")
+        let batch = CopyBatch(count: selected.count)
+        for entry in selected {
+            enqueue(entry.name, .download, completion: { [weak self] error in
+                Task { @MainActor in
+                    guard batch.finish(failed: error != nil), let self else { return }
+                    if batch.failed {
+                        self.notice = nil
+                        return
+                    }
+                    let urls = selected.map { folder.appendingPathComponent($0.name) as NSURL }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.writeObjects(urls)
+                    self.notice = String(localized: "Copied. Paste in Finder with ⌘V.")
+                }
+            }) { [path] client, transfer in
+                try Self.download(path.appending(entry.name), isDirectory: entry.isDirectory, into: folder,
+                                  name: entry.name, client: client, transfer: transfer)
             }
         }
     }
@@ -425,6 +460,22 @@ final class FileBrowserModel: ObservableObject {
         case ADBFileError.protocolError(let text): text
         default: error.localizedDescription
         }
+    }
+}
+
+/// Counts the downloads of one ⌘C.
+@MainActor
+final class CopyBatch {
+    private var remaining: Int
+    private(set) var failed = false
+
+    init(count: Int) { remaining = count }
+
+    /// True when this was the last one.
+    func finish(failed: Bool) -> Bool {
+        remaining -= 1
+        if failed { self.failed = true }
+        return remaining == 0
     }
 }
 

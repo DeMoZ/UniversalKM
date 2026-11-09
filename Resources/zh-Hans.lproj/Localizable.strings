@@ -106,3 +106,6 @@
 "Done" = "完成";
 "Download Here" = "下载到这里";
 "Upload" = "上传";
+"Copy" = "拷贝";
+"Copying %lld items…" = "正在拷贝 %lld 个项目…";
+"Copied. Paste in Finder with ⌘V." = "已拷贝。在访达中按 ⌘V 粘贴。";

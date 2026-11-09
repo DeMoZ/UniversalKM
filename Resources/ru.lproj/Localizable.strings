@@ -106,3 +106,6 @@
 "Done" = "Готово";
 "Download Here" = "Скачать сюда";
 "Upload" = "Отправить";
+"Copy" = "Скопировать";
+"Copying %lld items…" = "Копирование (%lld)…";
+"Copied. Paste in Finder with ⌘V." = "Скопировано. Вставьте в Finder: ⌘V.";

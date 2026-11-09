@@ -265,6 +265,7 @@ struct FileBrowserTable: NSViewRepresentable {
             }
             if onItem {
                 add(String(localized: "Open"), #selector(menuOpen), enabled: selected.count == 1)
+                add(String(localized: "Copy"), #selector(menuCopy))
                 add(String(localized: "Download…"), #selector(menuDownload))
                 menu.addItem(.separator())
                 add(String(localized: "Rename"), #selector(menuRename), enabled: selected.count == 1)
@@ -278,6 +279,7 @@ struct FileBrowserTable: NSViewRepresentable {
         }
 
         @objc private func menuOpen() { openSelected() }
+        @objc private func menuCopy() { model.copyToClipboard(selected) }
         @objc private func menuDownload() { FileBrowserActions.download(model, selected) }
         @objc private func menuRename() { beginRename() }
         @objc private func menuDelete() { model.delete(selected) }
@@ -362,6 +364,7 @@ final class FileTableView: NSTableView {
         guard window?.firstResponder === self else { return super.performKeyEquivalent(with: event) }
         switch key {
         case "v": coordinator?.paste()
+        case "c": coordinator.map { $0.model.copyToClipboard($0.selected) }
         case "a": selectAll(nil)
         case "[": coordinator?.model.goBack()
         default: return super.performKeyEquivalent(with: event)

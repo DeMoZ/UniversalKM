@@ -28,6 +28,16 @@ struct FileBrowserView: View {
                     ProgressView().controlSize(.small)
                 }
             }
+            if let notice = model.notice, model.actionError == nil {
+                Divider()
+                HStack {
+                    Image(systemName: "doc.on.clipboard").foregroundStyle(.secondary)
+                    Text(notice).font(.callout).lineLimit(2)
+                    Spacer()
+                    Button { model.notice = nil } label: { Image(systemName: "xmark") }.buttonStyle(.borderless)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+            }
             if let error = model.actionError {
                 Divider()
                 HStack {

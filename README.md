@@ -107,7 +107,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 
 Select an Android device in the panel's layout and press “Files…”. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
 
-- **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
+- **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
 - **Mac to phone:** drag files or folders from Finder into the window (onto a folder in the list to put them there), or copy them in Finder and press ⌘V in the window, or press “Upload…”. If the name exists, the window asks whether to replace or skip.
 - **On the phone:** new folder (⇧⌘N), rename (Return), delete (Delete). **Deleting removes the files from the phone at once, without a Trash.**
 - Progress shows at the bottom of the window, and any transfer can be cancelled. A cancelled or broken transfer leaves no partial file under the real name, on the Mac or on the phone.

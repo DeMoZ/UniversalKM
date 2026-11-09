@@ -106,3 +106,6 @@
 "Done" = "완료";
 "Download Here" = "여기에 다운로드";
 "Upload" = "업로드";
+"Copy" = "복사";
+"Copying %lld items…" = "항목 %lld개 복사 중…";
+"Copied. Paste in Finder with ⌘V." = "복사했습니다. Finder에서 ⌘V로 붙여넣으십시오.";

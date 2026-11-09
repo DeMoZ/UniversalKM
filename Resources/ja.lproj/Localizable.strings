@@ -106,3 +106,6 @@
 "Done" = "完了";
 "Download Here" = "ここにダウンロード";
 "Upload" = "アップロード";
+"Copy" = "コピー";
+"Copying %lld items…" = "%lld 項目をコピー中…";
+"Copied. Paste in Finder with ⌘V." = "コピーしました。Finder で ⌘V でペーストします。";

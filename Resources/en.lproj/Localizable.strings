@@ -106,3 +106,6 @@
 "Done" = "Done";
 "Download Here" = "Download Here";
 "Upload" = "Upload";
+"Copy" = "Copy";
+"Copying %lld items…" = "Copying %lld items…";
+"Copied. Paste in Finder with ⌘V." = "Copied. Paste in Finder with ⌘V.";
