@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/panel-ru.png" width="426" alt="Панель UniversalKM: два дисплея Mac и планшет у правого края встроенного дисплея">
+  <img src="docs/images/panel-ru.png" width="426" alt="Панель UniversalKM: телефон и планшет подключены по Wi‑Fi рядом с двумя дисплеями Mac, внизу настройки выбранного устройства с включённым общим буфером обмена">
 </p>
 
 ---

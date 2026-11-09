@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: two Mac displays and a tablet at the right edge of the built-in display">
+  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: a phone and a tablet connected over Wi‑Fi next to two Mac displays, with the selected device's settings and its shared clipboard on">
 </p>
 
 ---
