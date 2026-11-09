@@ -10,14 +10,21 @@ public enum ADBShell {
         "'" + argument.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
-    /// `shell:` service text: the quoted words, then an empty line and the exit code.
+    /// `shell:` service text: the quoted words, then a new line and the exit code. `printf` gets `$?`
+    /// before it runs, and its leading new line ends output that had none.
     public static func service(_ words: [String]) -> String {
-        "shell:" + words.map(quote).joined(separator: " ") + "; echo; echo \(marker)$?"
+        "shell:" + words.map(quote).joined(separator: " ") + "; printf '\\n\(marker)%d\\n' $?"
     }
 
     public static func makeDirectory(_ path: String) -> String { service(["mkdir", "-p", path]) }
     public static func move(_ from: String, _ to: String) -> String { service(["mv", "-f", from, to]) }
     public static func remove(_ path: String) -> String { service(["rm", "-rf", path]) }
+
+    /// Removes leftovers of unfinished uploads in `folder` (add-android-file-browser design D5):
+    /// the folder quoted, the `*` outside the quotes so the shell expands it.
+    public static func removePartials(in folder: String) -> String {
+        "shell:rm -rf " + quote(folder) + "/.*" + quote(DeviceFileEntry.partialSuffix) + "; printf '\\n\(marker)%d\\n' $?"
+    }
 
     /// Exit code and output (without the marker) of a command from `service`; nil when the marker is missing.
     public static func result(_ output: String) -> (code: Int, output: String)? {
@@ -25,7 +32,7 @@ public enum ADBShell {
         while let last = lines.last, last.isEmpty { lines.removeLast() }
         guard let last = lines.last, last.hasPrefix(marker), let code = Int(last.dropFirst(marker.count)) else { return nil }
         lines.removeLast()
-        // The empty line `echo` adds before the marker.
+        // The new line `printf` adds before the marker.
         if lines.last?.isEmpty == true { lines.removeLast() }
         return (code, lines.joined(separator: "\n"))
     }

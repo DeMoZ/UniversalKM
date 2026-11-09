@@ -29,6 +29,9 @@ struct AndroidDeviceStatus: Equatable, Sendable, Identifiable {
     var active: AndroidChannel?
     /// Saved Wi‑Fi address from `adb tcpip` (port 5555): after a phone restart a cable is needed again.
     var tcpipAddress: String?
+    /// The adb transport for files (add-android-file-browser design D2): over the cable first, then
+    /// Wi‑Fi; nil = no adb now, no "Files…" button.
+    var fileTransport: String?
 
     var isAvailable: Bool { hasUSB || hasWiFi || hasADBOverUSB }
 }
@@ -473,6 +476,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
             device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
+            device.fileTransport = (channels.first { $0.0 == .adbUSB } ?? channels.first { $0.0 == .wifi })?.1
+            if status.device(peer)?.fileTransport != device.fileTransport {
+                log.info("files for \(key, privacy: .public): \(device.fileTransport ?? "none", privacy: .public)")
+            }
             devices.append(device)
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }

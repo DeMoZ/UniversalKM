@@ -142,9 +142,10 @@ private func entries(_ messages: [ADBSync.Message]) -> [ADBSync.Entry] {
     #expect(ADBShell.quote("plain") == "'plain'")
     #expect(ADBShell.quote("it's") == #"'it'\''s'"#)
     #expect(ADBShell.quote("a b $HOME `x` \"q\" a:b Привет") == "'a b $HOME `x` \"q\" a:b Привет'")
-    #expect(ADBShell.move("/sdcard/.a.ukm-part", "/sdcard/a") == "shell:'mv' '-f' '/sdcard/.a.ukm-part' '/sdcard/a'; echo; echo UKM_RC=$?")
+    #expect(ADBShell.move("/sdcard/.a.ukm-part", "/sdcard/a") == #"shell:'mv' '-f' '/sdcard/.a.ukm-part' '/sdcard/a'; printf '\nUKM_RC=%d\n' $?"#)
     #expect(ADBShell.makeDirectory("/sdcard/Docs").hasPrefix("shell:'mkdir' '-p' '/sdcard/Docs';"))
     #expect(ADBShell.remove("/sdcard/x").hasPrefix("shell:'rm' '-rf' '/sdcard/x';"))
+    #expect(ADBShell.removePartials(in: "/sdcard/it's") == #"shell:rm -rf '/sdcard/it'\''s'/.*'.ukm-part'; printf '\nUKM_RC=%d\n' $?"#)
 }
 
 @Test func shellResult() {
