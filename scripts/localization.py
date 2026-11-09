@@ -680,6 +680,48 @@ T4 = {
        '기기가 현재 삭제를 허용하지 않음', '항목 %lld개', '%2$lld개 중 %1$lld개 선택됨',
        '케이블을 다시 연결하면 새 사진이 표시됩니다.'],
 }
+K5 = ['Back to the Mac', 'The keyboard and mouse go back to the Mac', 'Without it the keyboard and mouse stay on the Mac.',
+      'Layout', 'Add Device', 'Devices', 'Connected, not on the layout yet', 'Remove from the Layout', 'More for “%@”',
+      'USB', 'Wi‑Fi', 'Bluetooth via Chameleon', 'Waiting for connection…', 'Files and Photos', 'Files on the device',
+      'Photos and videos, on the cable', 'Photos…', 'Connections', 'Pointer speed']
+T5 = {
+'ru': ['Вернуться на Mac', 'Клавиатура и мышь вернутся на Mac', 'Без него клавиатура и мышь остаются на Mac.',
+       'Схема', 'Добавить устройство', 'Устройства', 'Подключено, но ещё не на схеме', 'Убрать со схемы', 'Ещё для «%@»',
+       'USB', 'Wi‑Fi', 'Bluetooth через Chameleon', 'Ожидание подключения…', 'Файлы и фото', 'Файлы на устройстве',
+       'Фото и видео, по кабелю', 'Фото…', 'Подключения', 'Скорость указателя'],
+'de': ['Zurück zum Mac', 'Tastatur und Maus gehen zurück zum Mac', 'Ohne ihn bleiben Tastatur und Maus am Mac.',
+       'Anordnung', 'Gerät hinzufügen', 'Geräte', 'Verbunden, noch nicht in der Anordnung', 'Aus der Anordnung entfernen', 'Mehr für „%@“',
+       'USB', 'WLAN', 'Bluetooth über Chameleon', 'Warten auf Verbindung …', 'Dateien und Fotos', 'Dateien auf dem Gerät',
+       'Fotos und Videos, per Kabel', 'Fotos …', 'Verbindungen', 'Zeigergeschwindigkeit'],
+'es': ['Volver al Mac', 'El teclado y el ratón vuelven al Mac', 'Sin él, el teclado y el ratón se quedan en el Mac.',
+       'Disposición', 'Añadir dispositivo', 'Dispositivos', 'Conectado, aún no está en la disposición', 'Quitar de la disposición', 'Más para “%@”',
+       'USB', 'Wi‑Fi', 'Bluetooth a través de Chameleon', 'Esperando conexión…', 'Archivos y fotos', 'Archivos del dispositivo',
+       'Fotos y vídeos, por cable', 'Fotos…', 'Conexiones', 'Velocidad del puntero'],
+'fr': ['Revenir au Mac', 'Le clavier et la souris reviennent au Mac', 'Sans lui, le clavier et la souris restent sur le Mac.',
+       'Disposition', 'Ajouter un appareil', 'Appareils', 'Connecté, pas encore dans la disposition', 'Retirer de la disposition', 'Plus pour « %@ »',
+       'USB', 'Wi‑Fi', 'Bluetooth via Chameleon', 'En attente de connexion…', 'Fichiers et photos', 'Fichiers de l’appareil',
+       'Photos et vidéos, par câble', 'Photos…', 'Connexions', 'Vitesse du pointeur'],
+'it': ['Torna al Mac', 'Tastiera e mouse tornano al Mac', 'Senza di esso tastiera e mouse restano sul Mac.',
+       'Disposizione', 'Aggiungi dispositivo', 'Dispositivi', 'Connesso, non ancora nella disposizione', 'Rimuovi dalla disposizione', 'Altro per “%@”',
+       'USB', 'Wi‑Fi', 'Bluetooth tramite Chameleon', 'In attesa di connessione…', 'File e foto', 'File sul dispositivo',
+       'Foto e video, via cavo', 'Foto…', 'Connessioni', 'Velocità del puntatore'],
+'pt-BR': ['Voltar ao Mac', 'O teclado e o mouse voltam ao Mac', 'Sem ele, o teclado e o mouse ficam no Mac.',
+       'Disposição', 'Adicionar Dispositivo', 'Dispositivos', 'Conectado, ainda não está na disposição', 'Remover da Disposição', 'Mais para “%@”',
+       'USB', 'Wi‑Fi', 'Bluetooth via Chameleon', 'Aguardando conexão…', 'Arquivos e Fotos', 'Arquivos no dispositivo',
+       'Fotos e vídeos, pelo cabo', 'Fotos…', 'Conexões', 'Velocidade do cursor'],
+'zh-Hans': ['返回 Mac', '键盘和鼠标将回到 Mac', '没有此权限时，键盘和鼠标会留在 Mac 上。',
+       '布局', '添加设备', '设备', '已连接，尚未加入布局', '从布局中移除', '“%@”的更多选项',
+       'USB', 'Wi‑Fi', '通过 Chameleon 的蓝牙', '正在等待连接…', '文件和照片', '设备上的文件',
+       '照片和视频（线缆）', '照片…', '连接', '指针速度'],
+'ja': ['Mac に戻る', 'キーボードとマウスが Mac に戻ります', 'これがないと、キーボードとマウスは Mac のままです。',
+       '配置', 'デバイスを追加', 'デバイス', '接続済み、まだ配置にありません', '配置から削除', '“%@”のその他の操作',
+       'USB', 'Wi‑Fi', 'Chameleon 経由の Bluetooth', '接続を待っています…', 'ファイルと写真', 'デバイス上のファイル',
+       '写真とビデオ（ケーブル）', '写真…', '接続', 'ポインタの速度'],
+'ko': ['Mac으로 돌아가기', '키보드와 마우스가 Mac으로 돌아갑니다', '이 권한이 없으면 키보드와 마우스가 Mac에 남아 있습니다.',
+       '배치', '기기 추가', '기기', '연결됨, 아직 배치에 없음', '배치에서 제거', '“%@”에 대한 추가 옵션',
+       'USB', 'Wi‑Fi', 'Chameleon을 통한 Bluetooth', '연결 대기 중…', '파일 및 사진', '기기의 파일',
+       '사진 및 비디오, 케이블', '사진…', '연결', '포인터 속도'],
+}
 EN_BT = "UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB."
 def esc(s): return s.replace('\\', '\\\\').replace('"', '\\"')
 for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
@@ -690,7 +732,8 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
         f.write("/* Generated from scripts/localization.py (keys = English source strings). */\n")
         assert lang == "en" or len(T3[lang]) == len(K3), (lang, len(T3[lang]))
         assert lang == "en" or len(T4[lang]) == len(K4), (lang, len(T4[lang]))
-        for k, v in zip(K + K2 + K3 + K4, vals[:-1] + (K2 + K3 + K4 if lang == "en" else T2[lang] + T3[lang] + T4[lang])):
+        assert lang == "en" or len(T5[lang]) == len(K5), (lang, len(T5[lang]))
+        for k, v in zip(K + K2 + K3 + K4 + K5, vals[:-1] + (K2 + K3 + K4 + K5 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')
