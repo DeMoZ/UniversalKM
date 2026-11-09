@@ -100,7 +100,7 @@ public enum FileNames {
     }
 
     /// "photo.jpg" → ("photo", "jpg"); ".nomedia" and "Docs" have no extension.
-    static func split(_ name: String) -> (String, String) {
+    public static func split(_ name: String) -> (String, String) {
         guard let dot = name.lastIndex(of: "."), dot != name.startIndex else { return (name, "") }
         return (String(name[..<dot]), String(name[name.index(after: dot)...]))
     }

@@ -74,6 +74,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         fileBrowsers.show(key: android.serial, name: device.displayName)
     }
 
+    private let photoBrowsers = PhotoBrowsers()
+
+    /// "Photos…" in the panel (add-iphone-photo-browser design D2): the iPhone on the cable.
+    func openPhotos() {
+        closePanel()
+        photoBrowsers.show()
+    }
+
     /// `--ble-demo` only (task 1.12).
     private lazy var demo: BLEDemo? = isBLEDemo ? BLEDemo(transport: transport) : nil
 

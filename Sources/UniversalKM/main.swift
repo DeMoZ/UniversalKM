@@ -6,8 +6,19 @@ import AppKit
 // NSStatusItem with an NSPopover hosting SwiftUI, owned by AppDelegate (design D13).
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
+// `--photos-window`: only the photo window (add-iphone-photo-browser), for manual checks.
+if CommandLine.arguments.contains("--photos-window") {
+    MainActor.assumeIsolated {
+        let browsers = PhotoBrowsers()
+        browsers.show()
+        objc_setAssociatedObject(app, "photoBrowsers", browsers, .OBJC_ASSOCIATION_RETAIN)
+    }
+    app.run()
+    exit(0)
+}
 // `--files-window <adb transport> [name]`: only the file window of one device, for manual checks of
 // add-android-file-browser next to a running UniversalKM (no event tap, no HID, no panel).
+
 if let i = CommandLine.arguments.firstIndex(of: "--files-window"), i + 1 < CommandLine.arguments.count {
     let transport = CommandLine.arguments[i + 1]
     let name = i + 2 < CommandLine.arguments.count ? CommandLine.arguments[i + 2] : transport
