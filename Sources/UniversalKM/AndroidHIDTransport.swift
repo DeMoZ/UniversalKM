@@ -343,7 +343,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             self.adb = client
             self.status.adbPath = url.path
             self.log.info("adb \(url.path, privacy: .public), platform-tools \(major)")
-            client.run(["start-server"], timeout: 15, on: self.queue) { [weak self] _ in
+            client.ensureServer(on: self.queue) { [weak self] in
                 guard let self else { return }
                 client.track(on: self.queue) { [weak self] devices in self?.adbDevicesChanged(devices) }
                 self.reconnectWiFi()
