@@ -99,6 +99,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 - A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.
 - If the phone leaves the network, input returns to the Mac within about 3 seconds. When it is back, the app reconnects by itself.
 - Delay: the adb round trip over Wi‑Fi was 8 ms median (12 ms at the 90th percentile, rare spikes of 100 ms) on a home network. The cable is faster.
+- **macOS asks once whether `adb` may find devices on your local network: allow it.** The app starts the adb server as its own process, so the server keeps working after the app quits (otherwise macOS cuts its network the moment UniversalKM closes, and `adb` in Terminal shows the phone `offline`). If you said no: System Settings → Privacy & Security → Local Network → turn on `adb`. The question comes back once after an update of platform-tools, because the path to `adb` contains its version.
 - With developer options and wireless debugging on, every computer you allowed can control the phone. Turn wireless debugging on only on networks you trust; Android turns it off when you change networks.
 
 ## iPhone: ChameleonUltra and similar boards
