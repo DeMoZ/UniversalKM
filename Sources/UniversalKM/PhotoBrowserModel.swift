@@ -441,7 +441,7 @@ final class PhotoBrowserModel: NSObject, ObservableObject {
             let names = failed.values.compactMap(\.name)
             Task { @MainActor in log.error("photos: delete failed for \(names.count) items") }
         }, completion: { [weak self] result, error in
-            let failedIDs = UncheckedSendable((result[.failed] ?? []).filter { $0.name.map { PhotoItem.kind(ofName: $0) } != nil }.map(Self.id))
+            let failedIDs = UncheckedSendable((result[.failed] ?? []).map(Self.id))
             let message = error?.localizedDescription
             Task { @MainActor in
                 guard let self else { return }
