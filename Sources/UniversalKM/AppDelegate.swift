@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         log.info("terminating")
         // Cursor back on the Mac first, then hosts get neutral reports and are disconnected (design D13).
         state.input.release(.quit)
+        state.clipboard.shutdown()
         transport.shutdown(timeout: 0.3)
     }
 

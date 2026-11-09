@@ -448,6 +448,68 @@ T2 = {'ru': ['Подключите Android‑телефон или планше�
         'Wi‑Fi를 켜지 못했습니다: %@',
         'adb를 찾을 수 없음',
         '알 수 없는 오류']}
+# Added by add-android-clipboard-sync: shared clipboard of an Android device in the panel.
+K3 = ['Shared clipboard',
+ 'Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.',
+ 'macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → '
+ 'Privacy & Security.',
+ 'Clipboard: shared',
+ 'Clipboard: connecting…',
+ 'Clipboard: needs USB debugging or Wi‑Fi on the device',
+ 'Clipboard: error — %@']
+T3 = {
+ 'ru': ['Общий буфер обмена',
+        'Текст, скопированный на Mac, можно вставить на устройстве, и наоборот. Нужен adb: отладка по USB или Wi‑Fi.',
+        'macOS не даёт UniversalKM читать буфер обмена, поэтому текст с Mac не передаётся. Разрешите это в Системных '
+        'настройках → Конфиденциальность и безопасность.',
+        'Буфер обмена: общий', 'Буфер обмена: подключение…',
+        'Буфер обмена: нужна отладка по USB или Wi‑Fi на устройстве', 'Буфер обмена: ошибка — %@'],
+ 'de': ['Gemeinsame Zwischenablage',
+        'Auf dem Mac kopierter Text lässt sich auf dem Gerät einfügen und umgekehrt. Benötigt adb: USB-Debugging oder Wi‑Fi.',
+        'macOS erlaubt UniversalKM nicht, die Zwischenablage zu lesen, daher wird Text vom Mac nicht gesendet. Erlaube es '
+        'unter Systemeinstellungen → Datenschutz & Sicherheit.',
+        'Zwischenablage: gemeinsam', 'Zwischenablage: Verbindung wird hergestellt…',
+        'Zwischenablage: benötigt USB-Debugging oder Wi‑Fi auf dem Gerät', 'Zwischenablage: Fehler – %@'],
+ 'fr': ['Presse-papiers partagé',
+        'Le texte copié sur le Mac peut être collé sur l’appareil, et inversement. Nécessite adb : débogage USB ou Wi‑Fi.',
+        'macOS n’autorise pas UniversalKM à lire le presse-papiers : le texte du Mac n’est pas envoyé. Autorisez-le dans '
+        'Réglages Système → Confidentialité et sécurité.',
+        'Presse-papiers : partagé', 'Presse-papiers : connexion…',
+        'Presse-papiers : nécessite le débogage USB ou le Wi‑Fi sur l’appareil', 'Presse-papiers : erreur — %@'],
+ 'es': ['Portapapeles compartido',
+        'El texto copiado en el Mac se puede pegar en el dispositivo, y al revés. Necesita adb: depuración USB o Wi‑Fi.',
+        'macOS no permite que UniversalKM lea el portapapeles, así que el texto del Mac no se envía. Permítelo en Ajustes '
+        'del Sistema → Privacidad y seguridad.',
+        'Portapapeles: compartido', 'Portapapeles: conectando…',
+        'Portapapeles: necesita depuración USB o Wi‑Fi en el dispositivo', 'Portapapeles: error — %@'],
+ 'pt-BR': ['Área de transferência compartilhada',
+           'O texto copiado no Mac pode ser colado no dispositivo, e vice-versa. Requer adb: depuração USB ou Wi‑Fi.',
+           'O macOS não permite que o UniversalKM leia a área de transferência, então o texto do Mac não é enviado. '
+           'Permita em Ajustes do Sistema → Privacidade e Segurança.',
+           'Área de transferência: compartilhada', 'Área de transferência: conectando…',
+           'Área de transferência: requer depuração USB ou Wi‑Fi no dispositivo', 'Área de transferência: erro — %@'],
+ 'it': ['Appunti condivisi',
+        'Il testo copiato sul Mac si può incollare sul dispositivo, e viceversa. Serve adb: debug USB o Wi‑Fi.',
+        'macOS non consente a UniversalKM di leggere gli appunti, quindi il testo dal Mac non viene inviato. Consentilo in '
+        'Impostazioni di Sistema → Privacy e sicurezza.',
+        'Appunti: condivisi', 'Appunti: connessione…',
+        'Appunti: serve il debug USB o il Wi‑Fi sul dispositivo', 'Appunti: errore — %@'],
+ 'zh-Hans': ['共享剪贴板',
+             '在 Mac 上拷贝的文本可以粘贴到设备上，反之亦然。需要 adb：USB 调试或 Wi‑Fi。',
+             'macOS 不允许 UniversalKM 读取剪贴板，因此不会发送来自 Mac 的文本。请在“系统设置”→“隐私与安全性”中允许。',
+             '剪贴板：已共享', '剪贴板：正在连接…', '剪贴板：需要在设备上开启 USB 调试或 Wi‑Fi', '剪贴板：错误 — %@'],
+ 'ja': ['共有クリップボード',
+        'Mac でコピーしたテキストをデバイスでペーストでき、その逆もできます。adb（USB デバッグまたは Wi‑Fi）が必要です。',
+        'macOS が UniversalKM にクリップボードの読み取りを許可していないため、Mac からのテキストは送信されません。'
+        '「システム設定」→「プライバシーとセキュリティ」で許可してください。',
+        'クリップボード：共有中', 'クリップボード：接続中…',
+        'クリップボード：デバイスで USB デバッグまたは Wi‑Fi が必要です', 'クリップボード：エラー — %@'],
+ 'ko': ['공유 클립보드',
+        'Mac에서 복사한 텍스트를 기기에 붙여넣을 수 있으며 그 반대도 가능합니다. adb(USB 디버깅 또는 Wi‑Fi)가 필요합니다.',
+        'macOS가 UniversalKM의 클립보드 읽기를 허용하지 않아 Mac의 텍스트가 전송되지 않습니다. 시스템 설정 → 개인정보 보호 및 '
+        '보안에서 허용하십시오.',
+        '클립보드: 공유 중', '클립보드: 연결 중…', '클립보드: 기기에서 USB 디버깅 또는 Wi‑Fi가 필요합니다', '클립보드: 오류 — %@'],
+}
 EN_BT = "UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB."
 def esc(s): return s.replace('\\', '\\\\').replace('"', '\\"')
 for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
@@ -456,7 +518,7 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
     os.makedirs(d, exist_ok=True)
     with open(f"{d}/Localizable.strings", "w") as f:
         f.write("/* Generated from scripts/localization.py (keys = English source strings). */\n")
-        for k, v in zip(K + K2, vals[:-1] + (K2 if lang == "en" else T2[lang])):
+        for k, v in zip(K + K2 + K3, vals[:-1] + (K2 + K3 if lang == "en" else T2[lang] + T3[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')

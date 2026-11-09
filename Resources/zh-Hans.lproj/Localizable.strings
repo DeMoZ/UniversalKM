@@ -68,3 +68,10 @@
 "Could not enable Wi‑Fi: %@" = "无法启用 Wi‑Fi：%@";
 "adb not found" = "未找到 adb";
 "unknown error" = "未知错误";
+"Shared clipboard" = "共享剪贴板";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "在 Mac 上拷贝的文本可以粘贴到设备上，反之亦然。需要 adb：USB 调试或 Wi‑Fi。";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS 不允许 UniversalKM 读取剪贴板，因此不会发送来自 Mac 的文本。请在“系统设置”→“隐私与安全性”中允许。";
+"Clipboard: shared" = "剪贴板：已共享";
+"Clipboard: connecting…" = "剪贴板：正在连接…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "剪贴板：需要在设备上开启 USB 调试或 Wi‑Fi";
+"Clipboard: error — %@" = "剪贴板：错误 — %@";

@@ -29,6 +29,9 @@ struct AndroidDeviceStatus: Equatable, Sendable, Identifiable {
     var active: AndroidChannel?
     /// Saved Wi‑Fi address from `adb tcpip` (port 5555): after a phone restart a cable is needed again.
     var tcpipAddress: String?
+    /// The adb transport for the clipboard helper (add-android-clipboard-sync design D4): ADB over the
+    /// cable if there is one, else Wi‑Fi; nil = no adb (AOA only). Unauthorized transports do not count.
+    var adbTransport: String?
 
     var isAvailable: Bool { hasUSB || hasWiFi || hasADBOverUSB }
 }
@@ -472,11 +475,21 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             device.hasWiFi = channels.contains { $0.0 == .wifi }
             device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
             device.active = active[peer]?.channel ?? switching[peer]?.channel
+            device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
             devices.append(device)
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }
         onStatus(status)
+    }
+
+    /// USB adb first; among network transports the one the input link uses, else the first by name,
+    /// so the helper does not hop between two transports of one phone.
+    private static func clipboardTransport(_ channels: [(AndroidChannel, String)], active: Active?) -> String? {
+        if let usb = channels.filter({ $0.0 == .adbUSB }).map(\.1).min() { return usb }
+        let wifi = channels.filter { $0.0 == .wifi }.map(\.1)
+        if case .adb(let serial, _, .wifi) = active, wifi.contains(serial) { return serial }
+        return wifi.min()
     }
 
     // MARK: Choosing the channel

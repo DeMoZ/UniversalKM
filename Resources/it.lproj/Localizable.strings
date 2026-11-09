@@ -68,3 +68,10 @@
 "Could not enable Wi‑Fi: %@" = "Impossibile attivare il Wi‑Fi: %@";
 "adb not found" = "adb non trovato";
 "unknown error" = "errore sconosciuto";
+"Shared clipboard" = "Appunti condivisi";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Il testo copiato sul Mac si può incollare sul dispositivo, e viceversa. Serve adb: debug USB o Wi‑Fi.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS non consente a UniversalKM di leggere gli appunti, quindi il testo dal Mac non viene inviato. Consentilo in Impostazioni di Sistema → Privacy e sicurezza.";
+"Clipboard: shared" = "Appunti: condivisi";
+"Clipboard: connecting…" = "Appunti: connessione…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "Appunti: serve il debug USB o il Wi‑Fi sul dispositivo";
+"Clipboard: error — %@" = "Appunti: errore — %@";

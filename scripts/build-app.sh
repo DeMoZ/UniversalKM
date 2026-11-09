@@ -29,6 +29,8 @@ cp "$BIN_DIR/UniversalKM" "$APP/Contents/MacOS/UniversalKM"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 # App icon, drawn by scripts/make-icon.swift.
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# Clipboard helper for Android phones (prebuilt dex; scripts/build-android-helper.sh rebuilds it).
+cp "$ROOT/Resources/ukm-clipboard.jar" "$APP/Contents/Resources/ukm-clipboard.jar"
 # Interface translations (keys are the English source strings; scripts/localization.py writes them).
 cp -R "$ROOT"/Resources/*.lproj "$APP/Contents/Resources/"
 printf 'APPL????' > "$APP/Contents/PkgInfo"

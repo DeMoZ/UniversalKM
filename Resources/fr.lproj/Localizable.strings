@@ -68,3 +68,10 @@
 "Could not enable Wi‑Fi: %@" = "Impossible d’activer le Wi‑Fi : %@";
 "adb not found" = "adb introuvable";
 "unknown error" = "erreur inconnue";
+"Shared clipboard" = "Presse-papiers partagé";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Le texte copié sur le Mac peut être collé sur l’appareil, et inversement. Nécessite adb : débogage USB ou Wi‑Fi.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS n’autorise pas UniversalKM à lire le presse-papiers : le texte du Mac n’est pas envoyé. Autorisez-le dans Réglages Système → Confidentialité et sécurité.";
+"Clipboard: shared" = "Presse-papiers : partagé";
+"Clipboard: connecting…" = "Presse-papiers : connexion…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "Presse-papiers : nécessite le débogage USB ou le Wi‑Fi sur l’appareil";
+"Clipboard: error — %@" = "Presse-papiers : erreur — %@";
