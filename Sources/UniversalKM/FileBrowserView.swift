@@ -113,49 +113,6 @@ struct FileBrowserView: View {
     }
 }
 
-private struct TransferRow: View {
-    @ObservedObject var transfer: FileTransfer
-    let cancel: (FileTransfer) -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: transfer.direction == .download ? "arrow.down" : "arrow.up").foregroundStyle(.secondary)
-            Text(transfer.name).lineLimit(1).truncationMode(.middle).frame(maxWidth: 200, alignment: .leading)
-            switch transfer.state {
-            case .queued:
-                Text("Waiting…").foregroundStyle(.secondary)
-                Spacer()
-            case .running:
-                if transfer.total > 0 {
-                    ProgressView(value: Double(min(transfer.done, transfer.total)), total: Double(transfer.total)).controlSize(.small)
-                } else {
-                    ProgressView().controlSize(.small)
-                    Spacer()
-                }
-                Text(progressText).foregroundStyle(.secondary).monospacedDigit()
-            case .finished:
-                Text("Done").foregroundStyle(.secondary)
-                Spacer()
-            case .failed(let message):
-                Text(message).foregroundStyle(.red).lineLimit(1)
-                Spacer()
-            }
-            if transfer.isActive {
-                Button { cancel(transfer) } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.borderless)
-                    .help("Cancel")
-            }
-        }
-        .font(.caption)
-    }
-
-    private var progressText: String {
-        let done = ByteCountFormatter.string(fromByteCount: Int64(clamping: transfer.done), countStyle: .file)
-        guard transfer.total > 0 else { return done }
-        return "\(done) / \(ByteCountFormatter.string(fromByteCount: Int64(clamping: transfer.total), countStyle: .file))"
-    }
-}
-
 /// The panels of "Download…" and "Upload…".
 @MainActor
 enum FileBrowserActions {

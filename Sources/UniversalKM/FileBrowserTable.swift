@@ -1,5 +1,4 @@
 import AppKit
-import Carbon
 import SwiftUI
 import UniformTypeIdentifiers
 import UniversalKMCore
@@ -75,7 +74,10 @@ struct FileBrowserTable: NSViewRepresentable {
 
         init(model: FileBrowserModel) {
             self.model = model
-            promises = PromiseDelegate(model: model)
+            promises = PromiseDelegate(name: { ($0 as? PromisedFile)?.entry.name ?? "file" }) { [model] info, url, done in
+                guard let file = info as? PromisedFile else { return done(ADBFileError.protocolError("no file")) }
+                model.download(file.entry, in: file.folder, to: url, completion: done)
+            }
         }
 
         /// New entries: the selection is kept by name, plus the names the model asked to select.
@@ -296,43 +298,6 @@ struct PromisedFile {
     var folder: RemotePath
 }
 
-/// NSFilePromiseProvider calls it on its own queue; the download runs on the model's transfer queue
-/// and the promise is kept once the file has its real name (design D5).
-final class PromiseDelegate: NSObject, NSFilePromiseProviderDelegate, @unchecked Sendable {
-    private let model: FileBrowserModel
-    private let queue: OperationQueue = {
-        let queue = OperationQueue()
-        queue.qualityOfService = .userInitiated
-        return queue
-    }()
-
-    init(model: FileBrowserModel) {
-        self.model = model
-    }
-
-    func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
-        (provider.userInfo as? PromisedFile)?.entry.name ?? "file"
-    }
-
-    func filePromiseProvider(_ provider: NSFilePromiseProvider, writePromiseTo url: URL,
-                             completionHandler: @escaping (Error?) -> Void) {
-        guard let file = provider.userInfo as? PromisedFile else {
-            completionHandler(ADBFileError.protocolError("no file"))
-            return
-        }
-        let done = UncheckedSendable(completionHandler)
-        model.download(file.entry, in: file.folder, to: url) { error in done.value(error) }
-    }
-
-    func operationQueue(for provider: NSFilePromiseProvider) -> OperationQueue { queue }
-}
-
-/// A completion handler AppKit gives without Sendable; it may be called from any thread.
-struct UncheckedSendable<T>: @unchecked Sendable {
-    let value: T
-    init(_ value: T) { self.value = value }
-}
-
 /// The table with Finder's keys (design D4). The app has no main menu (menu bar only), so ⌘V, ⌘C, ⌘X
 /// and ⌘A are handled here, for the table and for the field editor while renaming.
 final class FileTableView: NSTableView {
@@ -380,32 +345,5 @@ final class FileTableView: NSTableView {
         default: return super.performKeyEquivalent(with: event)
         }
         return true
-    }
-}
-
-/// The letter of a key as on the Latin layout, so ⌘C, ⌘V and the others work while a Russian or
-/// another non-Latin layout is on, the way menu shortcuts do in macOS.
-enum LatinKey {
-    static func of(_ event: NSEvent) -> String? {
-        if let typed = event.charactersIgnoringModifiers?.lowercased(), typed.unicodeScalars.allSatisfy(\.isASCII), !typed.isEmpty {
-            return typed
-        }
-        return translate(event.keyCode)
-    }
-
-    private static func translate(_ keyCode: UInt16) -> String? {
-        guard let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
-              let property = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
-        let data = Unmanaged<CFData>.fromOpaque(property).takeUnretainedValue() as Data
-        var deadKeys: UInt32 = 0
-        var length = 0
-        var chars = [UniChar](repeating: 0, count: 4)
-        let status = data.withUnsafeBytes { bytes -> OSStatus in
-            guard let layout = bytes.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return -1 }
-            return UCKeyTranslate(layout, keyCode, UInt16(kUCKeyActionDown), 0, UInt32(LMGetKbdType()),
-                                  OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, chars.count, &length, &chars)
-        }
-        guard status == noErr, length > 0 else { return nil }
-        return String(utf16CodeUnits: chars, count: length).lowercased()
     }
 }
