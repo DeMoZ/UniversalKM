@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import SwiftUI
 import UniformTypeIdentifiers
 import UniversalKMCore
@@ -349,8 +350,17 @@ final class FileTableView: NSTableView {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-              let key = event.charactersIgnoringModifiers?.lowercased() else { return super.performKeyEquivalent(with: event) }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command), let key = LatinKey.of(event) else { return super.performKeyEquivalent(with: event) }
+        // The toolbar's ⌘R and ⇧⌘N, here too so they work with any keyboard layout.
+        if !(window?.firstResponder is NSTextView) {
+            switch (key, flags) {
+            case ("r", .command): coordinator?.model.refresh(); return true
+            case ("n", [.command, .shift]): coordinator?.model.makeFolder(); return true
+            default: break
+            }
+        }
+        guard flags == .command else { return super.performKeyEquivalent(with: event) }
         if let editor = window?.firstResponder as? NSTextView, editor.isFieldEditor {
             switch key {
             case "v": editor.paste(nil)
@@ -370,5 +380,32 @@ final class FileTableView: NSTableView {
         default: return super.performKeyEquivalent(with: event)
         }
         return true
+    }
+}
+
+/// The letter of a key as on the Latin layout, so ⌘C, ⌘V and the others work while a Russian or
+/// another non-Latin layout is on, the way menu shortcuts do in macOS.
+enum LatinKey {
+    static func of(_ event: NSEvent) -> String? {
+        if let typed = event.charactersIgnoringModifiers?.lowercased(), typed.unicodeScalars.allSatisfy(\.isASCII), !typed.isEmpty {
+            return typed
+        }
+        return translate(event.keyCode)
+    }
+
+    private static func translate(_ keyCode: UInt16) -> String? {
+        guard let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let property = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        let data = Unmanaged<CFData>.fromOpaque(property).takeUnretainedValue() as Data
+        var deadKeys: UInt32 = 0
+        var length = 0
+        var chars = [UniChar](repeating: 0, count: 4)
+        let status = data.withUnsafeBytes { bytes -> OSStatus in
+            guard let layout = bytes.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return -1 }
+            return UCKeyTranslate(layout, keyCode, UInt16(kUCKeyActionDown), 0, UInt32(LMGetKbdType()),
+                                  OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, chars.count, &length, &chars)
+        }
+        guard status == noErr, length > 0 else { return nil }
+        return String(utf16CodeUnits: chars, count: length).lowercased()
     }
 }
