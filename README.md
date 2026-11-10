@@ -36,6 +36,7 @@
 | 📱 **Up to three devices** | Three devices connect at once, each with its own zone in the layout. |
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
 | 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
+| 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
 | 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
 | 🖼️ **iPhone photos** | A window with the photos and videos of an iPhone on a cable: copy them to the Mac, delete them from the iPhone. |
 | 🎥 **Motion camera** | An Android phone or tablet records video while something moves in front of it and keeps the clips; it works without the Mac. Watch them from the Mac. |
@@ -90,6 +91,7 @@ The Mac becomes an ordinary wired keyboard and mouse for the phone through the A
 - The phone is known by its serial number, so it keeps its place after unplugging, after a restart and in any USB mode (file transfer, charging only, tethering, photo transfer).
 - Unplugging the cable returns input to the Mac, unless the phone is also on Wi‑Fi: then work carries on over Wi‑Fi.
 - Quitting the app removes the keyboard and mouse from the phone, and its on-screen keyboard comes back.
+- **Keyboard and mouse: on / off** in the device row switches control of that device without removing it: off, the cursor no longer goes to it, the phone loses the keyboard and mouse (its on-screen keyboard comes back), and it keeps its place, settings, files and clipboard. Click again to switch control back on. This works over Wi‑Fi too; a ChameleonUltra device keeps its Bluetooth link, only the cursor stops going to it.
 - It needs AOA 2, which practically every phone since Android 4.1 has. Some vendors leave AOA out; such a device is skipped, and Wi‑Fi or the Chameleon still work.
 - Tested on a Samsung Galaxy S10e (Android 12).
 
@@ -111,6 +113,19 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 - Delay: the adb round trip over Wi‑Fi was 8 ms median (12 ms at the 90th percentile, rare spikes of 100 ms) on a home network. The cable is faster.
 - **macOS asks once whether `adb` may find devices on your local network: allow it.** The app starts the adb server as its own process, so the server keeps working after the app quits (otherwise macOS cuts its network the moment UniversalKM closes, and `adb` in Terminal shows the phone `offline`). If you said no: System Settings → Privacy & Security → Local Network → turn on `adb`. The question comes back once after an update of platform-tools, because the path to `adb` contains its version.
 - With developer options and wireless debugging on, every computer you allowed can control the phone. Turn wireless debugging on only on networks you trust; Android turns it off when you change networks.
+
+## Shared clipboard (Android)
+
+When an Android device of the layout has an adb connection (Wireless debugging as above, or USB debugging over the cable), it shares the clipboard with the Mac. Nothing is installed on the phone: the app puts a small helper on it (`/data/local/tmp/ukm-clipboard-*.jar`, a few KB) and runs it through `app_process` with debugging rights, the way scrcpy does. The helper exits when the phone disconnects or the app quits.
+
+- **Both ways, right away.** Copy on the Mac and the text is on the phone's clipboard. Copy on the phone, with a finger or the Mac keyboard, and it is on the Mac's. Usually in under a second.
+- **Text only**, up to 1 MB. Images, files and formatting are not shared.
+- **Passwords stay on the Mac.** Content that password managers mark as concealed (`org.nspasteboard.ConcealedType` and similar markers) is not sent. Any other text is, including a password copied by hand from an ordinary window.
+- **While the phone is locked,** Android hides its clipboard but still takes text from the Mac: it is there after unlocking.
+- **Over the cable without USB debugging** (AOA) there is no shared clipboard: the panel says it needs USB debugging or Wi‑Fi.
+- **Android 13 and newer** shows its own "copied" pop-up each time text arrives from the Mac (seen on Android 16); this is the system's and cannot be turned off.
+- **Turn it off** per device: the "Clipboard: on / off" button in the device row, next to "Keyboard and mouse".
+- The app never writes clipboard text to its log, only its length.
 
 ## Android files
 
@@ -267,6 +282,7 @@ scripts/build-app.sh          # build/UniversalKM.app
 scripts/build-app.sh --zip    # + build/UniversalKM-<version>.zip
 scripts/run.sh                # build, relaunch and follow the log
 scripts/run.sh --ble-demo     # demo: a square drawn with the pointer, a click and "hello" on each device
+scripts/build-android-helper.sh   # rebuild Resources/ukm-clipboard.jar (needs the Android SDK)
 ```
 
 **Signing.** macOS ties the Accessibility and Input Monitoring permissions to the signing certificate. The script picks a certificate in this order:

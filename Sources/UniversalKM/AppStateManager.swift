@@ -14,6 +14,8 @@ final class AppStateManager {
     /// The Android transport inside `transport`, for the Wi‑Fi actions of the panel.
     let android: AndroidHIDTransport
     @ObservationIgnored private(set) lazy var input = InputManager(transport: transport)
+    /// Shared text clipboard with the Android phones of the arrangement (add-android-clipboard-sync).
+    let clipboard = ClipboardSync()
     @ObservationIgnored private let displaysProvider = DisplayLayoutProvider()
     @ObservationIgnored private var permissionTimer: Timer?
 
@@ -63,8 +65,7 @@ final class AppStateManager {
     }
 
     func isConnected(_ device: PlacedDevice) -> Bool {
-        // Registered Android devices are in subscribedPeers too.
-        device.hostPeerID.map(subscribedPeers.contains) ?? false
+        connection(of: device) != nil
     }
 
     /// Hosts that are there right now: Chameleon subscribers and Android devices on USB or Wi‑Fi
@@ -88,8 +89,15 @@ final class AppStateManager {
     enum Connection: Equatable { case usb, wifi, chameleon }
 
     /// How a device of the arrangement is connected right now; nil = not connected.
+    /// An Android device with the keyboard and mouse off has none registered, but it is still on the
+    /// cable or Wi‑Fi (files, clipboard): that channel is shown.
     func connection(of device: PlacedDevice) -> Connection? {
-        guard let peer = device.hostPeerID, subscribedPeers.contains(peer) else { return nil }
+        guard let peer = device.hostPeerID else { return nil }
+        if !device.isInputOn, AndroidPeerRegistry.isAndroidPeer(peer), let status = androidStatus.device(peer) {
+            if status.hasUSB || status.hasADBOverUSB { return .usb }
+            return status.hasWiFi ? .wifi : nil
+        }
+        guard subscribedPeers.contains(peer) else { return nil }
         guard AndroidPeerRegistry.isAndroidPeer(peer) else { return .chameleon }
         switch androidStatus.device(peer)?.active {
         case .usb: return .usb
@@ -166,6 +174,15 @@ final class AppStateManager {
     func setReturnThroughEdge(_ on: Bool, of id: UUID) {
         guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
         arrangement.devices[index].returnThroughEdge = on
+        arrangementChanged()
+    }
+
+    /// Keyboard and mouse to the device on or off. Off: the cursor no longer passes to it, an Android
+    /// device has them removed; the binding, place, files and clipboard stay.
+    func setInput(_ on: Bool, of id: UUID) {
+        guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
+        arrangement.devices[index].inputEnabled = on
+        log.info("input \(on ? "on" : "off", privacy: .public) for \(self.arrangement.devices[index].name, privacy: .public)")
         arrangementChanged()
     }
 
@@ -272,17 +289,33 @@ final class AppStateManager {
     }
 
     private func pushToInput() {
-        var bound = Set(arrangement.devices.compactMap(\.hostPeerID))
+        // An Android device with the keyboard and mouse off is not bound in the transport: they are
+        // removed from it (its on-screen keyboard comes back). A Chameleon host keeps its Bluetooth link.
+        var bound = Set(arrangement.devices.compactMap { device in
+            device.hostPeerID.flatMap { device.isInputOn || !AndroidPeerRegistry.isAndroidPeer($0) ? $0 : nil }
+        })
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
-        input.update(zones: layouts.flatMap(\.zones), displays: displays)
+        updateClipboard()
+        // A device with the input off has no zones and no target: the cursor passes its edge, and a
+        // capture on it ends (InputManager.update(targets:) releases a device that is gone).
+        input.update(zones: layouts.filter(\.device.isInputOn).flatMap(\.zones), displays: displays)
         let rects = Dictionary(uniqueKeysWithValues: layouts.map { ($0.device.id, $0.rect) })
         input.update(targets: arrangement.devices.compactMap { device in
-            guard let peer = device.hostPeerID else { return nil }
+            guard let peer = device.hostPeerID, device.isInputOn else { return nil }
             return CaptureTarget(deviceID: device.id, peerID: peer, isConnected: subscribedPeers.contains(peer),
                                  pointerSpeed: device.pointerSpeed, rect: rects[device.id] ?? .zero,
                                  screen: device.screenInPoints, returnThroughEdge: device.isReturnThroughEdgeOn)
         })
+    }
+
+    /// Android phones of the arrangement and their adb transport go to the clipboard sync.
+    private func updateClipboard() {
+        var targets: [UInt16: String?] = [:]
+        for peer in arrangement.devices.compactMap(\.hostPeerID) where AndroidPeerRegistry.isAndroidPeer(peer) {
+            targets[peer] = androidStatus.device(peer)?.adbTransport
+        }
+        clipboard.update(targets: targets, adbPath: androidStatus.adbPath)
     }
 
     private func modeChanged(_ mode: CaptureStateMachine.Mode) {

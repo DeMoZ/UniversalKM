@@ -307,3 +307,17 @@ private func zoneLength(_ zone: HandoffZone) -> Double {
     let decoded = try JSONDecoder().decode(DeviceArrangement.self, from: JSONEncoder().encode(arrangement))
     #expect(decoded.device(boundTo: 0x8000)?.id == arrangement.devices[0].id)
 }
+
+// MARK: Keyboard and mouse switch
+
+@Test func inputIsOnByDefaultAndTheSwitchIsSaved() throws {
+    // Saved before the switch existed: no "inputEnabled" key → on.
+    var device = phone(.right)
+    #expect(device.isInputOn)
+    let old = try JSONEncoder().encode(DeviceArrangement(devices: [device]))
+    #expect(!String(decoding: old, as: UTF8.self).contains("inputEnabled"))
+    #expect(try JSONDecoder().decode(DeviceArrangement.self, from: old).devices[0].isInputOn)
+    device.inputEnabled = false
+    let saved = try JSONEncoder().encode(DeviceArrangement(devices: [device]))
+    #expect(try JSONDecoder().decode(DeviceArrangement.self, from: saved).devices[0].isInputOn == false)
+}

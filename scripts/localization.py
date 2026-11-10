@@ -722,8 +722,104 @@ T5 = {
        'USB', 'Wi‑Fi', 'Chameleon을 통한 Bluetooth', '연결 대기 중…', '파일 및 사진', '기기의 파일',
        '사진 및 비디오, 케이블', '사진…', '연결', '포인터 속도'],
 }
+# Added by add-android-clipboard-sync: shared clipboard of an Android device in the panel.
+K6 = ['Shared clipboard',
+ 'Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.',
+ 'macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → '
+ 'Privacy & Security.',
+ 'Clipboard: shared',
+ 'Clipboard: connecting…',
+ 'Clipboard: needs USB debugging or Wi‑Fi on the device',
+ 'Clipboard: error — %@']
+T6 = {
+ 'ru': ['Общий буфер обмена',
+        'Текст, скопированный на Mac, можно вставить на устройстве, и наоборот. Нужен adb: отладка по USB или Wi‑Fi.',
+        'macOS не даёт UniversalKM читать буфер обмена, поэтому текст с Mac не передаётся. Разрешите это в Системных '
+        'настройках → Конфиденциальность и безопасность.',
+        'Буфер обмена: общий', 'Буфер обмена: подключение…',
+        'Буфер обмена: нужна отладка по USB или Wi‑Fi на устройстве', 'Буфер обмена: ошибка — %@'],
+ 'de': ['Gemeinsame Zwischenablage',
+        'Auf dem Mac kopierter Text lässt sich auf dem Gerät einfügen und umgekehrt. Benötigt adb: USB-Debugging oder Wi‑Fi.',
+        'macOS erlaubt UniversalKM nicht, die Zwischenablage zu lesen, daher wird Text vom Mac nicht gesendet. Erlaube es '
+        'unter Systemeinstellungen → Datenschutz & Sicherheit.',
+        'Zwischenablage: gemeinsam', 'Zwischenablage: Verbindung wird hergestellt…',
+        'Zwischenablage: benötigt USB-Debugging oder Wi‑Fi auf dem Gerät', 'Zwischenablage: Fehler – %@'],
+ 'fr': ['Presse-papiers partagé',
+        'Le texte copié sur le Mac peut être collé sur l’appareil, et inversement. Nécessite adb : débogage USB ou Wi‑Fi.',
+        'macOS n’autorise pas UniversalKM à lire le presse-papiers : le texte du Mac n’est pas envoyé. Autorisez-le dans '
+        'Réglages Système → Confidentialité et sécurité.',
+        'Presse-papiers : partagé', 'Presse-papiers : connexion…',
+        'Presse-papiers : nécessite le débogage USB ou le Wi‑Fi sur l’appareil', 'Presse-papiers : erreur — %@'],
+ 'es': ['Portapapeles compartido',
+        'El texto copiado en el Mac se puede pegar en el dispositivo, y al revés. Necesita adb: depuración USB o Wi‑Fi.',
+        'macOS no permite que UniversalKM lea el portapapeles, así que el texto del Mac no se envía. Permítelo en Ajustes '
+        'del Sistema → Privacidad y seguridad.',
+        'Portapapeles: compartido', 'Portapapeles: conectando…',
+        'Portapapeles: necesita depuración USB o Wi‑Fi en el dispositivo', 'Portapapeles: error — %@'],
+ 'pt-BR': ['Área de transferência compartilhada',
+           'O texto copiado no Mac pode ser colado no dispositivo, e vice-versa. Requer adb: depuração USB ou Wi‑Fi.',
+           'O macOS não permite que o UniversalKM leia a área de transferência, então o texto do Mac não é enviado. '
+           'Permita em Ajustes do Sistema → Privacidade e Segurança.',
+           'Área de transferência: compartilhada', 'Área de transferência: conectando…',
+           'Área de transferência: requer depuração USB ou Wi‑Fi no dispositivo', 'Área de transferência: erro — %@'],
+ 'it': ['Appunti condivisi',
+        'Il testo copiato sul Mac si può incollare sul dispositivo, e viceversa. Serve adb: debug USB o Wi‑Fi.',
+        'macOS non consente a UniversalKM di leggere gli appunti, quindi il testo dal Mac non viene inviato. Consentilo in '
+        'Impostazioni di Sistema → Privacy e sicurezza.',
+        'Appunti: condivisi', 'Appunti: connessione…',
+        'Appunti: serve il debug USB o il Wi‑Fi sul dispositivo', 'Appunti: errore — %@'],
+ 'zh-Hans': ['共享剪贴板',
+             '在 Mac 上拷贝的文本可以粘贴到设备上，反之亦然。需要 adb：USB 调试或 Wi‑Fi。',
+             'macOS 不允许 UniversalKM 读取剪贴板，因此不会发送来自 Mac 的文本。请在“系统设置”→“隐私与安全性”中允许。',
+             '剪贴板：已共享', '剪贴板：正在连接…', '剪贴板：需要在设备上开启 USB 调试或 Wi‑Fi', '剪贴板：错误 — %@'],
+ 'ja': ['共有クリップボード',
+        'Mac でコピーしたテキストをデバイスでペーストでき、その逆もできます。adb（USB デバッグまたは Wi‑Fi）が必要です。',
+        'macOS が UniversalKM にクリップボードの読み取りを許可していないため、Mac からのテキストは送信されません。'
+        '「システム設定」→「プライバシーとセキュリティ」で許可してください。',
+        'クリップボード：共有中', 'クリップボード：接続中…',
+        'クリップボード：デバイスで USB デバッグまたは Wi‑Fi が必要です', 'クリップボード：エラー — %@'],
+ 'ko': ['공유 클립보드',
+        'Mac에서 복사한 텍스트를 기기에 붙여넣을 수 있으며 그 반대도 가능합니다. adb(USB 디버깅 또는 Wi‑Fi)가 필요합니다.',
+        'macOS가 UniversalKM의 클립보드 읽기를 허용하지 않아 Mac의 텍스트가 전송되지 않습니다. 시스템 설정 → 개인정보 보호 및 '
+        '보안에서 허용하십시오.',
+        '클립보드: 공유 중', '클립보드: 연결 중…', '클립보드: 기기에서 USB 디버깅 또는 Wi‑Fi가 필요합니다', '클립보드: 오류 — %@'],
+}
+# Added by add-device-input-toggle: on/off buttons of a device row.
+K7 = ['Keyboard and mouse: on', 'Keyboard and mouse: off', 'Clipboard: on', 'Clipboard: off',
+ 'Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.',
+ 'Click to send the keyboard and mouse to this device again.']
+T7 = {
+ 'ru': ['Клавиатура и мышь: вкл', 'Клавиатура и мышь: выкл', 'Буфер обмена: вкл', 'Буфер обмена: выкл',
+        'Нажмите, чтобы не передавать клавиатуру и мышь на это устройство. Оно остаётся подключённым: файлы и буфер обмена работают.',
+        'Нажмите, чтобы снова передавать клавиатуру и мышь на это устройство.'],
+ 'de': ['Tastatur und Maus: an', 'Tastatur und Maus: aus', 'Zwischenablage: an', 'Zwischenablage: aus',
+        'Klicken, um Tastatur und Maus nicht mehr an dieses Gerät zu senden. Es bleibt verbunden: Dateien und Zwischenablage funktionieren weiter.',
+        'Klicken, um Tastatur und Maus wieder an dieses Gerät zu senden.'],
+ 'fr': ['Clavier et souris : activés', 'Clavier et souris : désactivés', 'Presse-papiers : activé', 'Presse-papiers : désactivé',
+        'Cliquez pour ne plus envoyer le clavier et la souris à cet appareil. Il reste connecté : les fichiers et le presse-papiers fonctionnent toujours.',
+        'Cliquez pour envoyer de nouveau le clavier et la souris à cet appareil.'],
+ 'es': ['Teclado y ratón: activados', 'Teclado y ratón: desactivados', 'Portapapeles: activado', 'Portapapeles: desactivado',
+        'Haz clic para dejar de enviar el teclado y el ratón a este dispositivo. Sigue conectado: los archivos y el portapapeles siguen funcionando.',
+        'Haz clic para volver a enviar el teclado y el ratón a este dispositivo.'],
+ 'pt-BR': ['Teclado e mouse: ativados', 'Teclado e mouse: desativados', 'Área de transferência: ativada',
+           'Área de transferência: desativada',
+           'Clique para parar de enviar o teclado e o mouse para este dispositivo. Ele continua conectado: arquivos e área de transferência continuam funcionando.',
+           'Clique para voltar a enviar o teclado e o mouse para este dispositivo.'],
+ 'it': ['Tastiera e mouse: attivi', 'Tastiera e mouse: disattivati', 'Appunti: attivi', 'Appunti: disattivati',
+        'Fai clic per non inviare più tastiera e mouse a questo dispositivo. Resta connesso: file e appunti continuano a funzionare.',
+        'Fai clic per inviare di nuovo tastiera e mouse a questo dispositivo.'],
+ 'zh-Hans': ['键盘和鼠标：开', '键盘和鼠标：关', '剪贴板：开', '剪贴板：关',
+             '点按以停止向此设备发送键盘和鼠标。设备仍保持连接：文件和剪贴板照常工作。',
+             '点按以再次向此设备发送键盘和鼠标。'],
+ 'ja': ['キーボードとマウス：オン', 'キーボードとマウス：オフ', 'クリップボード：オン', 'クリップボード：オフ',
+        'クリックすると、このデバイスへのキーボードとマウスの送信を止めます。接続は保たれ、ファイルとクリップボードは引き続き使えます。',
+        'クリックすると、このデバイスへのキーボードとマウスの送信を再開します。'],
+ 'ko': ['키보드 및 마우스: 켬', '키보드 및 마우스: 끔', '클립보드: 켬', '클립보드: 끔',
+        '클릭하면 이 기기로 키보드와 마우스를 보내지 않습니다. 연결은 유지되며 파일과 클립보드는 계속 작동합니다.',
+        '클릭하면 이 기기로 키보드와 마우스를 다시 보냅니다.'],
+}
 # add-android-motion-camera: the Motion Camera section of the panel.
-K6 = ['Motion Camera', 'Installing…', 'Confirm the install on the device screen, then press Install again.',
+K8 = ['Motion Camera', 'Installing…', 'Confirm the install on the device screen, then press Install again.',
       '%lld clips · %@', 'Hide Settings', 'Settings…', 'Recordings…', 'Open the clips of “%@” in the file window',
       'Install Camera…', 'Install UniversalKM Motion on “%@” over adb', 'Update Camera',
       'Turn the motion camera on or off on “%@”',
@@ -734,7 +830,7 @@ K6 = ['Motion Camera', 'Installing…', 'Confirm the install on the device scree
       'Stopped: open UniversalKM Motion on the device', 'Could not start: tap the notification on the device',
       'State unknown', 'Sensitivity', 'Low', 'Medium', 'High', 'Stop after', '%lld s without motion', 'Camera',
       'Rear', 'Front', 'Quality', 'Keep up to']
-T6 = {
+T8 = {
 'ru': ['Камера движения', 'Установка…', 'Подтвердите установку на экране устройства и нажмите «Установить» ещё раз.',
        'Роликов: %lld · %@', 'Скрыть настройки', 'Настройки…', 'Записи…', 'Открыть ролики «%@» в окне файлов',
        'Установить камеру…', 'Установить UniversalKM Motion на «%@» через adb', 'Обновить камеру',
@@ -847,7 +943,9 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
         assert lang == "en" or len(T4[lang]) == len(K4), (lang, len(T4[lang]))
         assert lang == "en" or len(T5[lang]) == len(K5), (lang, len(T5[lang]))
         assert lang == "en" or len(T6[lang]) == len(K6), (lang, len(T6[lang]))
-        for k, v in zip(K + K2 + K3 + K4 + K5 + K6, vals[:-1] + (K2 + K3 + K4 + K5 + K6 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang])):
+        assert lang == "en" or len(T7[lang]) == len(K7), (lang, len(T7[lang]))
+        assert lang == "en" or len(T8[lang]) == len(K8), (lang, len(T8[lang]))
+        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7 + K8, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 + K8 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang] + T8[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')
