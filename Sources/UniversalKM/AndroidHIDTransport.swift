@@ -71,13 +71,26 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private var wifiAddresses: [String: String]
     /// Devices (serial numbers) whose Wi‑Fi the user switched off in the panel.
     private var wifiOff: Set<String>
-    /// When a device last had a channel, and a Wi‑Fi one (uptime). When adbd restarts on one phone
-    /// (`tcpip`, `usb`), adb on the Mac drops every transport for a second or two, other phones too:
-    /// for the panel a device stays as it was for `statusGrace` (its rows and Wi‑Fi switch do not blink).
-    private var lastSeen: [String: TimeInterval] = [:]
-    private var lastWiFi: [String: TimeInterval] = [:]
+    /// When adbd restarts on one phone (`tcpip`, `usb`), adb on the Mac drops every transport for a
+    /// second or two, other phones too. For the panel and the file window each part of a device's
+    /// status keeps its last value for `statusGrace` (rows, switches and buttons do not blink); the
+    /// input link and the clipboard follow the real channels.
+    private struct Seen {
+        var any: TimeInterval?
+        var usb: TimeInterval?
+        var wifi: TimeInterval?
+        var adbUSB: TimeInterval?
+        var files: (serial: String, network: Bool, at: TimeInterval)?
+    }
+    private var seen: [String: Seen] = [:]
+    /// adb transports that are not "device" ("offline", "unauthorized"), since when: shown after
+    /// `problemDelay`, so the moment of a reconnect does not flash a warning.
+    private var problemSince: [String: TimeInterval] = [:]
     private var graceRepublish = false
     private var bound: Set<UInt16> = []
+    /// Every Android device of the arrangement, also with the keyboard and mouse off: their Wi‑Fi is
+    /// reconnected and their status kept (files, clipboard), whatever `bound` is.
+    private var layoutPeers: Set<UInt16> = []
     private var enabled = true
     private var started = false
     private var status = AndroidStatus()
@@ -148,6 +161,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     /// How long "Wi‑Fi on" without a cable waits for the device to show up on the network.
     private static let wifiWait: TimeInterval = 8
     private static let statusGrace: TimeInterval = 5
+    private static let problemDelay: TimeInterval = 3
 
     init(onStatus: @escaping @Sendable (AndroidStatus) -> Void) {
         self.onStatus = onStatus
@@ -194,6 +208,17 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             guard android != bound else { return }
             bound = android
             reconcile()
+        }
+    }
+
+    /// The Android devices of the arrangement (see `layoutPeers`).
+    func setLayoutPeers(_ peers: Set<UInt16>) {
+        queue.async { [self] in
+            let android = peers.filter(AndroidPeerRegistry.isAndroidPeer)
+            guard android != layoutPeers else { return }
+            layoutPeers = android
+            reconnectWiFi()
+            publish()
         }
     }
 
@@ -432,7 +457,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         for (serial, entry) in adbDevices where entry.device.state == "device" && entry.key == nil && !entry.asked {
             identify(serial)
         }
-        status.adbProblems = adbDevices.values.filter { $0.device.state != "device" }.map { "\($0.device.serial): \($0.device.state)" }.sorted()
+        let problems = Set(adbDevices.values.filter { $0.device.state != "device" }.map { "\($0.device.serial): \($0.device.state)" })
+        let now = ProcessInfo.processInfo.systemUptime
+        problemSince = problemSince.filter { problems.contains($0.key) }
+        for problem in problems where problemSince[problem] == nil { problemSince[problem] = now }
         reconcile()
     }
 
@@ -480,7 +508,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private func reconnectWiFi(force: Set<String> = []) {
         guard let adb else { return }
         let onNetwork = Set(adbDevices.values.compactMap { $0.device.isNetwork && $0.device.state == "device" ? $0.key : nil })
-        let wanted = Set(bound.compactMap(registry.key(for:))).union(force)
+        let wanted = Set(bound.union(layoutPeers).compactMap(registry.key(for:))).union(force)
         let missing = wanted.filter { !onNetwork.contains($0) && !wifiOff.contains($0) }
         guard !missing.isEmpty else { return }
         for key in missing {
@@ -531,45 +559,54 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private func publish() {
         var devices: [AndroidDeviceStatus] = []
         let now = ProcessInfo.processInfo.systemUptime
+        func recent(_ time: TimeInterval?) -> Bool { time.map { now - $0 < Self.statusGrace } ?? false }
         var inGrace = false
         for (key, peer) in registry.peers {
             let channels = candidates(key)
-            let isBound = bound.contains(peer)
-            let onWiFi = channels.contains { $0.0 == .wifi }
-            if !channels.isEmpty { lastSeen[key] = now }
-            if onWiFi { lastWiFi[key] = now }
-            if wifiOff.contains(key) { lastWiFi[key] = nil }
-            let seenRecently = lastSeen[key].map { now - $0 < Self.statusGrace } ?? false
-            let wifiRecently = lastWiFi[key].map { now - $0 < Self.statusGrace } ?? false
-            if (channels.isEmpty && seenRecently) || (!onWiFi && wifiRecently) { inGrace = true }
-            guard !channels.isEmpty || isBound || seenRecently else { continue }
+            let usb = channels.contains { $0.0 == .usb }
+            let wifi = channels.contains { $0.0 == .wifi }
+            let adbUSB = channels.contains { $0.0 == .adbUSB }
+            // The smallest serial of a kind: adb may list one phone twice on Wi‑Fi (ip:port and mDNS), and
+            // a choice that flips would make the file window read its folder again on every change.
+            let cableFiles = channels.filter { $0.0 == .adbUSB }.map(\.1).min()
+            let files = cableFiles ?? channels.filter { $0.0 == .wifi }.map(\.1).min()
+            var last = seen[key] ?? Seen()
+            if !channels.isEmpty { last.any = now }
+            if usb { last.usb = now }
+            if wifi { last.wifi = now }
+            if adbUSB { last.adbUSB = now }
+            if let files { last.files = (files, cableFiles == nil, now) }
+            if wifiOff.contains(key) {
+                last.wifi = nil
+                if last.files?.network == true { last.files = nil }
+            }
+            seen[key] = last
+            guard !channels.isEmpty || bound.contains(peer) || layoutPeers.contains(peer) || recent(last.any) else { continue }
             var device = AndroidDeviceStatus(peerID: peer, name: names[key] ?? key, serial: key)
-            device.hasUSB = channels.contains { $0.0 == .usb }
-            device.hasWiFi = onWiFi || wifiRecently
-            device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
-            if channels.isEmpty && seenRecently, let before = status.device(peer) {
-                device.hasUSB = before.hasUSB
-                device.hasADBOverUSB = before.hasADBOverUSB
+            device.hasUSB = usb || recent(last.usb)
+            device.hasWiFi = wifi || recent(last.wifi)
+            device.hasADBOverUSB = adbUSB || recent(last.adbUSB)
+            device.fileTransport = files ?? last.files.flatMap { recent($0.at) ? $0.serial : nil }
+            if device.hasUSB != usb || device.hasWiFi != wifi || device.hasADBOverUSB != adbUSB || device.fileTransport != files {
+                inGrace = true
             }
             device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
             device.isWiFiOff = wifiOff.contains(key)
-            // The smallest serial of a kind: adb may list one phone twice on Wi‑Fi (ip:port and mDNS), and
-            // a choice that flips would make the file window read its folder again on every change.
-            let adbUSB = channels.filter { $0.0 == .adbUSB }.map(\.1).min()
-            device.fileTransport = adbUSB ?? channels.filter { $0.0 == .wifi }.map(\.1).min()
             if status.device(peer)?.fileTransport != device.fileTransport {
                 log.info("files for \(key, privacy: .public): \(device.fileTransport ?? "none", privacy: .public)")
             }
             devices.append(device)
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }
+        status.adbProblems = problemSince.filter { now - $0.value >= Self.problemDelay }.map(\.key).sorted()
+        if problemSince.contains(where: { now - $0.value < Self.problemDelay }) { inGrace = true }
         onStatus(status)
         // Once the grace is over, show what is really there.
         if inGrace && !graceRepublish {
             graceRepublish = true
-            queue.asyncAfter(deadline: .now() + Self.statusGrace) { [weak self] in
+            queue.asyncAfter(deadline: .now() + Self.problemDelay) { [weak self] in
                 self?.graceRepublish = false
                 self?.publish()
             }
