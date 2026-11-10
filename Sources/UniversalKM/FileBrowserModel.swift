@@ -2,31 +2,6 @@ import AppKit
 import os
 import UniversalKMCore
 
-/// One download or upload in the file window (add-android-file-browser design D5).
-@MainActor
-final class FileTransfer: ObservableObject, Identifiable {
-    enum Direction { case download, upload }
-    enum State: Equatable {
-        case queued, running, finished
-        case failed(String)
-    }
-
-    let id = UUID()
-    let name: String
-    let direction: Direction
-    @Published var done: UInt64 = 0
-    @Published var total: UInt64 = 0
-    @Published var state = State.queued
-    nonisolated let cancellation = ADBCancellation()
-
-    init(name: String, direction: Direction) {
-        self.name = name
-        self.direction = direction
-    }
-
-    var isActive: Bool { state == .queued || state == .running }
-}
-
 /// The state of one device's file window (design D2–D8): the folder shown, the connection, the
 /// transfers. Device work runs on two serial queues: listings and shell commands on one, transfers on
 /// the other (one sync connection at a time), so browsing does not wait for a transfer.
@@ -460,22 +435,6 @@ final class FileBrowserModel: ObservableObject {
         case ADBFileError.protocolError(let text): text
         default: error.localizedDescription
         }
-    }
-}
-
-/// Counts the downloads of one ⌘C.
-@MainActor
-final class CopyBatch {
-    private var remaining: Int
-    private(set) var failed = false
-
-    init(count: Int) { remaining = count }
-
-    /// True when this was the last one.
-    func finish(failed: Bool) -> Bool {
-        remaining -= 1
-        if failed { self.failed = true }
-        return remaining == 0
     }
 }
 

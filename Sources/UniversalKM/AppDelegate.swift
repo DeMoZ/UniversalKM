@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         setUpStatusItem()
         transport.start()
         startCapture()
+        cableDevices.start()
         // `--open-panel`: opens the panel on launch (manual UI checks and window snapshots).
         if CommandLine.arguments.contains("--open-panel") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.togglePanel() }
@@ -72,6 +73,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
         closePanel()
         fileBrowsers.show(key: android.serial, name: device.displayName)
+    }
+
+    private let photoBrowsers = PhotoBrowsers()
+    /// The name of an iPhone or iPad on the cable, for "iPhone Photos…" in the panel (design D2).
+    @Published private(set) var appleDeviceOnCable: String?
+    private lazy var cableDevices = AppleDevicesOnCable { [weak self] name in self?.appleDeviceOnCable = name }
+
+    /// "Photos…" in the panel (add-iphone-photo-browser design D2): the iPhone on the cable.
+    func openPhotos() {
+        closePanel()
+        photoBrowsers.show()
     }
 
     /// `--ble-demo` only (task 1.12).

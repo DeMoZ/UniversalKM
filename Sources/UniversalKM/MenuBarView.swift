@@ -23,26 +23,16 @@ struct MenuBarView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             header
-            Divider()
             if showDonate {
                 DonateView(model: donate, close: { showDonate = false })
             } else {
-                status
-                AndroidWiFiView(state: state)
-                if !state.isCaptureRunning { permissionRow }
-                ArrangementView(state: state, selection: $selection)
-                deviceControls
-                if adding { addForm }
-                if let device = selectedDevice { speedControl(device) }
-                if let device = state.currentDevice {
-                    Button {
-                        state.releaseToMac()
-                    } label: {
-                        Label("Back to the Mac (now: \(device.displayName))", systemImage: "arrow.uturn.backward")
-                    }
-                }
+                if !state.isCaptureRunning { permissionBanner }
+                layoutSection
+                devicesSection
+                if !transferSources.isEmpty { filesSection }
+                connectionsSection
             }
             Divider()
             footer
@@ -63,73 +53,261 @@ struct MenuBarView: View {
         state.arrangement.devices.first { $0.id == selection }
     }
 
-    // MARK: Header and status
+    // MARK: Header
 
+    /// The app and where the input goes now; while it is on a device, the way back is right here.
     private var header: some View {
-        HStack(spacing: 8) {
-            if state.currentDevice == nil {
-                // The app icon from the bundle; a `swift run` build has none and shows the generic one.
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .frame(width: 28, height: 28)
-            } else {
-                Image(systemName: modeIcon)
-                    .font(.title2)
-                    .foregroundStyle(.tint)
-            }
+        HStack(spacing: 10) {
+            // The app icon from the bundle; a `swift run` build has none and shows the generic one.
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 28, height: 28)
             Text("UniversalKM").font(.headline)
             Spacer()
-            Text(state.currentDevice.map { String(localized: "Input: \($0.displayName)") } ?? String(localized: "Input: Mac"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if let device = state.currentDevice {
+                HStack(spacing: 6) {
+                    Image(systemName: device.kind == .tablet ? "ipad" : "iphone")
+                    Text(device.displayName).lineLimit(1)
+                    Button("Back to the Mac") { state.releaseToMac() }
+                        .controlSize(.small)
+                        .help("The keyboard and mouse go back to the Mac")
+                }
+                .font(.caption.weight(.medium))
+                .padding(.leading, 8).padding(.trailing, 3).padding(.vertical, 3)
+                .background(Color.accentColor.opacity(0.15), in: Capsule())
+                .foregroundStyle(Color.accentColor)
+            } else {
+                Label("Input: Mac", systemImage: "desktopcomputer")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(.quaternary, in: Capsule())
+            }
         }
     }
 
-    private var modeIcon: String {
-        guard let device = state.currentDevice else { return "desktopcomputer" }
-        return device.kind == .tablet ? "ipad" : "iphone"
-    }
-
-    @ViewBuilder
-    private var status: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(state.arrangement.devices) { device in
-                HStack(spacing: 6) {
-                    Circle().fill(state.isConnected(device) ? Color.green : Color.gray).frame(width: 7, height: 7)
-                    Text(device.displayName).fontWeight(.medium)
-                    Text(connectionText(device)).foregroundStyle(.secondary)
-                }
+    private var permissionBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.fill").foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("No Accessibility access").fontWeight(.medium)
+                Text("Without it the keyboard and mouse stay on the Mac.").font(.caption).foregroundStyle(.secondary)
             }
-            if state.arrangement.devices.isEmpty {
-                Text("Connect an Android phone or tablet with a cable or over Wi‑Fi, or pair a device with ChameleonUltra, then add it with the “+” button.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button("Open Settings") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
             }
-            ForEach(state.unboundHosts, id: \.self) { peer in
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle").foregroundStyle(.tint)
-                    Text(state.hostName(peer))
-                    Spacer()
-                    Button("Add…") {
-                        newHostPeerID = peer
-                        newName = state.androidStatus.device(peer)?.name ?? ""
-                        adding = true
-                    }
-                    .disabled(!state.arrangement.canAddDevice)
-                }
-            }
-            chameleonStatus
+            .controlSize(.small)
         }
         .font(.callout)
+        .padding(10)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: Layout
+
+    private var layoutSection: some View {
+        PanelSection("Layout") {
+            Button {
+                newHostPeerID = nil
+                newName = ""
+                adding = true
+            } label: { Label("Add Device", systemImage: "plus") }
+                .disabled(!state.arrangement.canAddDevice || adding)
+                .help(state.arrangement.canAddDevice ? String(localized: "Add a device") : String(localized: "Chameleon holds at most three devices"))
+        } content: {
+            VStack(spacing: 6) {
+                ArrangementView(state: state, selection: $selection)
+                Text("Drag a device next to a display edge")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    // MARK: Devices
+
+    private var devicesSection: some View {
+        PanelSection("Devices") {
+            EmptyView()
+        } content: {
+            PanelCard {
+                if state.arrangement.devices.isEmpty && state.unboundHosts.isEmpty && !adding {
+                    Text("Connect an Android phone or tablet with a cable or over Wi‑Fi, or pair a device with ChameleonUltra, then add it with the “+” button.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(10)
+                }
+                ForEach(Array(state.arrangement.devices.enumerated()), id: \.element.id) { index, device in
+                    if index > 0 { PanelDivider() }
+                    deviceRow(device)
+                    if device.id == selection {
+                        speedControl(device)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 10)
+                    }
+                }
+                ForEach(state.unboundHosts, id: \.self) { peer in
+                    if !state.arrangement.devices.isEmpty || peer != state.unboundHosts.first { PanelDivider() }
+                    HStack(spacing: 10) {
+                        Image(systemName: "plus.circle.fill").foregroundStyle(.tint).frame(width: 22)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(state.hostName(peer)).fontWeight(.medium)
+                            Text("Connected, not on the layout yet").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Add…") {
+                            newHostPeerID = peer
+                            newName = state.androidStatus.device(peer)?.name ?? ""
+                            adding = true
+                        }
+                        .controlSize(.small)
+                        .disabled(!state.arrangement.canAddDevice)
+                    }
+                    .font(.callout)
+                    .padding(10)
+                }
+                if adding {
+                    if !state.arrangement.devices.isEmpty || !state.unboundHosts.isEmpty { PanelDivider() }
+                    addForm.padding(10)
+                }
+            }
+        }
+    }
+
+    private func deviceRow(_ device: PlacedDevice) -> some View {
+        let selected = device.id == selection
+        return HStack(spacing: 10) {
+            Image(systemName: device.kind == .tablet ? "ipad" : "iphone")
+                .font(.title3)
+                .foregroundStyle(selected ? Color.accentColor : .secondary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(device.displayName).fontWeight(.medium)
+                HStack(spacing: 4) {
+                    Circle().fill(state.isConnected(device) ? Color.green : Color.gray.opacity(0.6)).frame(width: 6, height: 6)
+                    Text(connectionText(device))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(selected ? 0 : -90))
+            Menu {
+                Button("Rebind") { state.rebind(device.id) }
+                    .help("The next device to connect becomes “\(device.displayName)”")
+                Divider()
+                Button("Remove from the Layout", role: .destructive) {
+                    if selection == device.id { selection = nil }
+                    state.removeDevice(device.id)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("More for “\(device.displayName)”")
+        }
+        .font(.callout)
+        .padding(10)
+        .contentShape(Rectangle())
+        .background(selected ? Color.accentColor.opacity(0.08) : .clear)
+        .onTapGesture { selection = selected ? nil : device.id }
     }
 
     private func connectionText(_ device: PlacedDevice) -> String {
         switch state.connection(of: device) {
-        case .usb: String(localized: "— USB")
-        case .wifi: String(localized: "— Wi‑Fi")
-        case .chameleon: String(localized: "— Bluetooth via Chameleon")
-        case nil: String(localized: "— waiting for connection…")
+        case .usb: String(localized: "USB")
+        case .wifi: String(localized: "Wi‑Fi")
+        case .chameleon: String(localized: "Bluetooth via Chameleon")
+        case nil: String(localized: "Waiting for connection…")
         }
+    }
+
+    // MARK: Files and photos
+
+    private enum TransferSource: Identifiable {
+        case android(PlacedDevice)
+        case iPhone(String)
+
+        var id: String {
+            switch self {
+            case .android(let device): device.id.uuidString
+            case .iPhone(let name): "iphone:" + name
+            }
+        }
+    }
+
+    /// Everything the Mac can copy files from now, in one place: Android devices on adb, the iPhone on the cable.
+    private var transferSources: [TransferSource] {
+        state.arrangement.devices.filter(hasFiles).map(TransferSource.android)
+            + (app.appleDeviceOnCable.map { [.iPhone($0)] } ?? [])
+    }
+
+    private var filesSection: some View {
+        PanelSection("Files and Photos") {
+            EmptyView()
+        } content: {
+            PanelCard {
+                ForEach(Array(transferSources.enumerated()), id: \.element.id) { index, source in
+                    if index > 0 { PanelDivider() }
+                    switch source {
+                    case .android(let device):
+                        sourceRow(icon: "folder.fill", title: device.displayName,
+                                  subtitle: String(localized: "Files on the device"), button: String(localized: "Files…")) {
+                            app.openFiles(device)
+                        }
+                        .help("Files on “\(device.displayName)”: copy them to and from the Mac")
+                    case .iPhone(let name):
+                        sourceRow(icon: "photo.on.rectangle.angled", title: name,
+                                  subtitle: String(localized: "Photos and videos, on the cable"), button: String(localized: "Photos…")) {
+                            app.openPhotos()
+                        }
+                        .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
+                    }
+                }
+            }
+        }
+    }
+
+    private func sourceRow(icon: String, title: String, subtitle: String, button: String, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.title3).foregroundStyle(.tint).frame(width: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).fontWeight(.medium)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(button, action: action).controlSize(.small)
+        }
+        .font(.callout)
+        .padding(10)
+    }
+
+    // MARK: Connections
+
+    private var connectionsSection: some View {
+        PanelSection("Connections") {
+            EmptyView()
+        } content: {
+            PanelCard {
+                AndroidWiFiView(state: state).padding(10)
+                if showsChameleon {
+                    PanelDivider()
+                    chameleonStatus.padding(10)
+                }
+            }
+        }
+    }
+
+    private var showsChameleon: Bool {
+        state.transportStatus != .notConnected || state.usesChameleon
     }
 
     /// ChameleonUltra comes second (add-android-usb-transport): an error only when the layout needs it.
@@ -137,10 +315,9 @@ struct MenuBarView: View {
     private var chameleonStatus: some View {
         switch state.transportStatus {
         case .notConnected:
-            if state.usesChameleon {
-                Label("Chameleon not connected", systemImage: "cable.connector.slash")
-                    .foregroundStyle(.orange)
-            }
+            Label("Chameleon not connected", systemImage: "cable.connector.slash")
+                .font(.callout)
+                .foregroundStyle(.orange)
         case .unsupportedFirmware:
             HStack(spacing: 4) {
                 Label("Chameleon firmware has no keyboard and mouse mode", systemImage: "exclamationmark.triangle")
@@ -150,59 +327,12 @@ struct MenuBarView: View {
             .font(.caption)
         case .ready:
             Label("ChameleonUltra connected", systemImage: "dot.radiowaves.left.and.right")
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var permissionRow: some View {
-        HStack(spacing: 6) {
-            Label("No Accessibility access", systemImage: "lock")
-                .foregroundStyle(.orange)
-            Spacer()
-            Button("Open Settings") {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-            }
-        }
-        .font(.callout)
-    }
-
-    // MARK: Device controls
-
-    private var deviceControls: some View {
-        HStack(spacing: 8) {
-            ControlGroup {
-                Button {
-                    newHostPeerID = nil
-                    newName = ""
-                    adding = true
-                } label: { Image(systemName: "plus") }
-                    .disabled(!state.arrangement.canAddDevice || adding)
-                    .help(state.arrangement.canAddDevice ? String(localized: "Add a device") : String(localized: "Chameleon holds at most three devices"))
-                Button {
-                    if let id = selection { state.removeDevice(id) }
-                    selection = nil
-                } label: { Image(systemName: "minus") }
-                    .disabled(selection == nil)
-                    .help("Remove the selected device")
-            }
-            .controlGroupStyle(.navigation)
-            .fixedSize()
-            if let device = selectedDevice {
-                Button("Rebind") { state.rebind(device.id) }
-                    .help("The next device to connect becomes “\(device.displayName)”")
-                if hasFiles(device) {
-                    Button("Files…") { app.openFiles(device) }
-                        .help("Files on “\(device.displayName)”: copy them to and from the Mac")
-                }
-            }
-            Spacer()
-            Text("Drag a device next to a display edge")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .font(.callout)
-    }
+    // MARK: Device settings
 
     private var addForm: some View {
         HStack(spacing: 8) {
@@ -236,7 +366,7 @@ struct MenuBarView: View {
         )
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Pointer speed for “\(device.displayName)”")
+                Text("Pointer speed")
                 Spacer()
                 Text(String(format: "%.2g×", device.pointerSpeed)).monospacedDigit().foregroundStyle(.secondary)
             }
@@ -333,4 +463,52 @@ private struct SizeField: View {
             commit(nil)
         }
     }
+}
+
+/// A titled group of the panel: a small header with an optional trailing control, then the content.
+private struct PanelSection<Trailing: View, Content: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder let trailing: Trailing
+    @ViewBuilder let content: Content
+
+    init(_ title: LocalizedStringKey, @ViewBuilder trailing: () -> Trailing, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.trailing = trailing()
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+                trailing
+                    .buttonStyle(.borderless)
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.horizontal, 2)
+            content
+        }
+    }
+}
+
+/// Rows on one rounded card, as in System Settings.
+private struct PanelCard<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor).opacity(0.6)))
+    }
+}
+
+/// A row separator inset past the row icon.
+private struct PanelDivider: View {
+    var body: some View { Divider().padding(.leading, 42) }
 }
