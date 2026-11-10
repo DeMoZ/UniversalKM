@@ -193,25 +193,32 @@ struct MenuBarView: View {
 
     /// The on/off buttons of a device: the keyboard and mouse, and (Android) the shared clipboard.
     /// Each one says its state in words and in colour, and a click flips it.
+    /// Side by side when they fit, else one under the other: a label never wraps inside its button.
     private func deviceSwitches(_ device: PlacedDevice, peer: UInt16) -> some View {
-        HStack(spacing: 6) {
-            SwitchPill(isOn: device.isInputOn, icon: "keyboard",
-                       on: String(localized: "Keyboard and mouse: on"),
-                       off: String(localized: "Keyboard and mouse: off")) {
-                state.setInput(!device.isInputOn, of: device.id)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) { switchButtons(device, peer: peer) }
+            VStack(alignment: .leading, spacing: 6) { switchButtons(device, peer: peer) }
+        }
+    }
+
+    @ViewBuilder
+    private func switchButtons(_ device: PlacedDevice, peer: UInt16) -> some View {
+        SwitchPill(isOn: device.isInputOn, icon: "keyboard",
+                   on: String(localized: "Keyboard and mouse: on"),
+                   off: String(localized: "Keyboard and mouse: off")) {
+            state.setInput(!device.isInputOn, of: device.id)
+        }
+        .help(device.isInputOn
+              ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
+              : String(localized: "Click to send the keyboard and mouse to this device again."))
+        if AndroidPeerRegistry.isAndroidPeer(peer) {
+            let clipboard = state.clipboard
+            SwitchPill(isOn: clipboard.isEnabled(peer), icon: "doc.on.clipboard",
+                       on: String(localized: "Clipboard: on"),
+                       off: String(localized: "Clipboard: off")) {
+                clipboard.setEnabled(!clipboard.isEnabled(peer), for: peer)
             }
-            .help(device.isInputOn
-                  ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
-                  : String(localized: "Click to send the keyboard and mouse to this device again."))
-            if AndroidPeerRegistry.isAndroidPeer(peer) {
-                let clipboard = state.clipboard
-                SwitchPill(isOn: clipboard.isEnabled(peer), icon: "doc.on.clipboard",
-                           on: String(localized: "Clipboard: on"),
-                           off: String(localized: "Clipboard: off")) {
-                    clipboard.setEnabled(!clipboard.isEnabled(peer), for: peer)
-                }
-                .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
-            }
+            .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
         }
     }
 
@@ -585,6 +592,8 @@ private struct SwitchPill: View {
                 Text(isOn ? on : off)
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
             }
+            .lineLimit(1)
+            .fixedSize()
             .font(.caption.weight(.medium))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
