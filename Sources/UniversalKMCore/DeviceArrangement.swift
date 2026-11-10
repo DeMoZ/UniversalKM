@@ -42,6 +42,11 @@ public struct PlacedDevice: Codable, Hashable, Identifiable, Sendable {
     public var returnThroughEdge: Bool?
 
     public var isReturnThroughEdgeOn: Bool { returnThroughEdge ?? true }
+    /// Keyboard and mouse go to this device when the cursor pushes into its zone; nil = on.
+    /// Off keeps the binding and the connection (files, clipboard), only the handoff stops.
+    public var inputEnabled: Bool?
+
+    public var isInputOn: Bool { inputEnabled ?? true }
 
     /// Screen in device points in the current orientation (typical size when unknown), for VirtualCursor.
     public var screenInPoints: CGSize {

@@ -160,3 +160,9 @@
 "Clipboard: connecting…" = "Zwischenablage: Verbindung wird hergestellt…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Zwischenablage: benötigt USB-Debugging oder Wi‑Fi auf dem Gerät";
 "Clipboard: error — %@" = "Zwischenablage: Fehler – %@";
+"Keyboard and mouse: on" = "Tastatur und Maus: an";
+"Keyboard and mouse: off" = "Tastatur und Maus: aus";
+"Clipboard: on" = "Zwischenablage: an";
+"Clipboard: off" = "Zwischenablage: aus";
+"Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Klicken, um Tastatur und Maus nicht mehr an dieses Gerät zu senden. Es bleibt verbunden: Dateien und Zwischenablage funktionieren weiter.";
+"Click to send the keyboard and mouse to this device again." = "Klicken, um Tastatur und Maus wieder an dieses Gerät zu senden.";

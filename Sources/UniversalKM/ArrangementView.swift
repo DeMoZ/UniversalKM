@@ -8,6 +8,8 @@ enum ArrangementStyle {
     static let displaySaturation = 0.35
     static let displayOpacity = 0.6
     static let displayBorder = Color.secondary.opacity(0.5)
+    /// A device with the keyboard and mouse off is drawn faded.
+    static let inputOffOpacity = 0.45
     static let displayCorner = 4.0
     static let menuBarHeight = 4.0
     // Devices: interactive.
@@ -257,7 +259,7 @@ struct ArrangementView: View {
             .padding(-3))
         .scaleEffect(isDragging ? ArrangementStyle.dragScale : 1)
         .shadow(color: .black.opacity(isDragging ? 0.3 : 0), radius: isDragging ? 6 : 0, y: isDragging ? 3 : 0)
-        .opacity(isDragging ? ArrangementStyle.dragOpacity : 1)
+        .opacity(isDragging ? ArrangementStyle.dragOpacity : (device.isInputOn ? 1 : ArrangementStyle.inputOffOpacity))
         .help(connected ? String(localized: "\(device.displayName): connected — drag next to a display edge") : String(localized: "\(device.displayName): waiting for connection — drag next to a display edge"))
         .offset(x: rect.minX, y: rect.minY)
         .onHover { inside in
