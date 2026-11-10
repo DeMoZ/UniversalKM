@@ -37,7 +37,8 @@ final class Notifications {
         }
     }
 
-    static Notification camera(Context c, String state) {
+    /** {@code live}: a Mac watches the camera now (design D11): the notification says so. */
+    static Notification camera(Context c, String state, boolean live) {
         PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent stop = PendingIntent.getService(c, 1,
@@ -46,7 +47,8 @@ final class Notifications {
         return new Notification.Builder(c, CH_CAMERA)
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setContentTitle(c.getString(R.string.switch_label))
-                .setContentText(stateText(c, state))
+                .setContentText(live ? stateText(c, state) + " · " + c.getString(R.string.live_watching)
+                        : stateText(c, state))
                 .setContentIntent(open)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -55,8 +57,8 @@ final class Notifications {
                 .build();
     }
 
-    static void updateCamera(Context c, String state) {
-        c.getSystemService(NotificationManager.class).notify(CAMERA_ID, camera(c, state));
+    static void updateCamera(Context c, String state, boolean live) {
+        c.getSystemService(NotificationManager.class).notify(CAMERA_ID, camera(c, state, live));
     }
 
     static void showResume(Context c) {

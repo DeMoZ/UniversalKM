@@ -19,4 +19,5 @@
     <string name="channel_resume">Turn the camera back on</string>
     <string name="resume_title">Motion camera is off</string>
     <string name="resume_text">Tap to turn it back on</string>
+    <string name="live_watching">Viewed from the Mac</string>
 </resources>

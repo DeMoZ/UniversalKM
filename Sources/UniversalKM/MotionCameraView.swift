@@ -55,6 +55,8 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
     private let cameras: MotionCameras
     private let openRecordings: (UInt16) -> Void
     private var open: [UInt16: NSWindow] = [:]
+    /// Live picture windows (design D11), with their sessions.
+    private var live: [UInt16: (window: NSWindow, session: MotionLiveSession)] = [:]
 
     init(cameras: MotionCameras, openRecordings: @escaping (UInt16) -> Void) {
         self.cameras = cameras
@@ -68,7 +70,8 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
             return
         }
         let view = MotionCameraWindowView(cameras: cameras, peer: peer, name: name,
-                                          openRecordings: { [weak self] in self?.openRecordings(peer) })
+                                          openRecordings: { [weak self] in self?.openRecordings(peer) },
+                                          openLive: { [weak self] in self?.showLive(peer: peer, name: name) })
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 420),
                               styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = String(localized: "Motion Camera — \(name)")
@@ -82,11 +85,39 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// "Live View…": the picture of the device's camera(s) right now.
+    func showLive(peer: UInt16, name: String) {
+        NSApp.activate()
+        if let w = live[peer]?.window {
+            w.makeKeyAndOrderFront(nil)
+            return
+        }
+        let session = MotionLiveSession(cameras: cameras, peer: peer)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 520),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.title = String(localized: "Live — \(name)")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: MotionLiveWindowView(cameras: cameras, session: session))
+        window.setFrameAutosaveName("MotionCameraLive")
+        if live.isEmpty { window.center() }
+        window.delegate = self
+        live[peer] = (window, session)
+        cameras.startPolling()
+        session.start()
+        window.makeKeyAndOrderFront(nil)
+    }
+
     func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              let peer = open.first(where: { $0.value === window })?.key else { return }
-        open[peer] = nil
-        if open.isEmpty { cameras.stopPolling() }
+        guard let window = notification.object as? NSWindow else { return }
+        if let peer = live.first(where: { $0.value.window === window })?.key {
+            live[peer]?.session.stop()
+            live[peer] = nil
+        } else if let peer = open.first(where: { $0.value === window })?.key {
+            open[peer] = nil
+        } else {
+            return
+        }
+        if open.isEmpty && live.isEmpty { cameras.stopPolling() }
     }
 }
 
@@ -95,6 +126,7 @@ struct MotionCameraWindowView: View {
     let peer: UInt16
     let name: String
     let openRecordings: () -> Void
+    let openLive: () -> Void
 
     private var camera: MotionCameras.Camera { cameras.camera(peer) }
     private var connected: Bool { cameras.isConnected(peer) }
@@ -102,6 +134,10 @@ struct MotionCameraWindowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+            if camera.slowInstall {
+                Text("The device checks the app before installing it (Google Play Protect). This can take up to two minutes; keep the device unlocked and look for a question on its screen.")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             if let error = camera.error {
                 Text(camera.needsConfirmation ? String(localized: "Confirm the install on the device screen, then press Install again.") : error)
                     .font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
@@ -115,6 +151,11 @@ struct MotionCameraWindowView: View {
                     Text("\(status.clips) clips · \(ByteCountFormatter.string(fromByteCount: status.bytes, countStyle: .file))")
                         .foregroundStyle(.secondary)
                     Spacer()
+                    Button("Live View…", action: openLive)
+                        .disabled((camera.installed ?? 0) < MotionCamera.liveVersion)
+                        .help((camera.installed ?? 0) < MotionCamera.liveVersion
+                              ? String(localized: "Update the camera on the device first")
+                              : String(localized: "Watch the camera of “\(name)” right now"))
                     Button("Recordings…", action: openRecordings)
                         .help("Open the clips of “\(name)” in the file window")
                 }

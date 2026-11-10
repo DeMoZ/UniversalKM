@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import os
 import Sparkle
 import SwiftUI
@@ -114,6 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: Menu bar icon and panel (design D13)
 
     private var statusItem: NSStatusItem?
+    /// Blinking red dot on the icon while a motion camera records (add-android-motion-camera, «Значок записи»).
+    private var recordingDot: RecordingDot?
+    private var recordingWatch: AnyCancellable?
     private let panel = NSPopover()
 
     private func setUpStatusItem() {
@@ -122,6 +126,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         statusItem = item
+        if let button = item.button {
+            let dot = RecordingDot()
+            dot.attach(to: button)
+            recordingDot = dot
+            recordingWatch = motionCameras.$cameras
+                .map { [weak self] _ in self?.motionCameras.anyRecording ?? false }
+                .removeDuplicates()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak dot] on in dot?.isRecording = on }
+        }
 
         // Closes when the user clicks anywhere else, like a menu.
         panel.behavior = .transient

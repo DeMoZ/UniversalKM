@@ -211,3 +211,14 @@
 "This device cannot record with both cameras at once, so it records with the rear one." = "Questo dispositivo non può registrare con entrambe le fotocamere insieme, quindi registra con quella posteriore.";
 "“Both” is not available: this device cannot record with both cameras at once." = "“Entrambe” non è disponibile: questo dispositivo non può registrare con entrambe le fotocamere insieme.";
 "Each camera records its own clips (“rear” and “front” in the name), at 720p." = "Ogni fotocamera registra le proprie clip (“rear” e “front” nel nome), a 720p.";
+"The device did not finish the install. Unlock it, look for a question on its screen, then press Install again." = "Il dispositivo non ha completato l’installazione. Sbloccalo, controlla se c’è una domanda sullo schermo, poi fai di nuovo clic su Installa.";
+"The device checks the app before installing it (Google Play Protect). This can take up to two minutes; keep the device unlocked and look for a question on its screen." = "Il dispositivo controlla l’app prima di installarla (Google Play Protect). Può richiedere fino a due minuti; tieni il dispositivo sbloccato e osserva lo schermo.";
+"Live View…" = "Guarda dal vivo…";
+"Update the camera on the device first" = "Aggiorna prima la videocamera sul dispositivo";
+"Watch the camera of “%@” right now" = "Guarda ora la videocamera di “%@”";
+"Live — %@" = "Dal vivo — %@";
+"This device cannot use two cameras at once: while it records, only the recording camera can be shown." = "Questo dispositivo non può usare due videocamere insieme: mentre registra, si può mostrare solo quella che registra.";
+"Connecting…" = "Connessione…";
+"Try Again" = "Riprova";
+"The camera does not answer. It may be busy, or turned off on the device." = "La videocamera non risponde. Potrebbe essere occupata o disattivata sul dispositivo.";
+"UniversalKM: a motion camera is recording" = "UniversalKM: una videocamera di movimento sta registrando";

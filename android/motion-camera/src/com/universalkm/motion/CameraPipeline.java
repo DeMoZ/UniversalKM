@@ -47,6 +47,12 @@ final class CameraPipeline {
     private static final long MAX_CLIP_US = 600 * S;
     private static final long ANALYSIS_INTERVAL_NS = 200_000_000L; // 5 per second
     private static final long RETRY_MS = 10_000;
+    /**
+     * The first retry is quick: another app in front (the phone's own camera app left open behind the lock screen)
+     * often takes the camera only for a moment, when our command activity closes.
+     */
+    private static final long FIRST_RETRY_MS = 2_000;
+    private int failures;
     /** Auto exposure and focus settle after the camera opens: no motion before that. */
     private static final long WARM_UP_US = 2 * S;
 
@@ -62,13 +68,17 @@ final class CameraPipeline {
         /** The pipeline's state changed (also when a clip opens or closes). */
         void changed();
         void counted(boolean analysed, boolean motion, double fraction);
+        /** Where encoded frames go for the live picture on the Mac (design D11). */
+        LiveHub live();
     }
 
     final String cameraId;
     final boolean front;
-    /** "rear" / "front" in the clip names with both cameras; null with one. */
-    final String label;
-    private final int quality;
+    /** "rear" / "front" in the clip names when both cameras record; null with one. Set by the service. */
+    volatile String label;
+    final int quality;
+    /** false: the camera is open only for the live picture and records nothing (design D11). */
+    private boolean record = true;
     private final Host host;
     private final Handler h;
 
@@ -101,12 +111,11 @@ final class CameraPipeline {
     private ClipStore.Clip clip;
     private FragmentedMp4Writer writer;
 
-    CameraPipeline(Host host, String cameraId, boolean front, String label, int quality) {
+    CameraPipeline(Host host, String cameraId, boolean front, int quality) {
         this.host = host;
         this.h = host.handler();
         this.cameraId = cameraId;
         this.front = front;
-        this.label = label;
         this.quality = quality;
         Settings s = host.settings();
         policy = new ClipPolicy(PRE_ROLL_US, s.stopSec * S, MAX_CLIP_US);
@@ -117,6 +126,21 @@ final class CameraPipeline {
         return clip != null;
     }
 
+    boolean records() {
+        return record;
+    }
+
+    /** Off: an open clip ends at once (spec «Включение и выключение»); the camera stays for the live picture. */
+    void setRecord(boolean on) {
+        if (record == on) return;
+        record = on;
+        if (!on) {
+            finishClip();
+            policy.reset();
+            if ("recording".equals(state)) setState("watching");
+        }
+    }
+
     /** Sensitivity and stop delay take effect at once. */
     void apply(Settings s) {
         detector.setSensitivity(s.sens);
@@ -125,7 +149,15 @@ final class CameraPipeline {
 
     // MARK: open and close
 
+    /** open() was called: the service opens cameras one after another (design D10). */
+    boolean started() {
+        return started;
+    }
+
+    private boolean started;
+
     void open() {
+        started = true;
         if (closed || camera != null || encoder != null) return;
         final int gen = ++generation;
         try {
@@ -176,7 +208,7 @@ final class CameraPipeline {
         release();
         if (closed) return;
         setState("no_camera");
-        h.postDelayed(this::open, RETRY_MS);
+        h.postDelayed(this::open, failures++ == 0 ? FIRST_RETRY_MS : RETRY_MS);
     }
 
     private void release() {
@@ -259,6 +291,7 @@ final class CameraPipeline {
                                     if (fps != null) b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fps);
                                     s.setRepeatingRequest(b.build(), null, h);
                                     openedMonoUs = System.nanoTime() / 1000;
+                                    failures = 0;
                                     setState("watching");
                                 } catch (CameraAccessException | RuntimeException e) {
                                     Log.w(TAG, "repeating request", e);
@@ -408,6 +441,7 @@ final class CameraPipeline {
                         cameraId, 100 * detector.lastFraction()));
             }
             if (mono < host.simulateUntilMonoUs()) moving = true;
+            if (!record) moving = false;
             policy.motion(mono, moving);
         } finally {
             img.close();
@@ -417,6 +451,7 @@ final class CameraPipeline {
     // MARK: clips
 
     private void onEncodedFrame(EncodedFrame f) {
+        host.live().frame(front, f, sps, pps, encWidth, encHeight, rotation());
         ring.add(f);
         switch (policy.frame(f.ptsUs, f.key)) {
             case START: {
@@ -467,14 +502,19 @@ final class CameraPipeline {
         return host.settings().limitMB * 1024 * 1024;
     }
 
+    /** Clockwise turn that shows the picture upright, for the clip and the live picture. */
+    private int rotation() {
+        int dr = host.deviceRotation();
+        return front ? (sensorOrientation - dr + 360) % 360 : (sensorOrientation + dr) % 360;
+    }
+
     private boolean openClip(long firstPtsUs) {
         long start = wallMillis(firstPtsUs);
         ClipStore store = host.store();
         try {
             store.enforceLimit(limitBytes(), 0);
             clip = store.open(start, label);
-            int dr = host.deviceRotation();
-            int rot = front ? (sensorOrientation - dr + 360) % 360 : (sensorOrientation + dr) % 360;
+            int rot = rotation();
             writer = new FragmentedMp4Writer(clip.channel, encWidth, encHeight, sps, pps, rot, start / 1000, true);
             Log.i(TAG, "clip " + clip.name + " rotation " + rot);
             return true;

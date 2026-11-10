@@ -17,9 +17,13 @@ public final class ControlActivity extends Activity {
         Settings s = Settings.load(this);
         s.apply(getIntent().getExtras());
         s.save(this);
+        // `--es live back|front|both|none`: the live picture for the Mac (design D11); not saved.
+        String live = getIntent().getStringExtra("live");
+        boolean watch = live != null ? !"none".equals(live) : MotionService.liveRequested;
         try {
-            if (s.on) {
+            if (s.on || watch) {
                 Intent i = new Intent(this, MotionService.class).setAction(MotionService.ACTION_START);
+                if (live != null) i.putExtra("live", live);
                 // Test hook (tasks 3.x): `--ei simulate N` counts the next N seconds as motion.
                 int simulate = getIntent().getIntExtra("simulate", 0);
                 if (simulate > 0) i.putExtra("simulate", simulate);

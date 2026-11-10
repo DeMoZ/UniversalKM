@@ -211,3 +211,14 @@
 "This device cannot record with both cameras at once, so it records with the rear one." = "이 기기는 두 카메라로 동시에 녹화할 수 없으므로 후면 카메라로 녹화합니다.";
 "“Both” is not available: this device cannot record with both cameras at once." = "‘둘 다’를 사용할 수 없음: 이 기기는 두 카메라로 동시에 녹화할 수 없습니다.";
 "Each camera records its own clips (“rear” and “front” in the name), at 720p." = "각 카메라가 자체 클립을 녹화합니다(이름에 ‘rear’와 ‘front’). 720p입니다.";
+"The device did not finish the install. Unlock it, look for a question on its screen, then press Install again." = "기기에서 설치를 완료하지 못했습니다. 기기 잠금을 해제하고 화면에 질문이 있는지 확인한 다음 설치를 다시 누르십시오.";
+"The device checks the app before installing it (Google Play Protect). This can take up to two minutes; keep the device unlocked and look for a question on its screen." = "기기가 설치 전에 앱을 확인합니다(Google Play 프로텍트). 최대 2분이 걸릴 수 있습니다. 기기 잠금을 해제한 상태로 화면을 확인하십시오.";
+"Live View…" = "실시간 보기…";
+"Update the camera on the device first" = "먼저 기기의 카메라를 업데이트하십시오";
+"Watch the camera of “%@” right now" = "지금 “%@”의 카메라 보기";
+"Live — %@" = "실시간 — %@";
+"This device cannot use two cameras at once: while it records, only the recording camera can be shown." = "이 기기는 두 카메라를 동시에 사용할 수 없습니다. 녹화 중에는 녹화 중인 카메라만 보여줄 수 있습니다.";
+"Connecting…" = "연결 중…";
+"Try Again" = "다시 시도";
+"The camera does not answer. It may be busy, or turned off on the device." = "카메라가 응답하지 않습니다. 사용 중이거나 기기에서 꺼져 있을 수 있습니다.";
+"UniversalKM: a motion camera is recording" = "UniversalKM: 동작 카메라가 녹화 중";

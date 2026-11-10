@@ -95,6 +95,8 @@ public struct MotionStatus: Equatable, Sendable {
     public var bothSupported = false
     /// Cameras recording now: "rear", "front".
     public var active: [String] = []
+    /// Cameras open for the live picture now: "rear", "front" (design D11).
+    public var live: [String] = []
 
     public init() {}
 
@@ -126,6 +128,7 @@ public struct MotionStatus: Equatable, Sendable {
         if let v = fields["limitMB"].flatMap({ Int($0) }) { s.settings.limitMB = v }
         s.bothSupported = fields["both"] == "1"
         s.active = (fields["active"] ?? "").split(separator: ",").map(String.init).filter { $0 != "-" }
+        s.live = (fields["live"] ?? "").split(separator: ",").map(String.init).filter { $0 != "-" }
         return s
     }
 }

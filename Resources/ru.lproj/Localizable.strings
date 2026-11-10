@@ -211,3 +211,14 @@
 "This device cannot record with both cameras at once, so it records with the rear one." = "Это устройство не снимает двумя камерами сразу, поэтому пишет задняя.";
 "“Both” is not available: this device cannot record with both cameras at once." = "«Обе» недоступно: это устройство не снимает двумя камерами сразу.";
 "Each camera records its own clips (“rear” and “front” in the name), at 720p." = "Каждая камера пишет свои ролики («rear» и «front» в имени), в 720p.";
+"The device did not finish the install. Unlock it, look for a question on its screen, then press Install again." = "Устройство не завершило установку. Разблокируйте его, проверьте, нет ли вопроса на экране, и снова нажмите «Установить».";
+"The device checks the app before installing it (Google Play Protect). This can take up to two minutes; keep the device unlocked and look for a question on its screen." = "Перед установкой устройство проверяет приложение (Google Play Защита). Это может занять до двух минут: держите устройство разблокированным и следите за вопросами на экране.";
+"Live View…" = "Смотреть вживую…";
+"Update the camera on the device first" = "Сначала обновите камеру на устройстве";
+"Watch the camera of “%@” right now" = "Смотреть камеру «%@» прямо сейчас";
+"Live — %@" = "Вживую — %@";
+"This device cannot use two cameras at once: while it records, only the recording camera can be shown." = "Это устройство не может работать с двумя камерами сразу: пока идёт запись, показать можно только записывающую камеру.";
+"Connecting…" = "Подключение…";
+"Try Again" = "Повторить";
+"The camera does not answer. It may be busy, or turned off on the device." = "Камера не отвечает. Возможно, она занята или выключена на устройстве.";
+"UniversalKM: a motion camera is recording" = "UniversalKM: камера движения ведёт запись";

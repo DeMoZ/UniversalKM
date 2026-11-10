@@ -17,6 +17,8 @@ final class MotionCameras: ObservableObject {
         var busy: String?
         var error: String?
         var needsConfirmation = false
+        /** The install runs for more than 15 s: the device checks the app (Play Protect). */
+        var slowInstall = false
     }
 
     @Published private(set) var cameras: [UInt16: Camera] = [:]
@@ -25,8 +27,11 @@ final class MotionCameras: ObservableObject {
 
     private var transports: [UInt16: String] = [:]
     private var inFlight: Set<UInt16> = []
+    private var installs = 0
     private var timer: Timer?
-    private let adb = ADBClient.find().map { ADBClient(url: $0) }
+    /// A camera window is open: every device is read, not only those with the camera.
+    private var windowsOpen = false
+    let adb = ADBClient.find().map { ADBClient(url: $0) }
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "motion")
     private static let knownKey = "motionCameraPeers"
 
@@ -48,6 +53,11 @@ final class MotionCameras: ObservableObject {
     }
 
     func camera(_ peer: UInt16) -> Camera { cameras[peer] ?? Camera() }
+    func transport(_ peer: UInt16) -> String? { transports[peer] }
+    /// A connected device records now: the menu bar icon shows a blinking red dot (spec «Значок записи»).
+    var anyRecording: Bool {
+        cameras.contains { transports[$0.key] != nil && $0.value.status?.state == .recording }
+    }
     func isConnected(_ peer: UInt16) -> Bool { transports[peer] != nil }
     func hasUpdate(_ peer: UInt16) -> Bool { (camera(peer).installed ?? Int.max) < bundledVersion }
 
@@ -61,25 +71,39 @@ final class MotionCameras: ObservableObject {
         transports = next
         for peer in previous.keys where next[peer] == nil { cameras[peer]?.status = nil }
         for (peer, t) in next where previous[peer] != t { refresh(peer) }
+        if !next.isEmpty { ensureTimer() }
     }
 
-    /// While a camera window is open: the state every 5 s (spec «Окно камеры»).
-    func startPolling() {
+    /// The state every 5 s (spec «Окно камеры», «Значок записи»): of devices with the camera always, for the
+    /// recording dot on the menu bar icon; of every device while a camera window is open.
+    private func ensureTimer() {
         guard timer == nil else { return }
-        refreshAll()
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshAll() }
+            Task { @MainActor in
+                guard let self else { return }
+                if self.windowsOpen {
+                    self.refreshAll()
+                } else {
+                    for peer in self.transports.keys where self.camera(peer).installed != nil { self.refresh(peer) }
+                }
+            }
         }
     }
 
+    func startPolling() {
+        windowsOpen = true
+        ensureTimer()
+        refreshAll()
+    }
+
     func stopPolling() {
-        timer?.invalidate()
-        timer = nil
+        windowsOpen = false
     }
 
     /// Without the Android status (`--motion-window`): one device on a given adb transport.
     func attach(peer: UInt16, transport: String) {
         transports[peer] = transport
+        ensureTimer()
         refresh(peer)
     }
 
@@ -129,21 +153,49 @@ final class MotionCameras: ObservableObject {
         c.busy = String(localized: "Installing…")
         c.error = nil
         c.needsConfirmation = false
+        c.slowInstall = false
         cameras[peer] = c
         log.info("motion: install on \(t, privacy: .public)")
+        installs += 1
+        let attempt = installs
+        // The first install on a phone may wait for Play Protect to check the app: say so instead of a silent
+        // spinner.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self, self.installs == attempt, self.camera(peer).busy != nil else { return }
+            self.cameras[peer]?.slowInstall = true
+        }
+        let finished: @MainActor () -> Void = { [weak self] in
+            guard let self else { return }
+            self.runAll(t, MotionCamera.permissionCommands) {
+                self.cameras[peer]?.busy = nil
+                self.cameras[peer]?.slowInstall = false
+                self.remember(peer)
+                self.refresh(peer)
+            }
+        }
         adb.run(["-s", t, "install", "-r", "-g", apk.path], timeout: 180, on: .main) { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let text = result.output + result.error
                 if result.ok, text.contains("Success") {
-                    self.runAll(t, MotionCamera.permissionCommands) {
-                        self.cameras[peer]?.busy = nil
-                        self.remember(peer)
-                        self.refresh(peer)
+                    finished()
+                } else if !result.ok, !text.contains("Failure") {
+                    // Killed after 3 minutes or adb lost the device: the app may be in place anyway.
+                    self.shell(t, MotionCamera.versionCommand) { check in
+                        if (MotionCamera.installedVersion(check.output) ?? 0) >= self.bundledVersion {
+                            finished()
+                        } else {
+                            var c = self.camera(peer)
+                            c.busy = nil
+                            c.slowInstall = false
+                            c.error = String(localized: "The device did not finish the install. Unlock it, look for a question on its screen, then press Install again.")
+                            self.cameras[peer] = c
+                        }
                     }
                 } else {
                     var c = self.camera(peer)
                     c.busy = nil
+                    c.slowInstall = false
                     c.needsConfirmation = MotionCamera.needsConfirmationOnDevice(text)
                     let line = text.split(whereSeparator: \.isNewline).last { $0.contains("Failure") || $0.contains("error") }
                     c.error = line.map(String.init) ?? text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -176,6 +228,15 @@ final class MotionCameras: ObservableObject {
     }
 
     // MARK: adb
+
+    /// `adb shell` on a device (the live picture's commands).
+    func send(_ peer: UInt16, _ words: [String], completion: @escaping @MainActor (ADBClient.Result) -> Void = { _ in }) {
+        guard let t = transports[peer] else {
+            completion(ADBClient.Result(status: -1, output: "", error: "not connected"))
+            return
+        }
+        shell(t, words, completion: completion)
+    }
 
     private func shell(_ transport: String, _ words: [String], completion: @escaping @MainActor (ADBClient.Result) -> Void) {
         guard let adb else {
