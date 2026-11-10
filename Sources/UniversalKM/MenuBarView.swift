@@ -42,7 +42,7 @@ struct MenuBarView: View {
                         if !state.isCaptureRunning { permissionBanner }
                         layoutSection
                         devicesSection
-                        if !transferSources.isEmpty { filesSection }
+                        if app.appleDeviceOnCable != nil { filesSection }
                         connectionsSection
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sectionsHeight = $0 }
@@ -226,6 +226,16 @@ struct MenuBarView: View {
                 ))
                 .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
             }
+            // Only while adb reaches the device (add-android-file-browser design D2).
+            if hasFiles(device) {
+                HStack {
+                    Text("Files on the device")
+                    Spacer()
+                    Button("Files…") { app.openFiles(device) }
+                        .controlSize(.small)
+                }
+                .help("Files on “\(device.displayName)”: copy them to and from the Mac")
+            }
         }
     }
 
@@ -289,45 +299,18 @@ struct MenuBarView: View {
 
     // MARK: Files and photos
 
-    private enum TransferSource: Identifiable {
-        case android(PlacedDevice)
-        case iPhone(String)
-
-        var id: String {
-            switch self {
-            case .android(let device): device.id.uuidString
-            case .iPhone(let name): "iphone:" + name
-            }
-        }
-    }
-
-    /// Everything the Mac can copy files from now, in one place: Android devices on adb, the iPhone on the cable.
-    private var transferSources: [TransferSource] {
-        state.arrangement.devices.filter(hasFiles).map(TransferSource.android)
-            + (app.appleDeviceOnCable.map { [.iPhone($0)] } ?? [])
-    }
-
+    /// The iPhone on the cable: its photos window. Android files are in each device row.
     private var filesSection: some View {
         PanelSection("Files and Photos") {
             EmptyView()
         } content: {
             PanelCard {
-                ForEach(Array(transferSources.enumerated()), id: \.element.id) { index, source in
-                    if index > 0 { PanelDivider() }
-                    switch source {
-                    case .android(let device):
-                        sourceRow(icon: "folder.fill", title: device.displayName,
-                                  subtitle: String(localized: "Files on the device"), button: String(localized: "Files…")) {
-                            app.openFiles(device)
-                        }
-                        .help("Files on “\(device.displayName)”: copy them to and from the Mac")
-                    case .iPhone(let name):
-                        sourceRow(icon: "photo.on.rectangle.angled", title: name,
-                                  subtitle: String(localized: "Photos and videos, on the cable"), button: String(localized: "Photos…")) {
-                            app.openPhotos()
-                        }
-                        .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
+                if let name = app.appleDeviceOnCable {
+                    sourceRow(icon: "photo.on.rectangle.angled", title: name,
+                              subtitle: String(localized: "Photos and videos, on the cable"), button: String(localized: "Photos…")) {
+                        app.openPhotos()
                     }
+                    .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
                 }
             }
         }

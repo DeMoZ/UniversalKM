@@ -128,7 +128,7 @@ When an Android device of the layout has an adb connection (Wireless debugging a
 
 ## Android files
 
-In the panel, under “Files and Photos”, press “Files…” next to the Android device. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
+In the panel, press “Files…” in the Android device's row, under its switches. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
 
 - **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
 - **Mac to phone:** drag files or folders from Finder into the window (onto a folder in the list to put them there), or copy them in Finder and press ⌘V in the window, or press “Upload…”. If the name exists, the window asks whether to replace or skip.
