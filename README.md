@@ -8,7 +8,8 @@
 
 <p align="center">
   <b>Your Mac's mouse and keyboard for any phone or tablet.</b><br>
-  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.
+  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.<br>
+  Plus files: Android storage and iPhone photos straight in Finder.
 </p>
 
 <p align="center">
@@ -20,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: two Mac displays and a tablet at the right edge of the built-in display">
+  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: the layout with displays and devices, the Devices list, Files and Photos, Connections">
 </p>
 
 ---
@@ -40,6 +41,12 @@
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
 | 🌍 **Your language** | The interface follows the system language: English, Russian, German, French, Spanish, Portuguese (Brazil), Italian, Chinese (Simplified), Japanese, Korean. |
+
+### What you can do with an iPhone
+
+- **Copy photos and videos to the Mac** over the cable: “Download…” into a folder, or ⌘C in the window and ⌘V in Finder. Files keep the iPhone's format (HEIC, MOV) and the capture date; a Live Photo comes as a pair, the photo and its video. About 35 MB/s. [More](#iphone-photos)
+- **Delete photos and videos from the iPhone** after copying, with a confirmation. A Live Photo is deleted together with its video; everything goes to Recently Deleted on the iPhone.
+- **Type on the iPhone with the Mac keyboard** through a ChameleonUltra on USB, which the iPhone sees as a Bluetooth keyboard. The mouse pointer on the iPhone does not move yet. [More](#iphone-chameleonultra-and-similar-boards)
 
 ## How it works
 
@@ -118,6 +125,10 @@ In the panel, under “Files and Photos”, press “Files…” next to the And
 - Files are available while UniversalKM runs. The phone does not appear in Finder's sidebar: macOS requires an Apple Developer ID certificate for that.
 
 ## iPhone photos
+
+<p align="center">
+  <img src="docs/images/iphone-photos.png" width="760" alt="The iPhone photos window: a grid of photos and videos with names, dates, sizes and video lengths">
+</p>
 
 Connect an iPhone or iPad to the Mac with a cable and unlock it, then press “Photos…” next to it under “Files and Photos” in the panel. The row is there while the iPhone is on the cable, even if it is not on the layout. If the iPhone asks, tap “Trust”. A window opens with the iPhone's photos and videos, newest first. Videos show their length, Live Photos a LIVE badge.
 
