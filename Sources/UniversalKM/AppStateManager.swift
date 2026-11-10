@@ -14,6 +14,8 @@ final class AppStateManager {
     /// The Android transport inside `transport`, for the Wi‑Fi actions of the panel.
     let android: AndroidHIDTransport
     @ObservationIgnored private(set) lazy var input = InputManager(transport: transport)
+    /// Shared text clipboard with the Android phones of the arrangement (add-android-clipboard-sync).
+    let clipboard = ClipboardSync()
     @ObservationIgnored private let displaysProvider = DisplayLayoutProvider()
     @ObservationIgnored private var permissionTimer: Timer?
 
@@ -283,6 +285,7 @@ final class AppStateManager {
         var bound = Set(arrangement.devices.compactMap(\.hostPeerID))
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
+        updateClipboard()
         // A device with the input off has no zones and no target: the cursor passes its edge, and a
         // capture on it ends (InputManager.update(targets:) releases a device that is gone).
         input.update(zones: layouts.filter(\.device.isInputOn).flatMap(\.zones), displays: displays)
@@ -293,6 +296,15 @@ final class AppStateManager {
                                  pointerSpeed: device.pointerSpeed, rect: rects[device.id] ?? .zero,
                                  screen: device.screenInPoints, returnThroughEdge: device.isReturnThroughEdgeOn)
         })
+    }
+
+    /// Android phones of the arrangement and their adb transport go to the clipboard sync.
+    private func updateClipboard() {
+        var targets: [UInt16: String?] = [:]
+        for peer in arrangement.devices.compactMap(\.hostPeerID) where AndroidPeerRegistry.isAndroidPeer(peer) {
+            targets[peer] = androidStatus.device(peer)?.adbTransport
+        }
+        clipboard.update(targets: targets, adbPath: androidStatus.adbPath)
     }
 
     private func modeChanged(_ mode: CaptureStateMachine.Mode) {

@@ -153,7 +153,10 @@
 "Photos…" = "사진…";
 "Connections" = "연결";
 "Pointer speed" = "포인터 속도";
-
-/* Device row: the keyboard and mouse switch */
-"Keyboard and mouse off" = "키보드와 마우스 끔";
-"Send the keyboard and mouse to this device" = "키보드와 마우스를 이 기기로 보내기";
+"Shared clipboard" = "공유 클립보드";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Mac에서 복사한 텍스트를 기기에 붙여넣을 수 있으며 그 반대도 가능합니다. adb(USB 디버깅 또는 Wi‑Fi)가 필요합니다.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS가 UniversalKM의 클립보드 읽기를 허용하지 않아 Mac의 텍스트가 전송되지 않습니다. 시스템 설정 → 개인정보 보호 및 보안에서 허용하십시오.";
+"Clipboard: shared" = "클립보드: 공유 중";
+"Clipboard: connecting…" = "클립보드: 연결 중…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "클립보드: 기기에서 USB 디버깅 또는 Wi‑Fi가 필요합니다";
+"Clipboard: error — %@" = "클립보드: 오류 — %@";
