@@ -4,6 +4,16 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>UniversalKM</string>
+	<key>CFBundleExecutable</key>
+	<string>UniversalKM</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.universalkm.UniversalKM</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -17,37 +27,27 @@
 		<string>ja</string>
 		<string>ko</string>
 	</array>
-	<key>CFBundleIdentifier</key>
-	<string>com.universalkm.UniversalKM</string>
 	<key>CFBundleName</key>
 	<string>UniversalKM</string>
-	<key>CFBundleDisplayName</key>
-	<string>UniversalKM</string>
-	<key>CFBundleExecutable</key>
-	<string>UniversalKM</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.6</string>
+	<string>0.1.7</string>
 	<key>CFBundleVersion</key>
-	<string>7</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
+	<string>8</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB.</string>
-	<key>SUFeedURL</key>
-	<string>https://github.com/DeMoZ/UniversalKM/releases/latest/download/appcast.xml</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUPublicEDKey</key>
-	<string>GrAqhmwTha1jdm6FXYfqfe0xxsQyp4/+zcPiMMw8yXY=</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/DeMoZ/UniversalKM/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>GrAqhmwTha1jdm6FXYfqfe0xxsQyp4/+zcPiMMw8yXY=</string>
 </dict>
 </plist>
