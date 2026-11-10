@@ -160,9 +160,6 @@
 "Clipboard: connecting…" = "Presse-papiers : connexion…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Presse-papiers : nécessite le débogage USB ou le Wi‑Fi sur l’appareil";
 "Clipboard: error — %@" = "Presse-papiers : erreur — %@";
-"Keyboard and mouse: on" = "Clavier et souris : activés";
-"Keyboard and mouse: off" = "Clavier et souris : désactivés";
-"Clipboard: on" = "Presse-papiers : activé";
-"Clipboard: off" = "Presse-papiers : désactivé";
+"Keyboard and mouse" = "Clavier et souris";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Cliquez pour ne plus envoyer le clavier et la souris à cet appareil. Il reste connecté : les fichiers et le presse-papiers fonctionnent toujours.";
 "Click to send the keyboard and mouse to this device again." = "Cliquez pour envoyer de nouveau le clavier et la souris à cet appareil.";

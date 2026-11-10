@@ -160,9 +160,6 @@
 "Clipboard: connecting…" = "クリップボード：接続中…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "クリップボード：デバイスで USB デバッグまたは Wi‑Fi が必要です";
 "Clipboard: error — %@" = "クリップボード：エラー — %@";
-"Keyboard and mouse: on" = "キーボードとマウス：オン";
-"Keyboard and mouse: off" = "キーボードとマウス：オフ";
-"Clipboard: on" = "クリップボード：オン";
-"Clipboard: off" = "クリップボード：オフ";
+"Keyboard and mouse" = "キーボードとマウス";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "クリックすると、このデバイスへのキーボードとマウスの送信を止めます。接続は保たれ、ファイルとクリップボードは引き続き使えます。";
 "Click to send the keyboard and mouse to this device again." = "クリックすると、このデバイスへのキーボードとマウスの送信を再開します。";
