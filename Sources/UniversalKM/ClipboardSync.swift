@@ -35,7 +35,8 @@ final class ClipboardSync {
     @ObservationIgnored private var ready: Set<UInt16> = []
     /// After a lost link: no new start before this time.
     @ObservationIgnored private var retryAt: [UInt16: Date] = [:]
-    @ObservationIgnored private var disabled: Set<UInt16>
+    /// Observed: the panel's "Clipboard: on / off" button reads it through `isEnabled`.
+    private var disabled: Set<UInt16>
     @ObservationIgnored private var lastChangeCount: Int
     @ObservationIgnored private var timer: Timer?
 
