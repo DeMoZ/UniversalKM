@@ -350,7 +350,7 @@ struct MenuBarView: View {
             if status.hasWiFi && !status.isWiFiOff { channels.append(String(localized: "Wi‑Fi")) }
             if !channels.isEmpty { return channels.joined(separator: " · ") }
         }
-        switch state.connection(of: device) {
+        return switch state.connection(of: device) {
         case .usb: String(localized: "USB")
         case .wifi: String(localized: "Wi‑Fi")
         case .chameleon: String(localized: "Bluetooth via Chameleon")
