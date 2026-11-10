@@ -153,3 +153,10 @@
 "Photos…" = "写真…";
 "Connections" = "接続";
 "Pointer speed" = "ポインタの速度";
+"Shared clipboard" = "共有クリップボード";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Mac でコピーしたテキストをデバイスでペーストでき、その逆もできます。adb（USB デバッグまたは Wi‑Fi）が必要です。";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS が UniversalKM にクリップボードの読み取りを許可していないため、Mac からのテキストは送信されません。「システム設定」→「プライバシーとセキュリティ」で許可してください。";
+"Clipboard: shared" = "クリップボード：共有中";
+"Clipboard: connecting…" = "クリップボード：接続中…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "クリップボード：デバイスで USB デバッグまたは Wi‑Fi が必要です";
+"Clipboard: error — %@" = "クリップボード：エラー — %@";

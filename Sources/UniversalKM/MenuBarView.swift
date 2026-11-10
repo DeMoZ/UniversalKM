@@ -385,9 +385,43 @@ struct MenuBarView: View {
                 set: { state.setReturnThroughEdge($0, of: device.id) }
             ))
             .help("Move the mouse on the device back towards the Mac and past the edge. The hotkey always works.")
+            if let peer = device.hostPeerID, AndroidPeerRegistry.isAndroidPeer(peer) { clipboardControl(peer) }
             screenFields(device)
         }
         .font(.callout)
+    }
+
+    /// "Shared clipboard" of an Android device (add-android-clipboard-sync, spec «Переключатель в панели»).
+    @ViewBuilder
+    private func clipboardControl(_ peer: UInt16) -> some View {
+        let clipboard = state.clipboard
+        Toggle("Shared clipboard", isOn: Binding(
+            get: { clipboard.isEnabled(peer) },
+            set: { clipboard.setEnabled($0, for: peer) }
+        ))
+        .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
+        if let text = clipboardText(clipboard.states[peer]) {
+            Text(text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if clipboard.isEnabled(peer) && clipboard.isMacReadDenied {
+            Text("macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security.")
+                .font(.caption2)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func clipboardText(_ state: ClipboardSync.PeerState?) -> String? {
+        switch state {
+        case .working: String(localized: "Clipboard: shared")
+        case .starting: String(localized: "Clipboard: connecting…")
+        case .unavailable: String(localized: "Clipboard: needs USB debugging or Wi‑Fi on the device")
+        case .failed(let reason): String(localized: "Clipboard: error — \(reason)")
+        case .off, nil: nil
+        }
     }
 
     /// Screen size of the device (portrait): points and, if known, pixels; the proportions follow it.

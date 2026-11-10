@@ -153,3 +153,10 @@
 "Photos…" = "Fotos…";
 "Connections" = "Conexiones";
 "Pointer speed" = "Velocidad del puntero";
+"Shared clipboard" = "Portapapeles compartido";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "El texto copiado en el Mac se puede pegar en el dispositivo, y al revés. Necesita adb: depuración USB o Wi‑Fi.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS no permite que UniversalKM lea el portapapeles, así que el texto del Mac no se envía. Permítelo en Ajustes del Sistema → Privacidad y seguridad.";
+"Clipboard: shared" = "Portapapeles: compartido";
+"Clipboard: connecting…" = "Portapapeles: conectando…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "Portapapeles: necesita depuración USB o Wi‑Fi en el dispositivo";
+"Clipboard: error — %@" = "Portapapeles: error — %@";

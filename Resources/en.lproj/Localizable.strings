@@ -153,3 +153,10 @@
 "Photos…" = "Photos…";
 "Connections" = "Connections";
 "Pointer speed" = "Pointer speed";
+"Shared clipboard" = "Shared clipboard";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security.";
+"Clipboard: shared" = "Clipboard: shared";
+"Clipboard: connecting…" = "Clipboard: connecting…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "Clipboard: needs USB debugging or Wi‑Fi on the device";
+"Clipboard: error — %@" = "Clipboard: error — %@";

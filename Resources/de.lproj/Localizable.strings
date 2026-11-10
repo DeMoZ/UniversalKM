@@ -153,3 +153,10 @@
 "Photos…" = "Fotos …";
 "Connections" = "Verbindungen";
 "Pointer speed" = "Zeigergeschwindigkeit";
+"Shared clipboard" = "Gemeinsame Zwischenablage";
+"Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi." = "Auf dem Mac kopierter Text lässt sich auf dem Gerät einfügen und umgekehrt. Benötigt adb: USB-Debugging oder Wi‑Fi.";
+"macOS does not let UniversalKM read the clipboard, so text from the Mac is not sent. Allow it in System Settings → Privacy & Security." = "macOS erlaubt UniversalKM nicht, die Zwischenablage zu lesen, daher wird Text vom Mac nicht gesendet. Erlaube es unter Systemeinstellungen → Datenschutz & Sicherheit.";
+"Clipboard: shared" = "Zwischenablage: gemeinsam";
+"Clipboard: connecting…" = "Zwischenablage: Verbindung wird hergestellt…";
+"Clipboard: needs USB debugging or Wi‑Fi on the device" = "Zwischenablage: benötigt USB-Debugging oder Wi‑Fi auf dem Gerät";
+"Clipboard: error — %@" = "Zwischenablage: Fehler – %@";
