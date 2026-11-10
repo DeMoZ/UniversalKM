@@ -160,9 +160,6 @@
 "Clipboard: connecting…" = "Área de transferência: conectando…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Área de transferência: requer depuração USB ou Wi‑Fi no dispositivo";
 "Clipboard: error — %@" = "Área de transferência: erro — %@";
-"Keyboard and mouse: on" = "Teclado e mouse: ativados";
-"Keyboard and mouse: off" = "Teclado e mouse: desativados";
-"Clipboard: on" = "Área de transferência: ativada";
-"Clipboard: off" = "Área de transferência: desativada";
+"Keyboard and mouse" = "Teclado e mouse";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Clique para parar de enviar o teclado e o mouse para este dispositivo. Ele continua conectado: arquivos e área de transferência continuam funcionando.";
 "Click to send the keyboard and mouse to this device again." = "Clique para voltar a enviar o teclado e o mouse para este dispositivo.";

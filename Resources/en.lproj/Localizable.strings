@@ -160,9 +160,6 @@
 "Clipboard: connecting…" = "Clipboard: connecting…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Clipboard: needs USB debugging or Wi‑Fi on the device";
 "Clipboard: error — %@" = "Clipboard: error — %@";
-"Keyboard and mouse: on" = "Keyboard and mouse: on";
-"Keyboard and mouse: off" = "Keyboard and mouse: off";
-"Clipboard: on" = "Clipboard: on";
-"Clipboard: off" = "Clipboard: off";
+"Keyboard and mouse" = "Keyboard and mouse";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.";
 "Click to send the keyboard and mouse to this device again." = "Click to send the keyboard and mouse to this device again.";

@@ -90,7 +90,7 @@ The Mac becomes an ordinary wired keyboard and mouse for the phone through the A
 - The phone is known by its serial number, so it keeps its place after unplugging, after a restart and in any USB mode (file transfer, charging only, tethering, photo transfer).
 - Unplugging the cable returns input to the Mac, unless the phone is also on Wi‑Fi: then work carries on over Wi‑Fi.
 - Quitting the app removes the keyboard and mouse from the phone, and its on-screen keyboard comes back.
-- **Keyboard and mouse: on / off** in the device row switches control of that device without removing it: off, the cursor no longer goes to it, the phone loses the keyboard and mouse (its on-screen keyboard comes back), and it keeps its place, settings, files and clipboard. Click again to switch control back on. This works over Wi‑Fi too; a ChameleonUltra device keeps its Bluetooth link, only the cursor stops going to it.
+- The **Keyboard and mouse** switch in the device row turns control of that device on and off without removing it: off, the cursor no longer goes to it, the phone loses the keyboard and mouse (its on-screen keyboard comes back), and it keeps its place, settings, files and clipboard. Switch it on again to get control back. This works over Wi‑Fi too; a ChameleonUltra device keeps its Bluetooth link, only the cursor stops going to it.
 - It needs AOA 2, which practically every phone since Android 4.1 has. Some vendors leave AOA out; such a device is skipped, and Wi‑Fi or the Chameleon still work.
 - Tested on a Samsung Galaxy S10e (Android 12).
 
@@ -123,7 +123,7 @@ When an Android device of the layout has an adb connection (Wireless debugging a
 - **While the phone is locked,** Android hides its clipboard but still takes text from the Mac: it is there after unlocking.
 - **Over the cable without USB debugging** (AOA) there is no shared clipboard: the panel says it needs USB debugging or Wi‑Fi.
 - **Android 13 and newer** shows its own "copied" pop-up each time text arrives from the Mac (seen on Android 16); this is the system's and cannot be turned off.
-- **Turn it off** per device: the "Clipboard: on / off" button in the device row, next to "Keyboard and mouse".
+- **Turn it off** per device: the "Shared clipboard" switch in the device row, under "Keyboard and mouse".
 - The app never writes clipboard text to its log, only its length.
 
 ## Android files
