@@ -2,8 +2,8 @@ import SwiftUI
 import UniversalKMCore
 
 /// "Android over Wi‑Fi" in the panel (add-android-usb-transport, spec android-wifi-link): how to get
-/// adb, pairing with a code (Wireless debugging, Android 11+), "Enable Wi‑Fi" for a phone on the
-/// cable with USB debugging (`adb tcpip`), and what to do after a phone restart.
+/// adb, pairing with a code (Wireless debugging, Android 11+) and what to do after a phone restart.
+/// The Wi‑Fi switch of each device (`adb tcpip`) is in its row.
 struct AndroidWiFiView: View {
     @Bindable var state: AppStateManager
     @State private var pairing = false
@@ -38,17 +38,8 @@ struct AndroidWiFiView: View {
                     .textSelection(.enabled)
             } else {
                 if pairing { pairForm }
-                ForEach(cableDevices) { device in
-                    HStack(spacing: 6) {
-                        Text(device.name)
-                        Spacer()
-                        Button("Enable Wi‑Fi") { enableWiFi(device) }
-                            .disabled(busy)
-                            .help("Switches adb on the phone to Wi‑Fi, so it keeps working without the cable until the phone restarts")
-                    }
-                }
                 ForEach(restartedDevices) { device in
-                    Text("“\(device.name)” was on Wi‑Fi through the cable: after a phone restart, connect the cable and press “Enable Wi‑Fi” again.")
+                    Text("“\(device.name)” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -93,15 +84,10 @@ struct AndroidWiFiView: View {
         }
     }
 
-    /// Phones on the cable with USB debugging and no Wi‑Fi yet.
-    private var cableDevices: [AndroidDeviceStatus] {
-        state.androidStatus.devices.filter { $0.hasADBOverUSB && !$0.hasWiFi }
-    }
-
     /// Bound phones known from `adb tcpip` that are gone: most likely restarted.
     private var restartedDevices: [AndroidDeviceStatus] {
         let bound = Set(state.arrangement.devices.compactMap(\.hostPeerID))
-        return state.androidStatus.devices.filter { $0.tcpipAddress != nil && !$0.isAvailable && bound.contains($0.peerID) }
+        return state.androidStatus.devices.filter { $0.tcpipAddress != nil && !$0.isWiFiOff && !$0.isAvailable && bound.contains($0.peerID) }
     }
 
     private func pair() {
@@ -125,23 +111,7 @@ struct AndroidWiFiView: View {
         }
     }
 
-    private func enableWiFi(_ device: AndroidDeviceStatus) {
-        busy = true
-        message = nil
-        state.android.enableWiFi(peerID: device.peerID) { result in
-            Task { @MainActor in
-                busy = false
-                switch result {
-                case .success(let address):
-                    message = Message(text: String(localized: "Wi‑Fi on: \(address). The cable can be unplugged."), isError: false)
-                case .failure(let error):
-                    message = Message(text: String(localized: "Could not enable Wi‑Fi: \(Self.text(error))"), isError: true)
-                }
-            }
-        }
-    }
-
-    private static func text(_ error: AndroidHIDTransport.ADBError) -> String {
+    static func text(_ error: AndroidHIDTransport.ADBError) -> String {
         switch error {
         case .noADB: String(localized: "adb not found")
         case .failed(let detail): detail.isEmpty ? String(localized: "unknown error") : detail

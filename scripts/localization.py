@@ -817,8 +817,41 @@ T7 = {
         '클릭하면 이 기기로 키보드와 마우스를 보내지 않습니다. 연결은 유지되며 파일과 클립보드는 계속 작동합니다.',
         '클릭하면 이 기기로 키보드와 마우스를 다시 보냅니다.'],
 }
+# Added with the Wi‑Fi switch of a device row.
+K8 = ['Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect.',
+ 'To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections.',
+ '“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row.']
+T8 = {
+ 'ru': ['Держать adb этого устройства на Wi‑Fi, чтобы оно работало без кабеля. Выключено: приложение отключает его от Wi‑Fi и не подключается снова.',
+        'Чтобы включить Wi‑Fi, подключите кабель с отладкой по USB или выполните сопряжение с телефоном по коду в разделе «Подключения».',
+        '«%@» был на Wi‑Fi через кабель: после перезапуска телефона подключите кабель и снова включите Wi‑Fi в его строке.'],
+ 'de': ['adb für dieses Gerät über WLAN halten, damit es ohne Kabel funktioniert. Aus: Die App trennt es vom WLAN und verbindet sich nicht erneut.',
+        'Um WLAN einzuschalten, schließe das Kabel mit USB-Debugging an oder kopple das Telefon mit einem Code unter „Verbindungen“.',
+        '„%@“ war über das Kabel im WLAN: Schließe nach einem Neustart des Telefons das Kabel an und schalte WLAN in seiner Zeile wieder ein.'],
+ 'fr': ['Garder adb sur le Wi‑Fi pour cet appareil afin qu’il fonctionne sans câble. Désactivé : l’app le déconnecte du Wi‑Fi et ne se reconnecte pas.',
+        'Pour activer le Wi‑Fi, branchez le câble avec le débogage USB ou associez le téléphone avec un code dans Connexions.',
+        '« %@ » était sur le Wi‑Fi via le câble : après un redémarrage du téléphone, branchez le câble et réactivez le Wi‑Fi dans sa ligne.'],
+ 'es': ['Mantener adb por Wi‑Fi para este dispositivo, para que funcione sin cable. Desactivado: la app lo desconecta del Wi‑Fi y no vuelve a conectarse.',
+        'Para activar el Wi‑Fi, conecta el cable con la depuración USB o vincula el teléfono con un código en Conexiones.',
+        '«%@» estaba en Wi‑Fi a través del cable: tras reiniciar el teléfono, conecta el cable y vuelve a activar el Wi‑Fi en su fila.'],
+ 'pt-BR': ['Manter o adb no Wi‑Fi para este dispositivo, para funcionar sem cabo. Desativado: o app o desconecta do Wi‑Fi e não reconecta.',
+           'Para ativar o Wi‑Fi, conecte o cabo com a depuração USB ou pareie o telefone com um código em Conexões.',
+           '“%@” estava no Wi‑Fi pelo cabo: depois de reiniciar o telefone, conecte o cabo e ative o Wi‑Fi de novo na linha dele.'],
+ 'it': ['Tieni adb su Wi‑Fi per questo dispositivo, così funziona senza cavo. Disattivato: l’app lo scollega dal Wi‑Fi e non si riconnette.',
+        'Per attivare il Wi‑Fi, collega il cavo con il debug USB o abbina il telefono con un codice in Connessioni.',
+        '“%@” era su Wi‑Fi tramite il cavo: dopo il riavvio del telefono, collega il cavo e riattiva il Wi‑Fi nella sua riga.'],
+ 'zh-Hans': ['让此设备的 adb 保持在 Wi‑Fi 上，无需数据线即可工作。关闭：App 会断开其 Wi‑Fi 连接且不再重新连接。',
+             '要打开 Wi‑Fi，请用开启了 USB 调试的数据线连接，或在“连接”中用配对码配对手机。',
+             '“%@”曾通过数据线开启 Wi‑Fi：手机重启后，请连接数据线并在其所在行重新打开 Wi‑Fi。'],
+ 'ja': ['このデバイスの adb を Wi‑Fi のままにして、ケーブルなしで使えるようにします。オフ：App は Wi‑Fi 接続を切り、再接続しません。',
+        'Wi‑Fi をオンにするには、USB デバッグを有効にしてケーブルで接続するか、「接続」でコードを使って電話をペアリングしてください。',
+        '“%@”はケーブル経由で Wi‑Fi に接続していました：電話の再起動後は、ケーブルを接続してその行で Wi‑Fi をもう一度オンにしてください。'],
+ 'ko': ['이 기기의 adb를 Wi‑Fi로 유지하여 케이블 없이 작동하게 합니다. 끔: 앱이 Wi‑Fi 연결을 끊고 다시 연결하지 않습니다.',
+        'Wi‑Fi를 켜려면 USB 디버깅을 켠 상태로 케이블을 연결하거나 연결 항목에서 코드로 휴대폰을 페어링하십시오.',
+        '“%@”은(는) 케이블을 통해 Wi‑Fi에 연결되어 있었습니다: 휴대폰을 재시동한 후 케이블을 연결하고 해당 행에서 Wi‑Fi를 다시 켜십시오.'],
+}
 # add-android-motion-camera: the Motion Camera section of the panel.
-K8 = ['Motion Camera',
+K9 = ['Motion Camera',
       'Installing…',
       'Confirm the install on the device screen, then press Install again.',
       '%lld clips · %@',
@@ -863,7 +896,7 @@ K8 = ['Motion Camera',
       'This device cannot record with both cameras at once, so it records with the rear one.',
       '“Both” is not available: this device cannot record with both cameras at once.',
       'Each camera records its own clips (“rear” and “front” in the name), at 720p.']
-T8 = {
+T9 = {
 'ru': ['Камера движения',
        'Установка…',
        'Подтвердите установку на экране устройства и нажмите «Установить» ещё раз.',
@@ -1284,7 +1317,8 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
         assert lang == "en" or len(T6[lang]) == len(K6), (lang, len(T6[lang]))
         assert lang == "en" or len(T7[lang]) == len(K7), (lang, len(T7[lang]))
         assert lang == "en" or len(T8[lang]) == len(K8), (lang, len(T8[lang]))
-        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7 + K8, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 + K8 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang] + T8[lang])):
+        assert lang == "en" or len(T9[lang]) == len(K9), (lang, len(T9[lang]))
+        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang] + T8[lang] + T9[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')

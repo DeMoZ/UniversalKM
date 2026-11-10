@@ -29,6 +29,8 @@ struct AndroidDeviceStatus: Equatable, Sendable, Identifiable {
     var active: AndroidChannel?
     /// Saved Wi‑Fi address from `adb tcpip` (port 5555): after a phone restart a cable is needed again.
     var tcpipAddress: String?
+    /// The user switched Wi‑Fi off for this device: no network transport is used or reconnected.
+    var isWiFiOff = false
     /// The adb transport for the clipboard helper (add-android-clipboard-sync design D4): ADB over the
     /// cable if there is one, else Wi‑Fi; nil = no adb (AOA only). Unauthorized transports do not count.
     var adbTransport: String?
@@ -67,7 +69,28 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private var registry: AndroidPeerRegistry
     private var names: [String: String]
     private var wifiAddresses: [String: String]
+    /// Devices (serial numbers) whose Wi‑Fi the user switched off in the panel.
+    private var wifiOff: Set<String>
+    /// When adbd restarts on one phone (`tcpip`, `usb`), adb on the Mac drops every transport for a
+    /// second or two, other phones too. For the panel and the file window each part of a device's
+    /// status keeps its last value for `statusGrace` (rows, switches and buttons do not blink); the
+    /// input link and the clipboard follow the real channels.
+    private struct Seen {
+        var any: TimeInterval?
+        var usb: TimeInterval?
+        var wifi: TimeInterval?
+        var adbUSB: TimeInterval?
+        var files: (serial: String, network: Bool, at: TimeInterval)?
+    }
+    private var seen: [String: Seen] = [:]
+    /// adb transports that are not "device" ("offline", "unauthorized"), since when: shown after
+    /// `problemDelay`, so the moment of a reconnect does not flash a warning.
+    private var problemSince: [String: TimeInterval] = [:]
+    private var graceRepublish = false
     private var bound: Set<UInt16> = []
+    /// Every Android device of the arrangement, also with the keyboard and mouse off: their Wi‑Fi is
+    /// reconnected and their status kept (files, clipboard), whatever `bound` is.
+    private var layoutPeers: Set<UInt16> = []
     private var enabled = true
     private var started = false
     private var status = AndroidStatus()
@@ -129,11 +152,16 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private static let registryKey = "androidPeers"
     private static let namesKey = "androidNames"
     private static let wifiKey = "androidWifiAddresses"
+    private static let wifiOffKey = "androidWifiOff"
     private static let usbMouseInterval: TimeInterval = 1.0 / 250
     private static let adbMouseInterval: TimeInterval = 1.0 / 125
     private static let reconnectInterval: TimeInterval = 5
     private static let aoaSettle: TimeInterval = 0.3
     static let tcpipPort = 5555
+    /// How long "Wi‑Fi on" without a cable waits for the device to show up on the network.
+    private static let wifiWait: TimeInterval = 8
+    private static let statusGrace: TimeInterval = 5
+    private static let problemDelay: TimeInterval = 3
 
     init(onStatus: @escaping @Sendable (AndroidStatus) -> Void) {
         self.onStatus = onStatus
@@ -142,6 +170,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             ?? AndroidPeerRegistry()
         names = defaults.dictionary(forKey: Self.namesKey) as? [String: String] ?? [:]
         wifiAddresses = defaults.dictionary(forKey: Self.wifiKey) as? [String: String] ?? [:]
+        wifiOff = Set(defaults.stringArray(forKey: Self.wifiOffKey) ?? [])
     }
 
     // MARK: HIDTransport
@@ -179,6 +208,17 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             guard android != bound else { return }
             bound = android
             reconcile()
+        }
+    }
+
+    /// The Android devices of the arrangement (see `layoutPeers`).
+    func setLayoutPeers(_ peers: Set<UInt16>) {
+        queue.async { [self] in
+            let android = peers.filter(AndroidPeerRegistry.isAndroidPeer)
+            guard android != layoutPeers else { return }
+            layoutPeers = android
+            reconnectWiFi()
+            publish()
         }
     }
 
@@ -293,6 +333,47 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         }
     }
 
+    /// The panel's Wi‑Fi switch of a device. On: over the cable with USB debugging `adb tcpip` (as
+    /// `enableWiFi`), else the saved address and Wireless debugging are tried; the completion says
+    /// whether the device is on Wi‑Fi. Off: network transports are disconnected and not reconnected,
+    /// and adbd on a phone on the cable goes back to USB (its TCP port closes).
+    func setWiFi(_ on: Bool, peerID: UInt16, completion: @escaping @Sendable (Result<Void, ADBError>) -> Void) {
+        queue.async { [self] in
+            guard let adb else { completion(.failure(.noADB)); return }
+            guard let key = registry.key(for: peerID) else { completion(.failure(.failed("unknown device"))); return }
+            let cable = adbDevices.values.first { $0.key == key && !$0.device.isNetwork && $0.device.state == "device" }?.device.serial
+            if on {
+                wifiOff.remove(key)
+                UserDefaults.standard.set(wifiOff.sorted(), forKey: Self.wifiOffKey)
+                log.info("Wi‑Fi on for \(key, privacy: .public)")
+                publish()
+                if cable != nil && !candidates(key).contains(where: { $0.0 == .wifi }) {
+                    enableWiFi(peerID: peerID) { result in completion(result.map { _ in () }) }
+                    return
+                }
+                reconnectWiFi(force: [key])
+                queue.asyncAfter(deadline: .now() + Self.wifiWait) { [weak self] in
+                    guard let self else { return }
+                    completion(self.candidates(key).contains { $0.0 == .wifi }
+                               ? .success(())
+                               : .failure(.failed("not found on the network")))
+                }
+            } else {
+                wifiOff.insert(key)
+                UserDefaults.standard.set(wifiOff.sorted(), forKey: Self.wifiOffKey)
+                log.info("Wi‑Fi off for \(key, privacy: .public)")
+                for entry in adbDevices.values where entry.key == key && entry.device.isNetwork {
+                    adb.run(["disconnect", entry.device.serial], timeout: 5, on: queue) { _ in }
+                }
+                if let cable, wifiAddresses[key]?.hasSuffix(":\(Self.tcpipPort)") == true {
+                    adb.run(["-s", cable, "usb"], timeout: 10, on: queue) { _ in }
+                }
+                reconcile()
+                completion(.success(()))
+            }
+        }
+    }
+
     enum ADBError: Error, Equatable, Sendable {
         case noADB
         case failed(String)
@@ -376,7 +457,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         for (serial, entry) in adbDevices where entry.device.state == "device" && entry.key == nil && !entry.asked {
             identify(serial)
         }
-        status.adbProblems = adbDevices.values.filter { $0.device.state != "device" }.map { "\($0.device.serial): \($0.device.state)" }.sorted()
+        let problems = Set(adbDevices.values.filter { $0.device.state != "device" }.map { "\($0.device.serial): \($0.device.state)" })
+        let now = ProcessInfo.processInfo.systemUptime
+        problemSince = problemSince.filter { problems.contains($0.key) }
+        for problem in problems where problemSince[problem] == nil { problemSince[problem] = now }
         reconcile()
     }
 
@@ -395,6 +479,10 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             self.adbDevices[serial]?.key = key
             let network = self.adbDevices[serial]?.device.isNetwork == true
             self.log.info("ADB \(serial, privacy: .public) = \(key, privacy: .public) \(model ?? "", privacy: .public) over \(network ? "Wi‑Fi" : "USB", privacy: .public)")
+            if network, self.wifiOff.contains(key) {
+                self.log.info("ADB \(serial, privacy: .public): Wi‑Fi is off for this device; disconnected")
+                adb.run(["disconnect", serial], timeout: 5, on: self.queue) { _ in }
+            }
             if network, serial.contains(":"), !serial.contains("._adb-tls-connect.") {
                 self.wifiAddresses[key] = serial
                 UserDefaults.standard.set(self.wifiAddresses, forKey: Self.wifiKey)
@@ -417,10 +505,11 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     /// Every few seconds: bound devices without a network transport are looked up by their saved
     /// `tcpip` address and among the mDNS "Wireless debugging" services of paired phones.
-    private func reconnectWiFi() {
+    private func reconnectWiFi(force: Set<String> = []) {
         guard let adb else { return }
         let onNetwork = Set(adbDevices.values.compactMap { $0.device.isNetwork && $0.device.state == "device" ? $0.key : nil })
-        let missing = bound.compactMap(registry.key(for:)).filter { !onNetwork.contains($0) }
+        let wanted = Set(bound.union(layoutPeers).compactMap(registry.key(for:))).union(force)
+        let missing = wanted.filter { !onNetwork.contains($0) && !wifiOff.contains($0) }
         guard !missing.isEmpty else { return }
         for key in missing {
             if let address = wifiAddresses[key] { connect(address) }
@@ -462,35 +551,66 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             list.append((.usb, String(id)))
         }
         let adb = adbDevices.values.filter { $0.key == key && $0.device.state == "device" && !deadTransports.contains($0.device.serial) }
-        list += adb.filter(\.device.isNetwork).map { (.wifi, $0.device.serial) }
+        if !wifiOff.contains(key) { list += adb.filter(\.device.isNetwork).map { (.wifi, $0.device.serial) } }
         list += adb.filter { !$0.device.isNetwork }.map { (.adbUSB, $0.device.serial) }
         return list
     }
 
     private func publish() {
         var devices: [AndroidDeviceStatus] = []
+        let now = ProcessInfo.processInfo.systemUptime
+        func recent(_ time: TimeInterval?) -> Bool { time.map { now - $0 < Self.statusGrace } ?? false }
+        var inGrace = false
         for (key, peer) in registry.peers {
             let channels = candidates(key)
-            let isBound = bound.contains(peer)
-            guard !channels.isEmpty || isBound else { continue }
+            let usb = channels.contains { $0.0 == .usb }
+            let wifi = channels.contains { $0.0 == .wifi }
+            let adbUSB = channels.contains { $0.0 == .adbUSB }
+            // The smallest serial of a kind: adb may list one phone twice on Wi‑Fi (ip:port and mDNS), and
+            // a choice that flips would make the file window read its folder again on every change.
+            let cableFiles = channels.filter { $0.0 == .adbUSB }.map(\.1).min()
+            let files = cableFiles ?? channels.filter { $0.0 == .wifi }.map(\.1).min()
+            var last = seen[key] ?? Seen()
+            if !channels.isEmpty { last.any = now }
+            if usb { last.usb = now }
+            if wifi { last.wifi = now }
+            if adbUSB { last.adbUSB = now }
+            if let files { last.files = (files, cableFiles == nil, now) }
+            if wifiOff.contains(key) {
+                last.wifi = nil
+                if last.files?.network == true { last.files = nil }
+            }
+            seen[key] = last
+            guard !channels.isEmpty || bound.contains(peer) || layoutPeers.contains(peer) || recent(last.any) else { continue }
             var device = AndroidDeviceStatus(peerID: peer, name: names[key] ?? key, serial: key)
-            device.hasUSB = channels.contains { $0.0 == .usb }
-            device.hasWiFi = channels.contains { $0.0 == .wifi }
-            device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
+            device.hasUSB = usb || recent(last.usb)
+            device.hasWiFi = wifi || recent(last.wifi)
+            device.hasADBOverUSB = adbUSB || recent(last.adbUSB)
+            device.fileTransport = files ?? last.files.flatMap { recent($0.at) ? $0.serial : nil }
+            if device.hasUSB != usb || device.hasWiFi != wifi || device.hasADBOverUSB != adbUSB || device.fileTransport != files {
+                inGrace = true
+            }
             device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
-            // The smallest serial of a kind: adb may list one phone twice on Wi‑Fi (ip:port and mDNS), and
-            // a choice that flips would make the file window read its folder again on every change.
-            let adbUSB = channels.filter { $0.0 == .adbUSB }.map(\.1).min()
-            device.fileTransport = adbUSB ?? channels.filter { $0.0 == .wifi }.map(\.1).min()
+            device.isWiFiOff = wifiOff.contains(key)
             if status.device(peer)?.fileTransport != device.fileTransport {
                 log.info("files for \(key, privacy: .public): \(device.fileTransport ?? "none", privacy: .public)")
             }
             devices.append(device)
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }
+        status.adbProblems = problemSince.filter { now - $0.value >= Self.problemDelay }.map(\.key).sorted()
+        if problemSince.contains(where: { now - $0.value < Self.problemDelay }) { inGrace = true }
         onStatus(status)
+        // Once the grace is over, show what is really there.
+        if inGrace && !graceRepublish {
+            graceRepublish = true
+            queue.asyncAfter(deadline: .now() + Self.problemDelay) { [weak self] in
+                self?.graceRepublish = false
+                self?.publish()
+            }
+        }
     }
 
     /// USB adb first; among network transports the one the input link uses, else the first by name,

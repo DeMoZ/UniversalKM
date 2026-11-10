@@ -163,6 +163,9 @@
 "Keyboard and mouse" = "Clavier et souris";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Cliquez pour ne plus envoyer le clavier et la souris à cet appareil. Il reste connecté : les fichiers et le presse-papiers fonctionnent toujours.";
 "Click to send the keyboard and mouse to this device again." = "Cliquez pour envoyer de nouveau le clavier et la souris à cet appareil.";
+"Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect." = "Garder adb sur le Wi‑Fi pour cet appareil afin qu’il fonctionne sans câble. Désactivé : l’app le déconnecte du Wi‑Fi et ne se reconnecte pas.";
+"To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections." = "Pour activer le Wi‑Fi, branchez le câble avec le débogage USB ou associez le téléphone avec un code dans Connexions.";
+"“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row." = "« %@ » était sur le Wi‑Fi via le câble : après un redémarrage du téléphone, branchez le câble et réactivez le Wi‑Fi dans sa ligne.";
 "Motion Camera" = "Caméra de mouvement";
 "Installing…" = "Installation…";
 "Confirm the install on the device screen, then press Install again." = "Confirmez l’installation sur l’écran de l’appareil, puis appuyez à nouveau sur Installer.";

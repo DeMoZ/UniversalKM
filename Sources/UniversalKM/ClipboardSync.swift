@@ -35,6 +35,9 @@ final class ClipboardSync {
     @ObservationIgnored private var ready: Set<UInt16> = []
     /// After a lost link: no new start before this time.
     @ObservationIgnored private var retryAt: [UInt16: Date] = [:]
+    /// When a phone that had adb lost it: for `reconnectGrace` the panel says "connecting…", not
+    /// "needs USB debugging" (adb drops every phone for a moment when one of them restarts adbd).
+    @ObservationIgnored private var lostAt: [UInt16: Date] = [:]
     /// Observed: the panel's "Clipboard: on / off" button reads it through `isEnabled`.
     private var disabled: Set<UInt16>
     @ObservationIgnored private var lastChangeCount: Int
@@ -43,6 +46,7 @@ final class ClipboardSync {
     private static let disabledKey = "clipboardSyncOff"
     private static let pollInterval: TimeInterval = 0.3
     private static let retryDelay: TimeInterval = 5
+    private static let reconnectGrace: TimeInterval = 5
 
     init() {
         disabled = Set((UserDefaults.standard.array(forKey: Self.disabledKey) as? [Int] ?? []).map { UInt16(truncatingIfNeeded: $0) })
@@ -88,6 +92,7 @@ final class ClipboardSync {
         var next: [UInt16: PeerState] = [:]
         for (peer, transport) in targets {
             let wanted = isEnabled(peer) ? transport : nil
+            if wanted != nil || !isEnabled(peer) { lostAt[peer] = nil }
             if let link = links[peer], link.transport != wanted {
                 link.stop()
                 links[peer] = nil
@@ -96,7 +101,16 @@ final class ClipboardSync {
             if !isEnabled(peer) {
                 next[peer] = .off
             } else if wanted == nil {
-                next[peer] = .unavailable
+                let had = states[peer] == .working || states[peer] == .starting
+                if lostAt[peer] == nil && had {
+                    lostAt[peer] = Date()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Self.reconnectGrace + 0.1) { [weak self] in self?.reconcile() }
+                }
+                if let at = lostAt[peer], Date().timeIntervalSince(at) < Self.reconnectGrace {
+                    next[peer] = .starting
+                } else {
+                    next[peer] = .unavailable
+                }
             } else if links[peer] != nil {
                 next[peer] = ready.contains(peer) ? .working : .starting
             } else if let at = retryAt[peer], at > Date() {
