@@ -71,6 +71,12 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private var wifiAddresses: [String: String]
     /// Devices (serial numbers) whose Wi‑Fi the user switched off in the panel.
     private var wifiOff: Set<String>
+    /// When a device last had a channel, and a Wi‑Fi one (uptime). When adbd restarts on one phone
+    /// (`tcpip`, `usb`), adb on the Mac drops every transport for a second or two, other phones too:
+    /// for the panel a device stays as it was for `statusGrace` (its rows and Wi‑Fi switch do not blink).
+    private var lastSeen: [String: TimeInterval] = [:]
+    private var lastWiFi: [String: TimeInterval] = [:]
+    private var graceRepublish = false
     private var bound: Set<UInt16> = []
     private var enabled = true
     private var started = false
@@ -141,6 +147,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     static let tcpipPort = 5555
     /// How long "Wi‑Fi on" without a cable waits for the device to show up on the network.
     private static let wifiWait: TimeInterval = 8
+    private static let statusGrace: TimeInterval = 5
 
     init(onStatus: @escaping @Sendable (AndroidStatus) -> Void) {
         self.onStatus = onStatus
@@ -523,14 +530,27 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
 
     private func publish() {
         var devices: [AndroidDeviceStatus] = []
+        let now = ProcessInfo.processInfo.systemUptime
+        var inGrace = false
         for (key, peer) in registry.peers {
             let channels = candidates(key)
             let isBound = bound.contains(peer)
-            guard !channels.isEmpty || isBound else { continue }
+            let onWiFi = channels.contains { $0.0 == .wifi }
+            if !channels.isEmpty { lastSeen[key] = now }
+            if onWiFi { lastWiFi[key] = now }
+            if wifiOff.contains(key) { lastWiFi[key] = nil }
+            let seenRecently = lastSeen[key].map { now - $0 < Self.statusGrace } ?? false
+            let wifiRecently = lastWiFi[key].map { now - $0 < Self.statusGrace } ?? false
+            if (channels.isEmpty && seenRecently) || (!onWiFi && wifiRecently) { inGrace = true }
+            guard !channels.isEmpty || isBound || seenRecently else { continue }
             var device = AndroidDeviceStatus(peerID: peer, name: names[key] ?? key, serial: key)
             device.hasUSB = channels.contains { $0.0 == .usb }
-            device.hasWiFi = channels.contains { $0.0 == .wifi }
+            device.hasWiFi = onWiFi || wifiRecently
             device.hasADBOverUSB = channels.contains { $0.0 == .adbUSB }
+            if channels.isEmpty && seenRecently, let before = status.device(peer) {
+                device.hasUSB = before.hasUSB
+                device.hasADBOverUSB = before.hasADBOverUSB
+            }
             device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
@@ -546,6 +566,14 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }
         onStatus(status)
+        // Once the grace is over, show what is really there.
+        if inGrace && !graceRepublish {
+            graceRepublish = true
+            queue.asyncAfter(deadline: .now() + Self.statusGrace) { [weak self] in
+                self?.graceRepublish = false
+                self?.publish()
+            }
+        }
     }
 
     /// USB adb first; among network transports the one the input link uses, else the first by name,
