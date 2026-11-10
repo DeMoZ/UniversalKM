@@ -32,6 +32,9 @@ struct AndroidDeviceStatus: Equatable, Sendable, Identifiable {
     /// The adb transport for the clipboard helper (add-android-clipboard-sync design D4): ADB over the
     /// cable if there is one, else Wi‑Fi; nil = no adb (AOA only). Unauthorized transports do not count.
     var adbTransport: String?
+    /// The adb transport for files (add-android-file-browser design D2): over the cable first, then
+    /// Wi‑Fi; nil = no adb now, no "Files…" button.
+    var fileTransport: String?
 
     var isAvailable: Bool { hasUSB || hasWiFi || hasADBOverUSB }
 }
@@ -346,7 +349,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             self.adb = client
             self.status.adbPath = url.path
             self.log.info("adb \(url.path, privacy: .public), platform-tools \(major)")
-            client.run(["start-server"], timeout: 15, on: self.queue) { [weak self] _ in
+            client.ensureServer(on: self.queue) { [weak self] in
                 guard let self else { return }
                 client.track(on: self.queue) { [weak self] devices in self?.adbDevicesChanged(devices) }
                 self.reconnectWiFi()
@@ -477,6 +480,13 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             device.active = active[peer]?.channel ?? switching[peer]?.channel
             device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
+            // The smallest serial of a kind: adb may list one phone twice on Wi‑Fi (ip:port and mDNS), and
+            // a choice that flips would make the file window read its folder again on every change.
+            let adbUSB = channels.filter { $0.0 == .adbUSB }.map(\.1).min()
+            device.fileTransport = adbUSB ?? channels.filter { $0.0 == .wifi }.map(\.1).min()
+            if status.device(peer)?.fileTransport != device.fileTransport {
+                log.info("files for \(key, privacy: .public): \(device.fileTransport ?? "none", privacy: .public)")
+            }
             devices.append(device)
         }
         status.devices = devices.sorted { $0.peerID < $1.peerID }

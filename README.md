@@ -8,7 +8,8 @@
 
 <p align="center">
   <b>Your Mac's mouse and keyboard for any phone or tablet.</b><br>
-  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.
+  Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.<br>
+  Plus files: Android storage and iPhone photos straight in Finder.
 </p>
 
 <p align="center">
@@ -20,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: a phone and a tablet connected over Wi‑Fi next to two Mac displays, with the selected device's settings and its shared clipboard on">
+  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: the layout with displays and devices, the Devices list, Files and Photos, Connections">
 </p>
 
 ---
@@ -36,9 +37,17 @@
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
 | 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
+| 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
+| 🖼️ **iPhone photos** | A window with the photos and videos of an iPhone on a cable: copy them to the Mac, delete them from the iPhone. |
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
 | 🌍 **Your language** | The interface follows the system language: English, Russian, German, French, Spanish, Portuguese (Brazil), Italian, Chinese (Simplified), Japanese, Korean. |
+
+### What you can do with an iPhone
+
+- **Copy photos and videos to the Mac** over the cable: “Download…” into a folder, or ⌘C in the window and ⌘V in Finder. Files keep the iPhone's format (HEIC, MOV) and the capture date; a Live Photo comes as a pair, the photo and its video. About 35 MB/s. [More](#iphone-photos)
+- **Delete photos and videos from the iPhone** after copying, with a confirmation. A Live Photo is deleted together with its video; everything goes to Recently Deleted on the iPhone.
+- **Type on the iPhone with the Mac keyboard** through a ChameleonUltra on USB, which the iPhone sees as a Bluetooth keyboard. The mouse pointer on the iPhone does not move yet. [More](#iphone-chameleonultra-and-similar-boards)
 
 ## How it works
 
@@ -100,6 +109,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 - A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.
 - If the phone leaves the network, input returns to the Mac within about 3 seconds. When it is back, the app reconnects by itself.
 - Delay: the adb round trip over Wi‑Fi was 8 ms median (12 ms at the 90th percentile, rare spikes of 100 ms) on a home network. The cable is faster.
+- **macOS asks once whether `adb` may find devices on your local network: allow it.** The app starts the adb server as its own process, so the server keeps working after the app quits (otherwise macOS cuts its network the moment UniversalKM closes, and `adb` in Terminal shows the phone `offline`). If you said no: System Settings → Privacy & Security → Local Network → turn on `adb`. The question comes back once after an update of platform-tools, because the path to `adb` contains its version.
 - With developer options and wireless debugging on, every computer you allowed can control the phone. Turn wireless debugging on only on networks you trust; Android turns it off when you change networks.
 
 ## Shared clipboard (Android)
@@ -114,6 +124,36 @@ When an Android device of the layout has an adb connection (Wireless debugging a
 - **Android 13 and newer** shows its own "copied" pop-up each time text arrives from the Mac (seen on Android 16); this is the system's and cannot be turned off.
 - **Turn it off** per device: select the device in the layout and clear "Shared clipboard".
 - The app never writes clipboard text to its log, only its length.
+
+## Android files
+
+In the panel, under “Files and Photos”, press “Files…” next to the Android device. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
+
+- **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
+- **Mac to phone:** drag files or folders from Finder into the window (onto a folder in the list to put them there), or copy them in Finder and press ⌘V in the window, or press “Upload…”. If the name exists, the window asks whether to replace or skip.
+- **On the phone:** new folder (⇧⌘N), rename (Return), delete (Delete). **Deleting removes the files from the phone at once, without a Trash.**
+- Progress shows at the bottom of the window, and any transfer can be cancelled. A cancelled or broken transfer leaves no partial file under the real name, on the Mac or on the phone.
+- The list refreshes by itself every 10 seconds and with ⌘R. Hidden files (names starting with a dot) are not shown, as in Finder.
+- If the connection drops, the window shows “The device is not connected” and opens the folder again by itself when the phone is back over Wi‑Fi or the cable.
+- Speed: 11–17 MB/s over home Wi‑Fi (measured on a Galaxy S10e and a Galaxy Tab A9); faster over the cable with USB debugging. With both a cable and Wi‑Fi, files go over the cable. A video of several gigabytes takes minutes over Wi‑Fi.
+- Files are available while UniversalKM runs. The phone does not appear in Finder's sidebar: macOS requires an Apple Developer ID certificate for that.
+
+## iPhone photos
+
+<p align="center">
+  <img src="docs/images/iphone-photos.png" width="760" alt="The iPhone photos window: a grid of photos and videos with names, dates, sizes and video lengths">
+</p>
+
+Connect an iPhone or iPad to the Mac with a cable and unlock it, then press “Photos…” next to it under “Files and Photos” in the panel. The row is there while the iPhone is on the cable, even if it is not on the layout. If the iPhone asks, tap “Trust”. A window opens with the iPhone's photos and videos, newest first. Videos show their length, Live Photos a LIVE badge.
+
+- **Cable only:** photos are read over USB through the same system service as Image Capture. Over Bluetooth (Chameleon) and Wi‑Fi they are not visible.
+- **To the Mac:** drag items from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or click “Download…” and choose a folder. Files are copied as they are, in the iPhone's formats (HEIC, MOV, JPG), with the capture date. A Live Photo is copied as a pair: the photo and its short video with the same name.
+- **Deleting from the iPhone:** Delete, “Delete…” or the context menu, with a confirmation. The item disappears from Photos on the iPhone (a Live Photo with its video). Check Recently Deleted on the iPhone if you want it back.
+- **New photos** show up after reconnecting the cable: the iPhone builds its list when it is connected, the same as in Image Capture.
+- **With iCloud Photos and Optimize Storage on,** only what is stored on the iPhone itself is visible. If the iPhone does not allow deleting, “Delete…” is unavailable.
+- While the window is open, the iPhone is busy with it: Photos and Image Capture on the Mac may not see it. Close the window and they see it again.
+- Speed over the cable is about 35 MB/s (a 50 MB video in 1.5 s).
+- The window cannot send photos to the iPhone.
 
 ## iPhone: ChameleonUltra and similar boards
 

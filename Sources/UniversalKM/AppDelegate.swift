@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         setUpStatusItem()
         transport.start()
         startCapture()
+        cableDevices.start()
         // `--open-panel`: opens the panel on launch (manual UI checks and window snapshots).
         if CommandLine.arguments.contains("--open-panel") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.togglePanel() }
@@ -56,11 +57,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private(set) lazy var android: AndroidHIDTransport = AndroidHIDTransport { [weak self] status in
         Task { @MainActor in
             self?.state.androidChanged(status)
+            self?.fileBrowsers.update(status)
             self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
         }
     }
 
     private(set) lazy var transport: HIDTransport = CompositeHIDTransport(chameleon: chameleon, android: android)
+
+    // MARK: Android files (add-android-file-browser)
+
+    private let fileBrowsers = FileBrowsers()
+
+    /// "Files…" in the panel: the window of the device bound to `device`.
+    func openFiles(_ device: PlacedDevice) {
+        guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
+        closePanel()
+        fileBrowsers.show(key: android.serial, name: device.displayName)
+    }
+
+    private let photoBrowsers = PhotoBrowsers()
+    /// The name of an iPhone or iPad on the cable, for "iPhone Photos…" in the panel (design D2).
+    @Published private(set) var appleDeviceOnCable: String?
+    private lazy var cableDevices = AppleDevicesOnCable { [weak self] name in self?.appleDeviceOnCable = name }
+
+    /// "Photos…" in the panel (add-iphone-photo-browser design D2): the iPhone on the cable.
+    func openPhotos() {
+        closePanel()
+        photoBrowsers.show()
+    }
 
     /// `--ble-demo` only (task 1.12).
     private lazy var demo: BLEDemo? = isBLEDemo ? BLEDemo(transport: transport) : nil
@@ -114,6 +138,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         state.input.release(.quit)
         state.clipboard.shutdown()
         transport.shutdown(timeout: 0.3)
+        // Files opened from the file window (add-android-file-browser design D8).
+        try? FileManager.default.removeItem(at: FileBrowserModel.temporaryRoot)
     }
 
     func quit() {

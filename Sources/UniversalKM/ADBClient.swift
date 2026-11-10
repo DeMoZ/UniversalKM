@@ -77,6 +77,21 @@ final class ADBClient: @unchecked Sendable {
         }
     }
 
+    // MARK: Starting the server (fix-adb-server-local-network design D1)
+
+    /// `adb start-server` as a process responsible for itself. macOS checks a process's local network
+    /// access against its responsible process: a server started the usual way counts as part of this app
+    /// and loses the network as soon as the app quits ("No route to host"). Responsible for itself, adb
+    /// gets its own "Local Network" permission (asked once) and keeps it whoever started it.
+    func ensureServer(on queue: DispatchQueue, completion: @escaping @Sendable () -> Void) {
+        let url = self.url, log = self.log
+        DispatchQueue.global(qos: .utility).async {
+            let status = DisclaimedSpawn.run(url.path, ["start-server"], timeout: 15)
+            if status != 0 { log.error("adb start-server: status \(status)") }
+            queue.async { completion() }
+        }
+    }
+
     // MARK: Device list
 
     struct Device: Equatable, Sendable {
@@ -113,7 +128,11 @@ final class ADBClient: @unchecked Sendable {
                 self.log.info("adb track-devices exited; restarting")
                 onChange([])
                 queue.asyncAfter(deadline: .now() + 2) { [self] in
-                    if self.tracking { self.track(on: queue, onChange: onChange) }
+                    // Start the server first: started by track-devices, it would count as part of the app (design D1).
+                    guard self.tracking else { return }
+                    self.ensureServer(on: queue) { [self] in
+                        if self.tracking { self.track(on: queue, onChange: onChange) }
+                    }
                 }
             }
         }
