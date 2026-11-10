@@ -160,10 +160,7 @@
 "Clipboard: connecting…" = "剪贴板：正在连接…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "剪贴板：需要在设备上开启 USB 调试或 Wi‑Fi";
 "Clipboard: error — %@" = "剪贴板：错误 — %@";
-"Keyboard and mouse: on" = "键盘和鼠标：开";
-"Keyboard and mouse: off" = "键盘和鼠标：关";
-"Clipboard: on" = "剪贴板：开";
-"Clipboard: off" = "剪贴板：关";
+"Keyboard and mouse" = "键盘和鼠标";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "点按以停止向此设备发送键盘和鼠标。设备仍保持连接：文件和剪贴板照常工作。";
 "Click to send the keyboard and mouse to this device again." = "点按以再次向此设备发送键盘和鼠标。";
 "Motion Camera" = "运动摄像头";

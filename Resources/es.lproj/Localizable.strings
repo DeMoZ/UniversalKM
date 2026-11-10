@@ -160,10 +160,7 @@
 "Clipboard: connecting…" = "Portapapeles: conectando…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Portapapeles: necesita depuración USB o Wi‑Fi en el dispositivo";
 "Clipboard: error — %@" = "Portapapeles: error — %@";
-"Keyboard and mouse: on" = "Teclado y ratón: activados";
-"Keyboard and mouse: off" = "Teclado y ratón: desactivados";
-"Clipboard: on" = "Portapapeles: activado";
-"Clipboard: off" = "Portapapeles: desactivado";
+"Keyboard and mouse" = "Teclado y ratón";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Haz clic para dejar de enviar el teclado y el ratón a este dispositivo. Sigue conectado: los archivos y el portapapeles siguen funcionando.";
 "Click to send the keyboard and mouse to this device again." = "Haz clic para volver a enviar el teclado y el ratón a este dispositivo.";
 "Motion Camera" = "Cámara de movimiento";

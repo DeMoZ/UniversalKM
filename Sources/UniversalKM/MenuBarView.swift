@@ -14,6 +14,13 @@ struct MenuBarView: View {
     @State private var newKind = DeviceKind.phone
     @State private var newName = ""
     @State private var newHostPeerID: UInt16?
+    @State private var sectionsHeight: CGFloat = 600
+
+    /// The screen with the menu bar minus the header, footer, paddings and the popover arrow.
+    private static var maxSectionsHeight: CGFloat {
+        let screen = NSScreen.screens.first?.visibleFrame.height ?? 800
+        return max(300, screen - 150)
+    }
 
     /// The firmware section of the README in the user's language (Russian or English).
     static var readmeFirmware: URL {
@@ -28,15 +35,24 @@ struct MenuBarView: View {
             if showDonate {
                 DonateView(model: donate, close: { showDonate = false })
             } else {
-                if !state.isCaptureRunning { permissionBanner }
-                layoutSection
-                devicesSection
-                if !transferSources.isEmpty { filesSection }
-                if !motionCameraDevices.isEmpty {
-                    MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
-                                        open: app.openMotionCamera)
+                // Never taller than the screen: a popover that does not fit is moved by AppKit, and its
+                // arrow leaves the menu bar icon. Past that height the sections scroll.
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if !state.isCaptureRunning { permissionBanner }
+                        layoutSection
+                        devicesSection
+                        if !transferSources.isEmpty { filesSection }
+                        if !motionCameraDevices.isEmpty {
+                            MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
+                                                open: app.openMotionCamera)
+                        }
+                        connectionsSection
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sectionsHeight = $0 }
                 }
-                connectionsSection
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: min(sectionsHeight, Self.maxSectionsHeight))
             }
             Divider()
             footer
@@ -202,34 +218,36 @@ struct MenuBarView: View {
         .onTapGesture { selection = selected ? nil : device.id }
     }
 
-    /// The on/off buttons of a device: the keyboard and mouse, and (Android) the shared clipboard.
-    /// Each one says its state in words and in colour, and a click flips it.
-    /// Side by side when they fit, else one under the other: a label never wraps inside its button.
+    /// The switches of a device, one under the other as in System Settings: the keyboard and mouse,
+    /// and (Android) the shared clipboard.
     private func deviceSwitches(_ device: PlacedDevice, peer: UInt16) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) { switchButtons(device, peer: peer) }
-            VStack(alignment: .leading, spacing: 6) { switchButtons(device, peer: peer) }
+        VStack(spacing: 6) {
+            switchRow("Keyboard and mouse", isOn: Binding(
+                get: { device.isInputOn },
+                set: { state.setInput($0, of: device.id) }
+            ))
+            .help(device.isInputOn
+                  ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
+                  : String(localized: "Click to send the keyboard and mouse to this device again."))
+            if AndroidPeerRegistry.isAndroidPeer(peer) {
+                let clipboard = state.clipboard
+                switchRow("Shared clipboard", isOn: Binding(
+                    get: { clipboard.isEnabled(peer) },
+                    set: { clipboard.setEnabled($0, for: peer) }
+                ))
+                .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
+            }
         }
     }
 
-    @ViewBuilder
-    private func switchButtons(_ device: PlacedDevice, peer: UInt16) -> some View {
-        SwitchPill(isOn: device.isInputOn, icon: "keyboard",
-                   on: String(localized: "Keyboard and mouse: on"),
-                   off: String(localized: "Keyboard and mouse: off")) {
-            state.setInput(!device.isInputOn, of: device.id)
-        }
-        .help(device.isInputOn
-              ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
-              : String(localized: "Click to send the keyboard and mouse to this device again."))
-        if AndroidPeerRegistry.isAndroidPeer(peer) {
-            let clipboard = state.clipboard
-            SwitchPill(isOn: clipboard.isEnabled(peer), icon: "doc.on.clipboard",
-                       on: String(localized: "Clipboard: on"),
-                       off: String(localized: "Clipboard: off")) {
-                clipboard.setEnabled(!clipboard.isEnabled(peer), for: peer)
-            }
-            .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
+    private func switchRow(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
         }
     }
 
@@ -584,37 +602,6 @@ struct PanelCard<Content: View>: View {
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor).opacity(0.6)))
-    }
-}
-
-/// An on/off button that says its state: a filled green capsule with a check when on, a grey outline
-/// with an empty circle when off.
-private struct SwitchPill: View {
-    let isOn: Bool
-    let icon: String
-    let on: String
-    let off: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                Text(isOn ? on : off)
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-            }
-            .lineLimit(1)
-            .fixedSize()
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(isOn ? Color.white : Color.secondary)
-            .background(Capsule().fill(isOn ? Color.green : Color.clear))
-            .overlay(Capsule().strokeBorder(isOn ? Color.clear : Color.secondary.opacity(0.5)))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(Text(isOn ? on : off))
     }
 }
 
