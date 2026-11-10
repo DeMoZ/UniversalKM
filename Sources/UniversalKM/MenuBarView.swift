@@ -189,11 +189,25 @@ struct MenuBarView: View {
                 HStack(spacing: 4) {
                     Circle().fill(state.isConnected(device) ? Color.green : Color.gray.opacity(0.6)).frame(width: 6, height: 6)
                     Text(connectionText(device))
+                    if device.hostPeerID != nil && !device.isInputOn {
+                        Text(verbatim: "· " + String(localized: "Keyboard and mouse off"))
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
+            // Only for a bound device: one waiting for a host has nothing to send to yet.
+            if device.hostPeerID != nil {
+                Toggle("", isOn: Binding(
+                    get: { device.isInputOn },
+                    set: { state.setInput($0, of: device.id) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .help("Send the keyboard and mouse to this device")
+            }
             Image(systemName: "chevron.down")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)

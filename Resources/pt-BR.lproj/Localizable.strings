@@ -153,3 +153,7 @@
 "Photos…" = "Fotos…";
 "Connections" = "Conexões";
 "Pointer speed" = "Velocidade do cursor";
+
+/* Device row: the keyboard and mouse switch */
+"Keyboard and mouse off" = "teclado e mouse desligados";
+"Send the keyboard and mouse to this device" = "Enviar o teclado e o mouse para este dispositivo";

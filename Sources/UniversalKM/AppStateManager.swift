@@ -169,6 +169,14 @@ final class AppStateManager {
         arrangementChanged()
     }
 
+    /// Keyboard and mouse to the device on or off. Off while the input is on it: back to the Mac at once.
+    func setInput(_ on: Bool, of id: UUID) {
+        guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
+        arrangement.devices[index].inputEnabled = on
+        log.info("input \(on ? "on" : "off", privacy: .public) for \(self.arrangement.devices[index].name, privacy: .public)")
+        arrangementChanged()
+    }
+
     /// Screen size of the device in points / pixels (portrait); nil clears it. Proportions follow it.
     func setScreen(points: CGSize?, pixels: CGSize?, of id: UUID) {
         guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
@@ -275,10 +283,12 @@ final class AppStateManager {
         var bound = Set(arrangement.devices.compactMap(\.hostPeerID))
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
-        input.update(zones: layouts.flatMap(\.zones), displays: displays)
+        // A device with the input off has no zones and no target: the cursor passes its edge, and a
+        // capture on it ends (InputManager.update(targets:) releases a device that is gone).
+        input.update(zones: layouts.filter(\.device.isInputOn).flatMap(\.zones), displays: displays)
         let rects = Dictionary(uniqueKeysWithValues: layouts.map { ($0.device.id, $0.rect) })
         input.update(targets: arrangement.devices.compactMap { device in
-            guard let peer = device.hostPeerID else { return nil }
+            guard let peer = device.hostPeerID, device.isInputOn else { return nil }
             return CaptureTarget(deviceID: device.id, peerID: peer, isConnected: subscribedPeers.contains(peer),
                                  pointerSpeed: device.pointerSpeed, rect: rects[device.id] ?? .zero,
                                  screen: device.screenInPoints, returnThroughEdge: device.isReturnThroughEdgeOn)
