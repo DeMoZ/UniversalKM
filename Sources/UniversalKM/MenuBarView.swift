@@ -341,7 +341,15 @@ struct MenuBarView: View {
         }
     }
 
+    /// Every channel an Android device is on now ("USB · Wi‑Fi" when both), else the one connection.
     private func connectionText(_ device: PlacedDevice) -> String {
+        if state.connection(of: device) != nil, let peer = device.hostPeerID,
+           let status = state.androidStatus.device(peer) {
+            var channels: [String] = []
+            if status.hasUSB || status.hasADBOverUSB { channels.append(String(localized: "USB")) }
+            if status.hasWiFi && !status.isWiFiOff { channels.append(String(localized: "Wi‑Fi")) }
+            if !channels.isEmpty { return channels.joined(separator: " · ") }
+        }
         switch state.connection(of: device) {
         case .usb: String(localized: "USB")
         case .wifi: String(localized: "Wi‑Fi")
