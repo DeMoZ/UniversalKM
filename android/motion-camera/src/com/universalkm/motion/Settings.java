@@ -11,7 +11,7 @@ final class Settings {
     boolean on;
     String sens = "mid";       // low | mid | high
     int stopSec = 10;          // 5–60
-    String cam = "back";       // back | front
+    String cam = "back";       // back | front | both
     int quality = 720;         // 720 | 1080
     long limitMB = 4096;
 
@@ -41,7 +41,7 @@ final class Settings {
         if ("low".equals(v) || "mid".equals(v) || "high".equals(v)) sens = v;
         if (e.containsKey("stop")) stopSec = clamp(e.getInt("stop"), 5, 60);
         v = e.getString("cam");
-        if ("back".equals(v) || "front".equals(v)) cam = v;
+        if ("back".equals(v) || "front".equals(v) || "both".equals(v)) cam = v;
         if (e.containsKey("q")) quality = e.getInt("q") >= 1080 ? 1080 : 720;
         if (e.containsKey("limitMB")) limitMB = Math.max(100, e.getLong("limitMB"));
     }

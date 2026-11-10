@@ -72,13 +72,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: Motion camera (add-android-motion-camera)
 
     let motionCameras = MotionCameras()
+    private lazy var motionWindows = MotionCameraWindows(cameras: motionCameras) { [weak self] peer in
+        self?.openRecordings(peer: peer)
+    }
 
     /// "Files…" in the panel: the window of the device bound to `device`.
-    /// "Recordings…" (add-android-motion-camera design D8): the file window on the clips folder.
-    func openRecordings(_ device: PlacedDevice) {
-        guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
+    /// "Motion Camera…" in the panel (add-android-motion-camera design D8): the camera window of the device.
+    func openMotionCamera(_ device: PlacedDevice) {
+        guard let peer = device.hostPeerID else { return }
         closePanel()
-        fileBrowsers.show(key: android.serial, name: device.displayName, folder: RemotePath(MotionCamera.clipsFolder))
+        motionWindows.show(peer: peer, name: device.displayName)
+    }
+
+    /// "Recordings…" in the camera window: the file window on the clips folder.
+    func openRecordings(peer: UInt16) {
+        guard let android = state.androidStatus.device(peer) else { return }
+        let name = state.arrangement.devices.first { $0.hostPeerID == peer }?.displayName ?? android.name
+        fileBrowsers.show(key: android.serial, name: name, folder: RemotePath(MotionCamera.clipsFolder))
     }
 
     func openFiles(_ device: PlacedDevice) {

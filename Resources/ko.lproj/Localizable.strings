@@ -170,8 +170,6 @@
 "Installing…" = "설치 중…";
 "Confirm the install on the device screen, then press Install again." = "기기 화면에서 설치를 승인한 다음 설치를 다시 누르세요.";
 "%lld clips · %@" = "클립 %lld개 · %@";
-"Hide Settings" = "설정 가리기";
-"Settings…" = "설정…";
 "Recordings…" = "녹화…";
 "Open the clips of “%@” in the file window" = "“%@”의 클립을 파일 윈도우에서 열기";
 "Install Camera…" = "카메라 설치…";
@@ -203,3 +201,13 @@
 "Front" = "전면";
 "Quality" = "화질";
 "Keep up to" = "최대 보관";
+"Motion Camera…" = "동작 카메라…";
+"Recording on motion for “%@”: on and off, camera, settings, clips" = "“%@”의 동작 감지 녹화: 켜기/끄기, 카메라, 설정, 클립";
+"Motion Camera — %@" = "동작 카메라 — %@";
+"Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts." = "여기나 기기에서 끄면 Mac이나 기기에서 다시 켤 때까지 녹화가 멈춥니다. 기기를 재시동해도 꺼진 상태로 유지됩니다.";
+"Record when something moves" = "무언가 움직이면 녹화";
+"Recording: %@" = "녹화 중: %@";
+"Both" = "둘 다";
+"This device cannot record with both cameras at once, so it records with the rear one." = "이 기기는 두 카메라로 동시에 녹화할 수 없으므로 후면 카메라로 녹화합니다.";
+"“Both” is not available: this device cannot record with both cameras at once." = "‘둘 다’를 사용할 수 없음: 이 기기는 두 카메라로 동시에 녹화할 수 없습니다.";
+"Each camera records its own clips (“rear” and “front” in the name), at 720p." = "각 카메라가 자체 클립을 녹화합니다(이름에 ‘rear’와 ‘front’). 720p입니다.";

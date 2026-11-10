@@ -22,6 +22,14 @@ private func fixture(_ name: String) throws -> String {
         #expect(s.settings == MotionSettings())
     }
 
+    @Test func statusFromTabletVersion2() throws {
+        let s = try #require(MotionStatus.parse(try fixture("status-sm-x115-v2.txt")))
+        #expect(s.version == 2)
+        #expect(s.settings.camera == .both)
+        #expect(!s.bothSupported)
+        #expect(s.active == ["rear"])
+    }
+
     @Test func statusStatesAndSettings() throws {
         let row = "Row: 0 state=low_space, on=1, clips=3, bytes=5, free=10, battery=9, charging=1, version=7, "
             + "sens=high, stop=30, cam=front, q=1080, limitMB=8192, future=x"
@@ -34,6 +42,12 @@ private func fixture(_ name: String) throws -> String {
         #expect(s.settings.quality == .fullHD)
         #expect(s.settings.limitMB == 8192)
         #expect(MotionStatus.parse("Row: 0 state=dancing, on=0")?.state == .unknown)
+        let both = try #require(MotionStatus.parse("Row: 0 state=recording, on=1, cam=both, both=1, active=rear,front"))
+        #expect(both.settings.camera == .both)
+        #expect(both.bothSupported)
+        #expect(both.active == ["rear", "front"])
+        #expect(MotionStatus.parse("Row: 0 state=watching, both=0, active=-")?.active == [])
+        #expect(s.bothSupported == false)
         #expect(MotionStatus.parse("Row: 0 state=battery_low")?.state == .batteryLow)
     }
 

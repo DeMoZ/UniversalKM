@@ -63,7 +63,7 @@ final class MotionCameras: ObservableObject {
         for (peer, t) in next where previous[peer] != t { refresh(peer) }
     }
 
-    /// While the panel shows the camera section: the state every 5 s (spec «Состояние и настройки в панели»).
+    /// While a camera window is open: the state every 5 s (spec «Окно камеры»).
     func startPolling() {
         guard timer == nil else { return }
         refreshAll()
@@ -77,7 +77,13 @@ final class MotionCameras: ObservableObject {
         timer = nil
     }
 
-    private func refreshAll() {
+    /// Without the Android status (`--motion-window`): one device on a given adb transport.
+    func attach(peer: UInt16, transport: String) {
+        transports[peer] = transport
+        refresh(peer)
+    }
+
+    func refreshAll() {
         for peer in transports.keys { refresh(peer) }
     }
 

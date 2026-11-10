@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.os.StatFs;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -60,12 +61,14 @@ final class ClipStore {
         cr = c.getContentResolver();
     }
 
-    static String fileName(long millis) {
-        return new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date(millis)) + ".mp4";
+    /** {@code 2026-11-10_14-32-05.mp4}; with both cameras {@code 2026-11-10_14-32-05 rear.mp4}. */
+    static String fileName(long millis, String label) {
+        String base = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date(millis));
+        return base + (label == null ? "" : " " + label) + ".mp4";
     }
 
-    Clip open(long startMillis) throws IOException {
-        String name = fileName(startMillis);
+    Clip open(long startMillis, String label) throws IOException {
+        String name = fileName(startMillis, label);
         ContentValues v = new ContentValues();
         v.put(MediaStore.MediaColumns.DISPLAY_NAME, name.replace(".mp4", RECORDING));
         v.put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4");
@@ -85,6 +88,41 @@ final class ClipStore {
         return new Clip(uri, pfd, ch, name);
     }
 
+    private static final class Pending {
+        final Uri uri;
+        final String name;
+        final long due;
+
+        Pending(Uri uri, String name, long due) {
+            this.uri = uri;
+            this.name = name;
+            this.due = due;
+        }
+    }
+
+    private final List<Pending> pending = new ArrayList<>();
+
+    private void renamePending(Pending p) {
+        synchronized (pending) {
+            if (!pending.remove(p)) return;
+        }
+        rename(p.uri, p.name);
+    }
+
+    /** The service stops: renames still waiting are done now, each after its delay (a few seconds at most). */
+    void renameNow() {
+        List<Pending> left;
+        synchronized (pending) {
+            left = new ArrayList<>(pending);
+            pending.clear();
+        }
+        for (Pending p : left) {
+            long wait = p.due - SystemClock.uptimeMillis();
+            if (wait > 0) SystemClock.sleep(wait);
+            rename(p.uri, p.name);
+        }
+    }
+
     /** MediaProvider scans a file when it is closed; a rename during that scan loses the row (see rename). */
     static final long RENAME_DELAY_MS = 3000;
 
@@ -100,7 +138,11 @@ final class ClipStore {
         }
         try {
             if (keep) {
-                later.postDelayed(() -> rename(c.uri, c.name), RENAME_DELAY_MS);
+                Pending p = new Pending(c.uri, c.name, SystemClock.uptimeMillis() + RENAME_DELAY_MS);
+                synchronized (pending) {
+                    pending.add(p);
+                }
+                later.postDelayed(() -> renamePending(p), RENAME_DELAY_MS);
             } else {
                 cr.delete(c.uri, null, null);
             }

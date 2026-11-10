@@ -56,7 +56,8 @@ public enum MotionCamera {
 
 public struct MotionSettings: Equatable, Sendable {
     public enum Sensitivity: String, CaseIterable, Sendable { case low, mid, high }
-    public enum Camera: String, CaseIterable, Sendable { case back, front }
+    /// `both`: the rear and the front camera at once, where the device can (design D10).
+    public enum Camera: String, CaseIterable, Sendable { case back, front, both }
     public enum Quality: Int, CaseIterable, Sendable { case hd = 720, fullHD = 1080 }
 
     public var sensitivity: Sensitivity = .mid
@@ -90,6 +91,10 @@ public struct MotionStatus: Equatable, Sendable {
     public var charging = false
     public var version = 0
     public var settings = MotionSettings()
+    /// The device can stream from the rear and the front camera at once ("both" works).
+    public var bothSupported = false
+    /// Cameras recording now: "rear", "front".
+    public var active: [String] = []
 
     public init() {}
 
@@ -119,6 +124,8 @@ public struct MotionStatus: Equatable, Sendable {
         if let v = fields["cam"].flatMap(MotionSettings.Camera.init(rawValue:)) { s.settings.camera = v }
         if let v = fields["q"].flatMap({ Int($0) }).flatMap(MotionSettings.Quality.init(rawValue:)) { s.settings.quality = v }
         if let v = fields["limitMB"].flatMap({ Int($0) }) { s.settings.limitMB = v }
+        s.bothSupported = fields["both"] == "1"
+        s.active = (fields["active"] ?? "").split(separator: ",").map(String.init).filter { $0 != "-" }
         return s
     }
 }

@@ -1,12 +1,13 @@
+import AppKit
 import SwiftUI
 import UniversalKMCore
 
-/// The "Motion Camera" section of the panel (add-android-motion-camera design D8): one card per Android
-/// device with adb or with the camera installed earlier.
+/// The "Motion Camera" section of the panel (add-android-motion-camera design D8): one short row per Android
+/// device with adb or with the camera installed earlier. Everything else is in the camera window.
 struct MotionCameraSection: View {
     @ObservedObject var cameras: MotionCameras
     let devices: [PlacedDevice]
-    let openRecordings: (PlacedDevice) -> Void
+    let open: (PlacedDevice) -> Void
 
     var body: some View {
         PanelSection("Motion Camera") {
@@ -16,66 +17,134 @@ struct MotionCameraSection: View {
                 ForEach(Array(devices.enumerated()), id: \.element.id) { index, device in
                     if index > 0 { PanelDivider() }
                     if let peer = device.hostPeerID {
-                        MotionCameraRow(cameras: cameras, camera: cameras.camera(peer), peer: peer, device: device,
-                                        openRecordings: { openRecordings(device) })
+                        row(device, peer)
                     }
                 }
             }
         }
-        .onAppear { cameras.startPolling() }
-        .onDisappear { cameras.stopPolling() }
+        .onAppear { cameras.refreshAll() }
     }
-}
 
-private struct MotionCameraRow: View {
-    @ObservedObject var cameras: MotionCameras
-    let camera: MotionCameras.Camera
-    let peer: UInt16
-    let device: PlacedDevice
-    let openRecordings: () -> Void
-    @State private var showSettings = false
-
-    private var connected: Bool { cameras.isConnected(peer) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: camera.status?.state == .recording ? "record.circle.fill" : "video.fill")
-                    .font(.title3)
-                    .foregroundStyle(camera.status?.state == .recording ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(device.displayName).fontWeight(.medium)
-                    Text(subtitle).font(.caption).foregroundStyle(subtitleIsWarning ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
-                trailing
+    private func row(_ device: PlacedDevice, _ peer: UInt16) -> some View {
+        let camera = cameras.camera(peer)
+        let recording = camera.status?.state == .recording
+        return HStack(spacing: 10) {
+            Image(systemName: recording ? "record.circle.fill" : "video.fill")
+                .font(.title3)
+                .foregroundStyle(recording ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(device.displayName).fontWeight(.medium)
+                Text(MotionCameraWindowView.summary(camera, connected: cameras.isConnected(peer)))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            if let error = camera.error {
-                Text(camera.needsConfirmation ? String(localized: "Confirm the install on the device screen, then press Install again.") : error)
-                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 32)
-            }
-            if connected, let status = camera.status {
-                HStack {
-                    Text("\(status.clips) clips · \(ByteCountFormatter.string(fromByteCount: status.bytes, countStyle: .file))")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button(showSettings ? String(localized: "Hide Settings") : String(localized: "Settings…")) {
-                        showSettings.toggle()
-                    }
-                    .controlSize(.small)
-                    Button("Recordings…", action: openRecordings)
-                        .controlSize(.small)
-                        .help("Open the clips of “\(device.displayName)” in the file window")
-                }
-                .padding(.leading, 32)
-                if showSettings { settings(status.settings).padding(.leading, 32) }
-            }
+            Spacer()
+            Button("Motion Camera…") { open(device) }
+                .controlSize(.small)
+                .help("Recording on motion for “\(device.displayName)”: on and off, camera, settings, clips")
         }
         .font(.callout)
         .padding(10)
+    }
+}
+
+/// One camera window per device (design D8), keyed by the Android peer ID. The state is polled every 5 s
+/// while at least one of them is open.
+@MainActor
+final class MotionCameraWindows: NSObject, NSWindowDelegate {
+    private let cameras: MotionCameras
+    private let openRecordings: (UInt16) -> Void
+    private var open: [UInt16: NSWindow] = [:]
+
+    init(cameras: MotionCameras, openRecordings: @escaping (UInt16) -> Void) {
+        self.cameras = cameras
+        self.openRecordings = openRecordings
+    }
+
+    func show(peer: UInt16, name: String) {
+        NSApp.activate()
+        if let window = open[peer] {
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        let view = MotionCameraWindowView(cameras: cameras, peer: peer, name: name,
+                                          openRecordings: { [weak self] in self?.openRecordings(peer) })
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 420),
+                              styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        window.title = String(localized: "Motion Camera — \(name)")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: view)
+        window.setFrameAutosaveName("MotionCamera")
+        if open.isEmpty { window.center() } else { window.cascadeTopLeft(from: NSPoint(x: window.frame.minX + 24, y: window.frame.maxY - 24)) }
+        window.delegate = self
+        open[peer] = window
+        cameras.startPolling()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              let peer = open.first(where: { $0.value === window })?.key else { return }
+        open[peer] = nil
+        if open.isEmpty { cameras.stopPolling() }
+    }
+}
+
+struct MotionCameraWindowView: View {
+    @ObservedObject var cameras: MotionCameras
+    let peer: UInt16
+    let name: String
+    let openRecordings: () -> Void
+
+    private var camera: MotionCameras.Camera { cameras.camera(peer) }
+    private var connected: Bool { cameras.isConnected(peer) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+            if let error = camera.error {
+                Text(camera.needsConfirmation ? String(localized: "Confirm the install on the device screen, then press Install again.") : error)
+                    .font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            if connected, let status = camera.status {
+                Divider()
+                cameraChoice(status)
+                settings(status.settings)
+                Divider()
+                HStack {
+                    Text("\(status.clips) clips · \(ByteCountFormatter.string(fromByteCount: status.bytes, countStyle: .file))")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Recordings…", action: openRecordings)
+                        .help("Open the clips of “\(name)” in the file window")
+                }
+                Text("Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: Header: state and the switch
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: camera.status?.state == .recording ? "record.circle.fill" : "video.fill")
+                .font(.largeTitle)
+                .foregroundStyle(camera.status?.state == .recording ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
+                .frame(width: 40)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Record when something moves").font(.headline)
+                Text(Self.summary(camera, connected: connected))
+                    .foregroundStyle(warning ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            trailing
+        }
     }
 
     @ViewBuilder
@@ -87,26 +156,33 @@ private struct MotionCameraRow: View {
             }
         } else if connected && camera.checked && camera.installed == nil {
             Button("Install Camera…") { cameras.install(peer) }
-                .controlSize(.small)
                 .disabled(cameras.apk == nil)
-                .help("Install UniversalKM Motion on “\(device.displayName)” over adb")
+                .help("Install UniversalKM Motion on “\(name)” over adb")
         } else if connected, let status = camera.status {
-            HStack(spacing: 8) {
+            VStack(alignment: .trailing, spacing: 6) {
+                Toggle("", isOn: Binding(get: { status.on }, set: { cameras.setOn(peer, $0) }))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .help("Turn the motion camera on or off on “\(name)”")
                 if cameras.hasUpdate(peer) {
                     Button("Update Camera") { cameras.install(peer) }.controlSize(.small)
                 }
-                Toggle("", isOn: Binding(get: { status.on }, set: { cameras.setOn(peer, $0) }))
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .labelsHidden()
-                    .help("Turn the motion camera on or off on “\(device.displayName)”")
             }
         } else if connected {
             ProgressView().controlSize(.small)
         }
     }
 
-    private var subtitle: String {
+    private var warning: Bool {
+        guard connected, let state = camera.status?.state else { return false }
+        switch state {
+        case .noCamera, .noPermission, .lowSpace, .batteryLow, .stopped, .error: return true
+        default: return false
+        }
+    }
+
+    /// One line for the panel row and the window header.
+    static func summary(_ camera: MotionCameras.Camera, connected: Bool) -> String {
         guard connected else {
             return String(localized: "Not connected: state unknown. The camera keeps working on the device.")
         }
@@ -114,15 +190,11 @@ private struct MotionCameraRow: View {
             return String(localized: "Records video on the device while something moves")
         }
         guard let status = camera.status else { return String(localized: "Checking…") }
-        return Self.text(status.state)
-    }
-
-    private var subtitleIsWarning: Bool {
-        guard connected, let state = camera.status?.state else { return false }
-        switch state {
-        case .noCamera, .noPermission, .lowSpace, .batteryLow, .stopped, .error: return true
-        default: return false
+        if status.state == .recording, !status.active.isEmpty, status.settings.camera == .both {
+            let which = status.active.map { $0 == "front" ? String(localized: "Front") : String(localized: "Rear") }
+            return String(localized: "Recording: \(which.joined(separator: ", "))")
         }
+        return text(status.state)
     }
 
     static func text(_ state: MotionStatus.State) -> String {
@@ -141,9 +213,56 @@ private struct MotionCameraRow: View {
         }
     }
 
+    // MARK: Camera and settings
+
+    private func cameraChoice(_ status: MotionStatus) -> some View {
+        let s = status.settings
+        return VStack(alignment: .leading, spacing: 6) {
+            // Own radio buttons: a Picker cannot disable one of its items ("Both" where the device cannot).
+            HStack(spacing: 16) {
+                Text("Camera")
+                ForEach(MotionSettings.Camera.allCases, id: \.self) { option in
+                    let selected = s.camera == option
+                    Button {
+                        var n = s
+                        n.camera = option
+                        cameras.apply(peer, n)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                                .foregroundStyle(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                            Text(Self.cameraName(option))
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(option == .both && !status.bothSupported)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            if !status.bothSupported {
+                Text(s.camera == .both
+                     ? String(localized: "This device cannot record with both cameras at once, so it records with the rear one.")
+                     : String(localized: "“Both” is not available: this device cannot record with both cameras at once."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } else if s.camera == .both {
+                Text("Each camera records its own clips (“rear” and “front” in the name), at 720p.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    static func cameraName(_ c: MotionSettings.Camera) -> String {
+        switch c {
+        case .back: String(localized: "Rear")
+        case .front: String(localized: "Front")
+        case .both: String(localized: "Both")
+        }
+    }
+
     private func settings(_ s: MotionSettings) -> some View {
         let set: (MotionSettings) -> Void = { cameras.apply(peer, $0) }
-        return Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+        return Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
             GridRow {
                 Text("Sensitivity").foregroundStyle(.secondary)
                 Picker("", selection: Binding(get: { s.sensitivity }, set: { var n = s; n.sensitivity = $0; set(n) })) {
@@ -163,20 +282,13 @@ private struct MotionCameraRow: View {
                 .labelsHidden()
             }
             GridRow {
-                Text("Camera").foregroundStyle(.secondary)
-                Picker("", selection: Binding(get: { s.camera }, set: { var n = s; n.camera = $0; set(n) })) {
-                    Text("Rear").tag(MotionSettings.Camera.back)
-                    Text("Front").tag(MotionSettings.Camera.front)
-                }
-                .pickerStyle(.segmented).labelsHidden()
-            }
-            GridRow {
                 Text("Quality").foregroundStyle(.secondary)
                 Picker("", selection: Binding(get: { s.quality }, set: { var n = s; n.quality = $0; set(n) })) {
                     Text(verbatim: "720p").tag(MotionSettings.Quality.hd)
                     Text(verbatim: "1080p").tag(MotionSettings.Quality.fullHD)
                 }
                 .pickerStyle(.segmented).labelsHidden()
+                .disabled(s.camera == .both)
             }
             GridRow {
                 Text("Keep up to").foregroundStyle(.secondary)
@@ -188,7 +300,5 @@ private struct MotionCameraRow: View {
                 .labelsHidden()
             }
         }
-        .font(.caption)
-        .controlSize(.small)
     }
 }

@@ -170,8 +170,6 @@
 "Installing…" = "インストール中…";
 "Confirm the install on the device screen, then press Install again." = "デバイスの画面でインストールを確認してから、もう一度「インストール」を押してください。";
 "%lld clips · %@" = "%lld 本のクリップ · %@";
-"Hide Settings" = "設定を隠す";
-"Settings…" = "設定…";
 "Recordings…" = "録画…";
 "Open the clips of “%@” in the file window" = "“%@”のクリップをファイルウインドウで開く";
 "Install Camera…" = "カメラをインストール…";
@@ -203,3 +201,13 @@
 "Front" = "前面";
 "Quality" = "画質";
 "Keep up to" = "保存上限";
+"Motion Camera…" = "モーションカメラ…";
+"Recording on motion for “%@”: on and off, camera, settings, clips" = "“%@”の動き検知録画：オン/オフ、カメラ、設定、クリップ";
+"Motion Camera — %@" = "モーションカメラ — %@";
+"Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts." = "ここまたはデバイスでオフにすると、Mac またはデバイスで再びオンにするまで録画は止まります。デバイスを再起動してもオフのままです。";
+"Record when something moves" = "何かが動いたら録画";
+"Recording: %@" = "録画中：%@";
+"Both" = "両方";
+"This device cannot record with both cameras at once, so it records with the rear one." = "このデバイスは2つのカメラで同時に録画できないため、背面カメラで録画します。";
+"“Both” is not available: this device cannot record with both cameras at once." = "“両方”は使えません：このデバイスは2つのカメラで同時に録画できません。";
+"Each camera records its own clips (“rear” and “front” in the name), at 720p." = "各カメラが自分のクリップを録画します（名前に“rear”と“front”）。720p です。";

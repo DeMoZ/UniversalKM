@@ -170,8 +170,6 @@
 "Installing…" = "正在安装…";
 "Confirm the install on the device screen, then press Install again." = "请在设备屏幕上确认安装，然后再次点按“安装”。";
 "%lld clips · %@" = "%lld 个片段 · %@";
-"Hide Settings" = "隐藏设置";
-"Settings…" = "设置…";
 "Recordings…" = "录像…";
 "Open the clips of “%@” in the file window" = "在文件窗口中打开“%@”的片段";
 "Install Camera…" = "安装摄像头…";
@@ -203,3 +201,13 @@
 "Front" = "前置";
 "Quality" = "画质";
 "Keep up to" = "最多保留";
+"Motion Camera…" = "运动摄像头…";
+"Recording on motion for “%@”: on and off, camera, settings, clips" = "“%@”上的运动录像：开关、摄像头、设置、片段";
+"Motion Camera — %@" = "运动摄像头 — %@";
+"Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts." = "在这里或设备上关闭后，录像会停止，直到再次从 Mac 或设备上打开。设备重新启动后仍保持关闭。";
+"Record when something moves" = "有物体移动时录像";
+"Recording: %@" = "正在录像：%@";
+"Both" = "两个";
+"This device cannot record with both cameras at once, so it records with the rear one." = "此设备无法同时使用两个摄像头录像，因此使用后置摄像头录像。";
+"“Both” is not available: this device cannot record with both cameras at once." = "“两个”不可用：此设备无法同时使用两个摄像头录像。";
+"Each camera records its own clips (“rear” and “front” in the name), at 720p." = "每个摄像头录制各自的片段（名称中带“rear”和“front”），720p。";

@@ -170,8 +170,6 @@
 "Installing…" = "Установка…";
 "Confirm the install on the device screen, then press Install again." = "Подтвердите установку на экране устройства и нажмите «Установить» ещё раз.";
 "%lld clips · %@" = "Роликов: %lld · %@";
-"Hide Settings" = "Скрыть настройки";
-"Settings…" = "Настройки…";
 "Recordings…" = "Записи…";
 "Open the clips of “%@” in the file window" = "Открыть ролики «%@» в окне файлов";
 "Install Camera…" = "Установить камеру…";
@@ -203,3 +201,13 @@
 "Front" = "Передняя";
 "Quality" = "Качество";
 "Keep up to" = "Хранить до";
+"Motion Camera…" = "Камера движения…";
+"Recording on motion for “%@”: on and off, camera, settings, clips" = "Запись по движению на «%@»: включение, камера, настройки, ролики";
+"Motion Camera — %@" = "Камера движения — %@";
+"Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts." = "Если выключить здесь или на устройстве, запись остановится, пока её снова не включат — с Mac или на устройстве. После перезагрузки устройства она остаётся выключенной.";
+"Record when something moves" = "Записывать при движении";
+"Recording: %@" = "Пишет: %@";
+"Both" = "Обе";
+"This device cannot record with both cameras at once, so it records with the rear one." = "Это устройство не снимает двумя камерами сразу, поэтому пишет задняя.";
+"“Both” is not available: this device cannot record with both cameras at once." = "«Обе» недоступно: это устройство не снимает двумя камерами сразу.";
+"Each camera records its own clips (“rear” and “front” in the name), at 720p." = "Каждая камера пишет свои ролики («rear» и «front» в имени), в 720p.";

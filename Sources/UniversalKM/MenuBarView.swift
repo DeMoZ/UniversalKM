@@ -34,7 +34,7 @@ struct MenuBarView: View {
                 if !transferSources.isEmpty { filesSection }
                 if !motionCameraDevices.isEmpty {
                     MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
-                                        openRecordings: app.openRecordings)
+                                        open: app.openMotionCamera)
                 }
                 connectionsSection
             }

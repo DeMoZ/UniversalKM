@@ -170,8 +170,6 @@
 "Installing…" = "Instalando…";
 "Confirm the install on the device screen, then press Install again." = "Confirma la instalación en la pantalla del dispositivo y vuelve a pulsar Instalar.";
 "%lld clips · %@" = "%lld clips · %@";
-"Hide Settings" = "Ocultar ajustes";
-"Settings…" = "Ajustes…";
 "Recordings…" = "Grabaciones…";
 "Open the clips of “%@” in the file window" = "Abrir los clips de “%@” en la ventana de archivos";
 "Install Camera…" = "Instalar cámara…";
@@ -203,3 +201,13 @@
 "Front" = "Frontal";
 "Quality" = "Calidad";
 "Keep up to" = "Guardar hasta";
+"Motion Camera…" = "Cámara de movimiento…";
+"Recording on motion for “%@”: on and off, camera, settings, clips" = "Grabación por movimiento en “%@”: activar, cámara, ajustes, clips";
+"Motion Camera — %@" = "Cámara de movimiento — %@";
+"Turning it off here or on the device stops recording until it is turned on again, from the Mac or on the device. It stays off after the device restarts." = "Si se desactiva aquí o en el dispositivo, la grabación se detiene hasta que se vuelva a activar, desde el Mac o en el dispositivo. Sigue desactivada tras reiniciar el dispositivo.";
+"Record when something moves" = "Grabar cuando algo se mueve";
+"Recording: %@" = "Grabando: %@";
+"Both" = "Ambas";
+"This device cannot record with both cameras at once, so it records with the rear one." = "Este dispositivo no puede grabar con las dos cámaras a la vez, así que graba con la trasera.";
+"“Both” is not available: this device cannot record with both cameras at once." = "“Ambas” no está disponible: este dispositivo no puede grabar con las dos cámaras a la vez.";
+"Each camera records its own clips (“rear” and “front” in the name), at 720p." = "Cada cámara graba sus propios clips (“rear” y “front” en el nombre), a 720p.";

@@ -1,0 +1,1 @@
+Row: 0 state=recording, on=1, clips=9, bytes=98518420, free=48651587584, battery=69, charging=0, version=2, sens=mid, stop=10, cam=both, q=720, limitMB=100, both=0, active=rear

@@ -17,7 +17,7 @@ import android.os.BatteryManager;
  */
 public final class StatusProvider extends ContentProvider {
     static final String[] COLUMNS = {"state", "on", "clips", "bytes", "free", "battery", "charging", "version",
-            "sens", "stop", "cam", "q", "limitMB"};
+            "sens", "stop", "cam", "q", "limitMB", "both", "active"};
 
     @Override
     public boolean onCreate() {
@@ -50,9 +50,13 @@ public final class StatusProvider extends ContentProvider {
             version = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).getLongVersionCode();
         } catch (PackageManager.NameNotFoundException ignored) {
         }
+        // Whether "both" can work here (design D10), and which cameras record now.
+        boolean both = MotionService.concurrentPair(c.getSystemService(android.hardware.camera2.CameraManager.class)) != null;
+        String active = MotionService.running ? MotionService.active : "";
         MatrixCursor m = new MatrixCursor(COLUMNS, 1);
         m.addRow(new Object[]{currentState(c, s), s.on ? 1 : 0, usage[0], usage[1], ClipStore.freeBytes(), battery,
-                charging ? 1 : 0, version, s.sens, s.stopSec, s.cam, s.quality, s.limitMB});
+                charging ? 1 : 0, version, s.sens, s.stopSec, s.cam, s.quality, s.limitMB, both ? 1 : 0,
+                active.isEmpty() ? "-" : active});
         return m;
     }
 
