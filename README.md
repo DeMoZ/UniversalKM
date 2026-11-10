@@ -104,7 +104,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 2. On the phone, unlock developer options: Settings → About phone → tap "Build number" seven times.
 3. Connect the phone one of two ways:
    - **Wireless debugging (Android 11 and later):** Developer options → Wireless debugging → "Pair device with pairing code" (not the QR code). In the panel press "Pair with code…" and enter the IP address with port and the six-digit code from that screen. From then on the app finds the phone on the network by itself whenever wireless debugging is on.
-   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and press "Enable Wi‑Fi" next to it in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and press "Enable Wi‑Fi" again.
+   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and switch **Wi‑Fi** on in its row in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and switch Wi‑Fi on again. Switching it off disconnects the phone from Wi‑Fi, and the app does not reconnect it until you switch it on.
 4. Add the device in the panel ("Add…") and place it next to a display edge.
 
 - A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.

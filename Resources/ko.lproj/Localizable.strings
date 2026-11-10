@@ -163,3 +163,6 @@
 "Keyboard and mouse" = "키보드 및 마우스";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "클릭하면 이 기기로 키보드와 마우스를 보내지 않습니다. 연결은 유지되며 파일과 클립보드는 계속 작동합니다.";
 "Click to send the keyboard and mouse to this device again." = "클릭하면 이 기기로 키보드와 마우스를 다시 보냅니다.";
+"Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect." = "이 기기의 adb를 Wi‑Fi로 유지하여 케이블 없이 작동하게 합니다. 끔: 앱이 Wi‑Fi 연결을 끊고 다시 연결하지 않습니다.";
+"To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections." = "Wi‑Fi를 켜려면 USB 디버깅을 켠 상태로 케이블을 연결하거나 연결 항목에서 코드로 휴대폰을 페어링하십시오.";
+"“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row." = "“%@”은(는) 케이블을 통해 Wi‑Fi에 연결되어 있었습니다: 휴대폰을 재시동한 후 케이블을 연결하고 해당 행에서 Wi‑Fi를 다시 켜십시오.";

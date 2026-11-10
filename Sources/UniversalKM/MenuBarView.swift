@@ -15,6 +15,9 @@ struct MenuBarView: View {
     @State private var newName = ""
     @State private var newHostPeerID: UInt16?
     @State private var sectionsHeight: CGFloat = 600
+    /// Devices whose Wi‑Fi switch is being turned on or off now, and the last error of the switch.
+    @State private var wifiPending: Set<UInt16> = []
+    @State private var wifiErrors: [UInt16: String] = [:]
 
     /// The screen with the menu bar minus the header, footer, paddings and the popover arrow.
     private static var maxSectionsHeight: CGFloat {
@@ -226,6 +229,10 @@ struct MenuBarView: View {
                 ))
                 .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
             }
+            if AndroidPeerRegistry.isAndroidPeer(peer), state.androidStatus.adbPath != nil,
+               let status = state.androidStatus.device(peer) {
+                wifiRow(status)
+            }
             // Only while adb reaches the device (add-android-file-browser design D2).
             if hasFiles(device) {
                 HStack {
@@ -235,6 +242,52 @@ struct MenuBarView: View {
                         .controlSize(.small)
                 }
                 .help("Files on “\(device.displayName)”: copy them to and from the Mac")
+            }
+        }
+    }
+
+    /// adb over Wi‑Fi of an Android device. It shows whether the device is on Wi‑Fi now; it can be
+    /// switched on over the cable with USB debugging (`adb tcpip`), or when the user switched it off
+    /// before (the saved address and Wireless debugging are tried again).
+    @ViewBuilder
+    private func wifiRow(_ status: AndroidDeviceStatus) -> some View {
+        let peer = status.peerID
+        let pending = wifiPending.contains(peer)
+        let canSwitch = pending || status.hasWiFi || status.hasADBOverUSB || status.isWiFiOff
+        HStack {
+            Text("Wi‑Fi")
+            Spacer()
+            if pending { ProgressView().controlSize(.small) }
+            Toggle("Wi‑Fi", isOn: Binding(
+                get: { status.hasWiFi && !status.isWiFiOff },
+                set: { setWiFi($0, peer) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .disabled(!canSwitch || pending)
+        }
+        .help(canSwitch
+              ? String(localized: "Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect.")
+              : String(localized: "To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections."))
+        if let error = wifiErrors[peer] {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func setWiFi(_ on: Bool, _ peer: UInt16) {
+        wifiPending.insert(peer)
+        wifiErrors[peer] = nil
+        state.android.setWiFi(on, peerID: peer) { result in
+            Task { @MainActor in
+                wifiPending.remove(peer)
+                if case .failure(let error) = result {
+                    wifiErrors[peer] = String(localized: "Could not enable Wi‑Fi: \(AndroidWiFiView.text(error))")
+                }
             }
         }
     }
