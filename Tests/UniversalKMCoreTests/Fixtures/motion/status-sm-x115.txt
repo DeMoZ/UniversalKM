@@ -1,0 +1,1 @@
+Row: 0 state=watching, on=1, clips=2, bytes=11800956, free=48237772800, battery=84, charging=0, version=1, sens=mid, stop=10, cam=back, q=720, limitMB=4096

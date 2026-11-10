@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniversalKM Motion</string>
+    <string name="switch_label">Motion camera</string>
+    <string name="hint">Records video while something moves in front of the camera and keeps it in Movies/UniversalKM Motion. Settings come from UniversalKM on the Mac.</string>
+    <string name="clips">%1$d clips · %2$s</string>
+    <string name="state_off">Off</string>
+    <string name="state_starting">Starting…</string>
+    <string name="state_watching">Waiting for motion</string>
+    <string name="state_recording">Recording</string>
+    <string name="state_no_camera">The camera is busy or blocked</string>
+    <string name="state_no_permission">No access to the camera</string>
+    <string name="state_low_space">Not enough space: new clips are not recorded</string>
+    <string name="state_battery_low">Battery low: connect a charger</string>
+    <string name="state_stopped">Stopped: open this app to turn it on again</string>
+    <string name="state_error">Could not start</string>
+    <string name="turn_off">Turn off</string>
+    <string name="channel_camera">Motion camera</string>
+    <string name="channel_resume">Turn the camera back on</string>
+    <string name="resume_title">Motion camera is off</string>
+    <string name="resume_text">Tap to turn it back on</string>
+</resources>

@@ -152,14 +152,17 @@ final class FileBrowsers: NSObject, NSWindowDelegate {
     private var transports: [String: String] = [:]
 
     /// `transport` only for `--files-window`; otherwise it comes from the Android status.
-    func show(key: String, name: String, transport: String? = nil) {
+    /// `folder`: open there ("Recordings…"), or in its parent when it does not exist yet.
+    func show(key: String, name: String, transport: String? = nil, folder: RemotePath? = nil) {
         if let transport { transports[key] = transport }
         NSApp.activate()
         if let existing = open[key] {
+            if let folder { existing.model.reveal(folder) }
             existing.window.makeKeyAndOrderFront(nil)
             return
         }
         let model = FileBrowserModel(key: key, name: name, transport: transports[key])
+        if let folder { model.reveal(folder) }
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = name

@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         Task { @MainActor in
             self?.state.androidChanged(status)
             self?.fileBrowsers.update(status)
+            self?.motionCameras.update(status)
             self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
         }
     }
@@ -68,7 +69,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private let fileBrowsers = FileBrowsers()
 
+    // MARK: Motion camera (add-android-motion-camera)
+
+    let motionCameras = MotionCameras()
+
     /// "Files…" in the panel: the window of the device bound to `device`.
+    /// "Recordings…" (add-android-motion-camera design D8): the file window on the clips folder.
+    func openRecordings(_ device: PlacedDevice) {
+        guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
+        closePanel()
+        fileBrowsers.show(key: android.serial, name: device.displayName, folder: RemotePath(MotionCamera.clipsFolder))
+    }
+
     func openFiles(_ device: PlacedDevice) {
         guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
         closePanel()
