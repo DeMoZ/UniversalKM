@@ -63,7 +63,7 @@ javac --release 11 -Xlint:-options -classpath "$JAR" -d "$OUT/classes" \
 cp "$OUT/base.apk" "$OUT/unsigned.apk"
 (cd "$OUT/dex" && zip -q -X "$OUT/unsigned.apk" classes.dex)
 "$BT/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
-"$BT/apksigner" sign --ks "$KS" --ks-key-alias ukm-motion --ks-pass "file:$PASS_FILE" \
+"$BT/apksigner" sign --v4-signing-enabled false --ks "$KS" --ks-key-alias ukm-motion --ks-pass "file:$PASS_FILE" \
   --out "$ROOT/Resources/ukm-motion.apk" "$OUT/aligned.apk"
 "$BT/apksigner" verify "$ROOT/Resources/ukm-motion.apk"
 echo "$VERSION_CODE" > "$ROOT/Resources/ukm-motion.version"

@@ -253,15 +253,18 @@ public final class MotionService extends Service {
         if (running) Notifications.updateCamera(this, s);
     }
 
-    private int analysedFrames, encodedFrames;
+    private int analysedFrames, encodedFrames, motionFrames;
+    private double maxFraction;
 
     /** One log line a minute: shows the camera keeps running with the screen off and in Doze. */
     private final Runnable heartbeat = new Runnable() {
         @Override
         public void run() {
-            Log.i(TAG, "alive: " + state + ", analysed " + analysedFrames + ", encoded " + encodedFrames
-                    + " in the last minute, ring " + ring.size() + " frames");
-            analysedFrames = encodedFrames = 0;
+            Log.i(TAG, String.format(java.util.Locale.US,
+                    "alive: %s, analysed %d (motion in %d, max %.2f%% changed), encoded %d in the last minute, ring %d frames",
+                    state, analysedFrames, motionFrames, 100 * maxFraction, encodedFrames, ring.size()));
+            analysedFrames = encodedFrames = motionFrames = 0;
+            maxFraction = 0;
             h.postDelayed(this, 60_000);
         }
     };
@@ -600,6 +603,8 @@ public final class MotionService extends Service {
             if (moving && !policy.isRecording()) {
                 Log.i(TAG, String.format(java.util.Locale.US, "motion: %.2f%% of the picture changed", 100 * detector.lastFraction()));
             }
+            maxFraction = Math.max(maxFraction, detector.lastFraction());
+            if (moving) motionFrames++;
             if (mono < simulateUntilMonoUs) moving = true;
             policy.motion(mono, moving);
         } finally {
@@ -676,7 +681,7 @@ public final class MotionService extends Service {
             return true;
         } catch (IOException | RuntimeException e) {
             Log.w(TAG, "open clip", e);
-            if (clip != null) store.finish(clip, false);
+            if (clip != null) store.finish(clip, false, h);
             clip = null;
             writer = null;
             return false;
@@ -712,7 +717,7 @@ public final class MotionService extends Service {
         } catch (IOException | RuntimeException e) {
             Log.w(TAG, "close clip", e);
         }
-        store.finish(clip, n > 0);
+        store.finish(clip, n > 0, h);
         Log.i(TAG, "clip " + clip.name + " closed: " + n + " frames, " + size + " bytes");
         clip = null;
         writer = null;
