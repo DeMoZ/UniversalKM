@@ -160,3 +160,9 @@
 "Clipboard: connecting…" = "클립보드: 연결 중…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "클립보드: 기기에서 USB 디버깅 또는 Wi‑Fi가 필요합니다";
 "Clipboard: error — %@" = "클립보드: 오류 — %@";
+"Keyboard and mouse: on" = "키보드 및 마우스: 켬";
+"Keyboard and mouse: off" = "키보드 및 마우스: 끔";
+"Clipboard: on" = "클립보드: 켬";
+"Clipboard: off" = "클립보드: 끔";
+"Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "클릭하면 이 기기로 키보드와 마우스를 보내지 않습니다. 연결은 유지되며 파일과 클립보드는 계속 작동합니다.";
+"Click to send the keyboard and mouse to this device again." = "클릭하면 이 기기로 키보드와 마우스를 다시 보냅니다.";

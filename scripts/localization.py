@@ -784,6 +784,40 @@ T6 = {
         '보안에서 허용하십시오.',
         '클립보드: 공유 중', '클립보드: 연결 중…', '클립보드: 기기에서 USB 디버깅 또는 Wi‑Fi가 필요합니다', '클립보드: 오류 — %@'],
 }
+# Added by add-device-input-toggle: on/off buttons of a device row.
+K7 = ['Keyboard and mouse: on', 'Keyboard and mouse: off', 'Clipboard: on', 'Clipboard: off',
+ 'Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.',
+ 'Click to send the keyboard and mouse to this device again.']
+T7 = {
+ 'ru': ['Клавиатура и мышь: вкл', 'Клавиатура и мышь: выкл', 'Буфер обмена: вкл', 'Буфер обмена: выкл',
+        'Нажмите, чтобы не передавать клавиатуру и мышь на это устройство. Оно остаётся подключённым: файлы и буфер обмена работают.',
+        'Нажмите, чтобы снова передавать клавиатуру и мышь на это устройство.'],
+ 'de': ['Tastatur und Maus: an', 'Tastatur und Maus: aus', 'Zwischenablage: an', 'Zwischenablage: aus',
+        'Klicken, um Tastatur und Maus nicht mehr an dieses Gerät zu senden. Es bleibt verbunden: Dateien und Zwischenablage funktionieren weiter.',
+        'Klicken, um Tastatur und Maus wieder an dieses Gerät zu senden.'],
+ 'fr': ['Clavier et souris : activés', 'Clavier et souris : désactivés', 'Presse-papiers : activé', 'Presse-papiers : désactivé',
+        'Cliquez pour ne plus envoyer le clavier et la souris à cet appareil. Il reste connecté : les fichiers et le presse-papiers fonctionnent toujours.',
+        'Cliquez pour envoyer de nouveau le clavier et la souris à cet appareil.'],
+ 'es': ['Teclado y ratón: activados', 'Teclado y ratón: desactivados', 'Portapapeles: activado', 'Portapapeles: desactivado',
+        'Haz clic para dejar de enviar el teclado y el ratón a este dispositivo. Sigue conectado: los archivos y el portapapeles siguen funcionando.',
+        'Haz clic para volver a enviar el teclado y el ratón a este dispositivo.'],
+ 'pt-BR': ['Teclado e mouse: ativados', 'Teclado e mouse: desativados', 'Área de transferência: ativada',
+           'Área de transferência: desativada',
+           'Clique para parar de enviar o teclado e o mouse para este dispositivo. Ele continua conectado: arquivos e área de transferência continuam funcionando.',
+           'Clique para voltar a enviar o teclado e o mouse para este dispositivo.'],
+ 'it': ['Tastiera e mouse: attivi', 'Tastiera e mouse: disattivati', 'Appunti: attivi', 'Appunti: disattivati',
+        'Fai clic per non inviare più tastiera e mouse a questo dispositivo. Resta connesso: file e appunti continuano a funzionare.',
+        'Fai clic per inviare di nuovo tastiera e mouse a questo dispositivo.'],
+ 'zh-Hans': ['键盘和鼠标：开', '键盘和鼠标：关', '剪贴板：开', '剪贴板：关',
+             '点按以停止向此设备发送键盘和鼠标。设备仍保持连接：文件和剪贴板照常工作。',
+             '点按以再次向此设备发送键盘和鼠标。'],
+ 'ja': ['キーボードとマウス：オン', 'キーボードとマウス：オフ', 'クリップボード：オン', 'クリップボード：オフ',
+        'クリックすると、このデバイスへのキーボードとマウスの送信を止めます。接続は保たれ、ファイルとクリップボードは引き続き使えます。',
+        'クリックすると、このデバイスへのキーボードとマウスの送信を再開します。'],
+ 'ko': ['키보드 및 마우스: 켬', '키보드 및 마우스: 끔', '클립보드: 켬', '클립보드: 끔',
+        '클릭하면 이 기기로 키보드와 마우스를 보내지 않습니다. 연결은 유지되며 파일과 클립보드는 계속 작동합니다.',
+        '클릭하면 이 기기로 키보드와 마우스를 다시 보냅니다.'],
+}
 EN_BT = "UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB."
 def esc(s): return s.replace('\\', '\\\\').replace('"', '\\"')
 for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
@@ -796,7 +830,8 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
         assert lang == "en" or len(T4[lang]) == len(K4), (lang, len(T4[lang]))
         assert lang == "en" or len(T5[lang]) == len(K5), (lang, len(T5[lang]))
         assert lang == "en" or len(T6[lang]) == len(K6), (lang, len(T6[lang]))
-        for k, v in zip(K + K2 + K3 + K4 + K5 + K6, vals[:-1] + (K2 + K3 + K4 + K5 + K6 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang])):
+        assert lang == "en" or len(T7[lang]) == len(K7), (lang, len(T7[lang]))
+        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')

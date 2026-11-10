@@ -179,7 +179,44 @@ struct MenuBarView: View {
 
     private func deviceRow(_ device: PlacedDevice) -> some View {
         let selected = device.id == selection
-        return HStack(spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
+            deviceHeader(device, selected: selected)
+            // Only for a bound device: one waiting for a host has nothing to switch yet.
+            if let peer = device.hostPeerID { deviceSwitches(device, peer: peer).padding(.leading, 32) }
+        }
+        .font(.callout)
+        .padding(10)
+        .contentShape(Rectangle())
+        .background(selected ? Color.accentColor.opacity(0.08) : .clear)
+        .onTapGesture { selection = selected ? nil : device.id }
+    }
+
+    /// The on/off buttons of a device: the keyboard and mouse, and (Android) the shared clipboard.
+    /// Each one says its state in words and in colour, and a click flips it.
+    private func deviceSwitches(_ device: PlacedDevice, peer: UInt16) -> some View {
+        HStack(spacing: 6) {
+            SwitchPill(isOn: device.isInputOn, icon: "keyboard",
+                       on: String(localized: "Keyboard and mouse: on"),
+                       off: String(localized: "Keyboard and mouse: off")) {
+                state.setInput(!device.isInputOn, of: device.id)
+            }
+            .help(device.isInputOn
+                  ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
+                  : String(localized: "Click to send the keyboard and mouse to this device again."))
+            if AndroidPeerRegistry.isAndroidPeer(peer) {
+                let clipboard = state.clipboard
+                SwitchPill(isOn: clipboard.isEnabled(peer), icon: "doc.on.clipboard",
+                           on: String(localized: "Clipboard: on"),
+                           off: String(localized: "Clipboard: off")) {
+                    clipboard.setEnabled(!clipboard.isEnabled(peer), for: peer)
+                }
+                .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
+            }
+        }
+    }
+
+    private func deviceHeader(_ device: PlacedDevice, selected: Bool) -> some View {
+        HStack(spacing: 10) {
             Image(systemName: device.kind == .tablet ? "ipad" : "iphone")
                 .font(.title3)
                 .foregroundStyle(selected ? Color.accentColor : .secondary)
@@ -189,25 +226,11 @@ struct MenuBarView: View {
                 HStack(spacing: 4) {
                     Circle().fill(state.isConnected(device) ? Color.green : Color.gray.opacity(0.6)).frame(width: 6, height: 6)
                     Text(connectionText(device))
-                    if device.hostPeerID != nil && !device.isInputOn {
-                        Text(verbatim: "· " + String(localized: "Keyboard and mouse off"))
-                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            // Only for a bound device: one waiting for a host has nothing to send to yet.
-            if device.hostPeerID != nil {
-                Toggle("", isOn: Binding(
-                    get: { device.isInputOn },
-                    set: { state.setInput($0, of: device.id) }
-                ))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .help("Send the keyboard and mouse to this device")
-            }
             Image(systemName: "chevron.down")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
@@ -228,11 +251,6 @@ struct MenuBarView: View {
             .fixedSize()
             .help("More for “\(device.displayName)”")
         }
-        .font(.callout)
-        .padding(10)
-        .contentShape(Rectangle())
-        .background(selected ? Color.accentColor.opacity(0.08) : .clear)
-        .onTapGesture { selection = selected ? nil : device.id }
     }
 
     private func connectionText(_ device: PlacedDevice) -> String {
@@ -405,15 +423,10 @@ struct MenuBarView: View {
         .font(.callout)
     }
 
-    /// "Shared clipboard" of an Android device (add-android-clipboard-sync, spec «Переключатель в панели»).
+    /// Shared clipboard status of an Android device; its on/off button is in the device row.
     @ViewBuilder
     private func clipboardControl(_ peer: UInt16) -> some View {
         let clipboard = state.clipboard
-        Toggle("Shared clipboard", isOn: Binding(
-            get: { clipboard.isEnabled(peer) },
-            set: { clipboard.setEnabled($0, for: peer) }
-        ))
-        .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
         if let text = clipboardText(clipboard.states[peer]) {
             Text(text)
                 .font(.caption2)
@@ -553,6 +566,35 @@ private struct PanelCard<Content: View>: View {
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor).opacity(0.6)))
+    }
+}
+
+/// An on/off button that says its state: a filled green capsule with a check when on, a grey outline
+/// with an empty circle when off.
+private struct SwitchPill: View {
+    let isOn: Bool
+    let icon: String
+    let on: String
+    let off: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                Text(isOn ? on : off)
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(isOn ? Color.white : Color.secondary)
+            .background(Capsule().fill(isOn ? Color.green : Color.clear))
+            .overlay(Capsule().strokeBorder(isOn ? Color.clear : Color.secondary.opacity(0.5)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(Text(isOn ? on : off))
     }
 }
 

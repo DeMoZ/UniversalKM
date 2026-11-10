@@ -160,3 +160,9 @@
 "Clipboard: connecting…" = "Буфер обмена: подключение…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Буфер обмена: нужна отладка по USB или Wi‑Fi на устройстве";
 "Clipboard: error — %@" = "Буфер обмена: ошибка — %@";
+"Keyboard and mouse: on" = "Клавиатура и мышь: вкл";
+"Keyboard and mouse: off" = "Клавиатура и мышь: выкл";
+"Clipboard: on" = "Буфер обмена: вкл";
+"Clipboard: off" = "Буфер обмена: выкл";
+"Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Нажмите, чтобы не передавать клавиатуру и мышь на это устройство. Оно остаётся подключённым: файлы и буфер обмена работают.";
+"Click to send the keyboard and mouse to this device again." = "Нажмите, чтобы снова передавать клавиатуру и мышь на это устройство.";

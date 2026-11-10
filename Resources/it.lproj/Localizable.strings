@@ -160,3 +160,9 @@
 "Clipboard: connecting…" = "Appunti: connessione…";
 "Clipboard: needs USB debugging or Wi‑Fi on the device" = "Appunti: serve il debug USB o il Wi‑Fi sul dispositivo";
 "Clipboard: error — %@" = "Appunti: errore — %@";
+"Keyboard and mouse: on" = "Tastiera e mouse: attivi";
+"Keyboard and mouse: off" = "Tastiera e mouse: disattivati";
+"Clipboard: on" = "Appunti: attivi";
+"Clipboard: off" = "Appunti: disattivati";
+"Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Fai clic per non inviare più tastiera e mouse a questo dispositivo. Resta connesso: file e appunti continuano a funzionare.";
+"Click to send the keyboard and mouse to this device again." = "Fai clic per inviare di nuovo tastiera e mouse a questo dispositivo.";

@@ -65,8 +65,7 @@ final class AppStateManager {
     }
 
     func isConnected(_ device: PlacedDevice) -> Bool {
-        // Registered Android devices are in subscribedPeers too.
-        device.hostPeerID.map(subscribedPeers.contains) ?? false
+        connection(of: device) != nil
     }
 
     /// Hosts that are there right now: Chameleon subscribers and Android devices on USB or Wi‑Fi
@@ -90,8 +89,15 @@ final class AppStateManager {
     enum Connection: Equatable { case usb, wifi, chameleon }
 
     /// How a device of the arrangement is connected right now; nil = not connected.
+    /// An Android device with the keyboard and mouse off has none registered, but it is still on the
+    /// cable or Wi‑Fi (files, clipboard): that channel is shown.
     func connection(of device: PlacedDevice) -> Connection? {
-        guard let peer = device.hostPeerID, subscribedPeers.contains(peer) else { return nil }
+        guard let peer = device.hostPeerID else { return nil }
+        if !device.isInputOn, AndroidPeerRegistry.isAndroidPeer(peer), let status = androidStatus.device(peer) {
+            if status.hasUSB || status.hasADBOverUSB { return .usb }
+            return status.hasWiFi ? .wifi : nil
+        }
+        guard subscribedPeers.contains(peer) else { return nil }
         guard AndroidPeerRegistry.isAndroidPeer(peer) else { return .chameleon }
         switch androidStatus.device(peer)?.active {
         case .usb: return .usb
@@ -171,7 +177,8 @@ final class AppStateManager {
         arrangementChanged()
     }
 
-    /// Keyboard and mouse to the device on or off. Off while the input is on it: back to the Mac at once.
+    /// Keyboard and mouse to the device on or off. Off: the cursor no longer passes to it, an Android
+    /// device has them removed; the binding, place, files and clipboard stay.
     func setInput(_ on: Bool, of id: UUID) {
         guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
         arrangement.devices[index].inputEnabled = on
@@ -282,7 +289,11 @@ final class AppStateManager {
     }
 
     private func pushToInput() {
-        var bound = Set(arrangement.devices.compactMap(\.hostPeerID))
+        // An Android device with the keyboard and mouse off is not bound in the transport: they are
+        // removed from it (its on-screen keyboard comes back). A Chameleon host keeps its Bluetooth link.
+        var bound = Set(arrangement.devices.compactMap { device in
+            device.hostPeerID.flatMap { device.isInputOn || !AndroidPeerRegistry.isAndroidPeer($0) ? $0 : nil }
+        })
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
         updateClipboard()
