@@ -104,7 +104,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 2. On the phone, unlock developer options: Settings → About phone → tap "Build number" seven times.
 3. Connect the phone one of two ways:
    - **Wireless debugging (Android 11 and later):** Developer options → Wireless debugging → "Pair device with pairing code" (not the QR code). In the panel press "Pair with code…" and enter the IP address with port and the six-digit code from that screen. From then on the app finds the phone on the network by itself whenever wireless debugging is on.
-   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and press "Enable Wi‑Fi" next to it in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and press "Enable Wi‑Fi" again.
+   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and switch **Wi‑Fi** on in its row in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and switch Wi‑Fi on again. Switching it off disconnects the phone from Wi‑Fi, and the app does not reconnect it until you switch it on.
 4. Add the device in the panel ("Add…") and place it next to a display edge.
 
 - A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.
@@ -128,7 +128,7 @@ When an Android device of the layout has an adb connection (Wireless debugging a
 
 ## Android files
 
-In the panel, under “Files and Photos”, press “Files…” next to the Android device. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
+In the panel, press “Files…” in the Android device's row, under its switches. A window opens with the device's shared storage: DCIM, Download, Documents and the other folders the phone's Files app shows. The button is there while the device is reachable through `adb`: over Wi‑Fi (see above) or a cable with USB debugging on. A device on the cable in keyboard-and-mouse mode only, without USB debugging, has no files.
 
 - **Phone to Mac:** drag files or folders from the window to Finder or the desktop, or press ⌘C in the window and ⌘V in Finder (the window downloads the files first and says “Copied”), or press “Download…” and pick a folder. Double-click a file to open it on the Mac (a copy in a temporary folder; edits to it do not go back to the phone).
 - **Mac to phone:** drag files or folders from Finder into the window (onto a folder in the list to put them there), or copy them in Finder and press ⌘V in the window, or press “Upload…”. If the name exists, the window asks whether to replace or skip.

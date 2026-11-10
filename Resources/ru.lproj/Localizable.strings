@@ -163,3 +163,6 @@
 "Keyboard and mouse" = "Клавиатура и мышь";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Нажмите, чтобы не передавать клавиатуру и мышь на это устройство. Оно остаётся подключённым: файлы и буфер обмена работают.";
 "Click to send the keyboard and mouse to this device again." = "Нажмите, чтобы снова передавать клавиатуру и мышь на это устройство.";
+"Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect." = "Держать adb этого устройства на Wi‑Fi, чтобы оно работало без кабеля. Выключено: приложение отключает его от Wi‑Fi и не подключается снова.";
+"To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections." = "Чтобы включить Wi‑Fi, подключите кабель с отладкой по USB или выполните сопряжение с телефоном по коду в разделе «Подключения».";
+"“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row." = "«%@» был на Wi‑Fi через кабель: после перезапуска телефона подключите кабель и снова включите Wi‑Fi в его строке.";

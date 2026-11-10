@@ -163,3 +163,6 @@
 "Keyboard and mouse" = "Teclado e mouse";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Clique para parar de enviar o teclado e o mouse para este dispositivo. Ele continua conectado: arquivos e área de transferência continuam funcionando.";
 "Click to send the keyboard and mouse to this device again." = "Clique para voltar a enviar o teclado e o mouse para este dispositivo.";
+"Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect." = "Manter o adb no Wi‑Fi para este dispositivo, para funcionar sem cabo. Desativado: o app o desconecta do Wi‑Fi e não reconecta.";
+"To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections." = "Para ativar o Wi‑Fi, conecte o cabo com a depuração USB ou pareie o telefone com um código em Conexões.";
+"“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row." = "“%@” estava no Wi‑Fi pelo cabo: depois de reiniciar o telefone, conecte o cabo e ative o Wi‑Fi de novo na linha dele.";

@@ -163,3 +163,6 @@
 "Keyboard and mouse" = "Keyboard and mouse";
 "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working." = "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.";
 "Click to send the keyboard and mouse to this device again." = "Click to send the keyboard and mouse to this device again.";
+"Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect." = "Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect.";
+"To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections." = "To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections.";
+"“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row." = "“%@” was on Wi‑Fi through the cable: after a phone restart, connect the cable and switch Wi‑Fi on again in its row.";

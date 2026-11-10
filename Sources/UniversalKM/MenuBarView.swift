@@ -15,6 +15,9 @@ struct MenuBarView: View {
     @State private var newName = ""
     @State private var newHostPeerID: UInt16?
     @State private var sectionsHeight: CGFloat = 600
+    /// Devices whose Wi‑Fi switch is being turned on or off now, and the last error of the switch.
+    @State private var wifiPending: Set<UInt16> = []
+    @State private var wifiErrors: [UInt16: String] = [:]
 
     /// The screen with the menu bar minus the header, footer, paddings and the popover arrow.
     private static var maxSectionsHeight: CGFloat {
@@ -42,7 +45,7 @@ struct MenuBarView: View {
                         if !state.isCaptureRunning { permissionBanner }
                         layoutSection
                         devicesSection
-                        if !transferSources.isEmpty { filesSection }
+                        if app.appleDeviceOnCable != nil { filesSection }
                         connectionsSection
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sectionsHeight = $0 }
@@ -226,6 +229,66 @@ struct MenuBarView: View {
                 ))
                 .help("Text copied on the Mac can be pasted on the device, and back. Needs adb: USB debugging or Wi‑Fi.")
             }
+            if AndroidPeerRegistry.isAndroidPeer(peer), state.androidStatus.adbPath != nil,
+               let status = state.androidStatus.device(peer) {
+                wifiRow(status)
+            }
+            // Only while adb reaches the device (add-android-file-browser design D2).
+            if hasFiles(device) {
+                HStack {
+                    Text("Files on the device")
+                    Spacer()
+                    Button("Files…") { app.openFiles(device) }
+                        .controlSize(.small)
+                }
+                .help("Files on “\(device.displayName)”: copy them to and from the Mac")
+            }
+        }
+    }
+
+    /// adb over Wi‑Fi of an Android device. It shows whether the device is on Wi‑Fi now; it can be
+    /// switched on over the cable with USB debugging (`adb tcpip`), or when the user switched it off
+    /// before (the saved address and Wireless debugging are tried again).
+    @ViewBuilder
+    private func wifiRow(_ status: AndroidDeviceStatus) -> some View {
+        let peer = status.peerID
+        let pending = wifiPending.contains(peer)
+        let canSwitch = pending || status.hasWiFi || status.hasADBOverUSB || status.isWiFiOff
+        HStack {
+            Text("Wi‑Fi")
+            Spacer()
+            if pending { ProgressView().controlSize(.small) }
+            Toggle("Wi‑Fi", isOn: Binding(
+                get: { status.hasWiFi && !status.isWiFiOff },
+                set: { setWiFi($0, peer) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .disabled(!canSwitch || pending)
+        }
+        .help(canSwitch
+              ? String(localized: "Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect.")
+              : String(localized: "To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections."))
+        if let error = wifiErrors[peer] {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func setWiFi(_ on: Bool, _ peer: UInt16) {
+        wifiPending.insert(peer)
+        wifiErrors[peer] = nil
+        state.android.setWiFi(on, peerID: peer) { result in
+            Task { @MainActor in
+                wifiPending.remove(peer)
+                if case .failure(let error) = result {
+                    wifiErrors[peer] = String(localized: "Could not enable Wi‑Fi: \(AndroidWiFiView.text(error))")
+                }
+            }
         }
     }
 
@@ -278,8 +341,16 @@ struct MenuBarView: View {
         }
     }
 
+    /// Every channel an Android device is on now ("USB · Wi‑Fi" when both), else the one connection.
     private func connectionText(_ device: PlacedDevice) -> String {
-        switch state.connection(of: device) {
+        if state.connection(of: device) != nil, let peer = device.hostPeerID,
+           let status = state.androidStatus.device(peer) {
+            var channels: [String] = []
+            if status.hasUSB || status.hasADBOverUSB { channels.append(String(localized: "USB")) }
+            if status.hasWiFi && !status.isWiFiOff { channels.append(String(localized: "Wi‑Fi")) }
+            if !channels.isEmpty { return channels.joined(separator: " · ") }
+        }
+        return switch state.connection(of: device) {
         case .usb: String(localized: "USB")
         case .wifi: String(localized: "Wi‑Fi")
         case .chameleon: String(localized: "Bluetooth via Chameleon")
@@ -289,45 +360,18 @@ struct MenuBarView: View {
 
     // MARK: Files and photos
 
-    private enum TransferSource: Identifiable {
-        case android(PlacedDevice)
-        case iPhone(String)
-
-        var id: String {
-            switch self {
-            case .android(let device): device.id.uuidString
-            case .iPhone(let name): "iphone:" + name
-            }
-        }
-    }
-
-    /// Everything the Mac can copy files from now, in one place: Android devices on adb, the iPhone on the cable.
-    private var transferSources: [TransferSource] {
-        state.arrangement.devices.filter(hasFiles).map(TransferSource.android)
-            + (app.appleDeviceOnCable.map { [.iPhone($0)] } ?? [])
-    }
-
+    /// The iPhone on the cable: its photos window. Android files are in each device row.
     private var filesSection: some View {
         PanelSection("Files and Photos") {
             EmptyView()
         } content: {
             PanelCard {
-                ForEach(Array(transferSources.enumerated()), id: \.element.id) { index, source in
-                    if index > 0 { PanelDivider() }
-                    switch source {
-                    case .android(let device):
-                        sourceRow(icon: "folder.fill", title: device.displayName,
-                                  subtitle: String(localized: "Files on the device"), button: String(localized: "Files…")) {
-                            app.openFiles(device)
-                        }
-                        .help("Files on “\(device.displayName)”: copy them to and from the Mac")
-                    case .iPhone(let name):
-                        sourceRow(icon: "photo.on.rectangle.angled", title: name,
-                                  subtitle: String(localized: "Photos and videos, on the cable"), button: String(localized: "Photos…")) {
-                            app.openPhotos()
-                        }
-                        .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
+                if let name = app.appleDeviceOnCable {
+                    sourceRow(icon: "photo.on.rectangle.angled", title: name,
+                              subtitle: String(localized: "Photos and videos, on the cable"), button: String(localized: "Photos…")) {
+                        app.openPhotos()
                     }
+                    .help("Photos and videos of “\(name)” on the cable: copy them to the Mac, delete them from the iPhone")
                 }
             }
         }

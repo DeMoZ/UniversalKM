@@ -89,22 +89,22 @@ final class AppStateManager {
     enum Connection: Equatable { case usb, wifi, chameleon }
 
     /// How a device of the arrangement is connected right now; nil = not connected.
-    /// An Android device with the keyboard and mouse off has none registered, but it is still on the
-    /// cable or Wi‑Fi (files, clipboard): that channel is shown.
+    /// Android: the channel the keyboard and mouse use, else the one the device is on (keyboard and
+    /// mouse off, or a moment while they re-register after a channel drop): the status keeps a device
+    /// for a few seconds, so the row and the layout dot do not blink.
     func connection(of device: PlacedDevice) -> Connection? {
         guard let peer = device.hostPeerID else { return nil }
-        if !device.isInputOn, AndroidPeerRegistry.isAndroidPeer(peer), let status = androidStatus.device(peer) {
-            if status.hasUSB || status.hasADBOverUSB { return .usb }
-            return status.hasWiFi ? .wifi : nil
+        guard AndroidPeerRegistry.isAndroidPeer(peer) else { return subscribedPeers.contains(peer) ? .chameleon : nil }
+        guard let status = androidStatus.device(peer) else { return nil }
+        if device.isInputOn, subscribedPeers.contains(peer) {
+            switch status.active {
+            case .usb, .adbUSB: return .usb
+            case .wifi: return .wifi
+            case nil: break
+            }
         }
-        guard subscribedPeers.contains(peer) else { return nil }
-        guard AndroidPeerRegistry.isAndroidPeer(peer) else { return .chameleon }
-        switch androidStatus.device(peer)?.active {
-        case .usb: return .usb
-        case .wifi: return .wifi
-        case .adbUSB: return .usb
-        case nil: return nil
-        }
+        if status.hasUSB || status.hasADBOverUSB { return .usb }
+        return status.hasWiFi ? .wifi : nil
     }
 
     /// Whether the arrangement has devices that go through ChameleonUltra (bound to a Chameleon host or waiting).
@@ -296,6 +296,7 @@ final class AppStateManager {
         })
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
+        android.setLayoutPeers(Set(arrangement.devices.compactMap(\.hostPeerID)))
         updateClipboard()
         // A device with the input off has no zones and no target: the cursor passes its edge, and a
         // capture on it ends (InputManager.update(targets:) releases a device that is gone).
