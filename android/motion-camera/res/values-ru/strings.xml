@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniversalKM Motion</string>
+    <string name="switch_label">Камера движения</string>
+    <string name="hint">Пишет видео, пока перед камерой что-то движется, и кладёт его в Movies/UniversalKM Motion. Настройки задаются в UniversalKM на Mac.</string>
+    <string name="clips">Роликов: %1$d · %2$s</string>
+    <string name="state_off">Выключена</string>
+    <string name="state_starting">Включается…</string>
+    <string name="state_watching">Ждёт движения</string>
+    <string name="state_recording">Пишет</string>
+    <string name="state_no_camera">Камера занята или заблокирована</string>
+    <string name="state_no_permission">Нет доступа к камере</string>
+    <string name="state_low_space">Мало места: новые ролики не пишутся</string>
+    <string name="state_battery_low">Батарея села: подключите зарядку</string>
+    <string name="state_stopped">Остановлена: откройте приложение, чтобы включить снова</string>
+    <string name="state_error">Не удалось включить</string>
+    <string name="turn_off">Выключить</string>
+    <string name="channel_camera">Камера движения</string>
+    <string name="channel_resume">Включить камеру снова</string>
+    <string name="resume_title">Камера движения выключена</string>
+    <string name="resume_text">Нажмите, чтобы включить снова</string>
+    <string name="live_watching">Mac смотрит камеру</string>
+</resources>

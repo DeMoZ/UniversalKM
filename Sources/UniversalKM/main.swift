@@ -1,4 +1,5 @@
 import AppKit
+import UniversalKMCore
 
 // UniversalKM lives in the menu bar only (LSUIElement): no Dock icon, no main window.
 // AppKit lifecycle: a SwiftUI `App` needs a scene, and even an empty Settings scene shows
@@ -26,6 +27,28 @@ if let i = CommandLine.arguments.firstIndex(of: "--files-window"), i + 1 < Comma
         let browsers = FileBrowsers()
         browsers.show(key: transport, name: name, transport: transport)
         objc_setAssociatedObject(app, "fileBrowsers", browsers, .OBJC_ASSOCIATION_RETAIN)
+    }
+    app.run()
+    exit(0)
+}
+// `--motion-window <adb transport> [name] [--live]`: only the motion camera window of one device
+// (add-android-motion-camera), for manual checks next to a running UniversalKM (no event tap, no HID, no panel).
+if let i = CommandLine.arguments.firstIndex(of: "--motion-window"), i + 1 < CommandLine.arguments.count {
+    let transport = CommandLine.arguments[i + 1]
+    let name = i + 2 < CommandLine.arguments.count ? CommandLine.arguments[i + 2] : transport
+    MainActor.assumeIsolated {
+        let cameras = MotionCameras()
+        let files = FileBrowsers()
+        let windows = MotionCameraWindows(cameras: cameras) { _ in
+            files.show(key: transport, name: name, transport: transport, folder: RemotePath(MotionCamera.clipsFolder))
+        }
+        cameras.attach(peer: 0, transport: transport)
+        windows.show(peer: 0, name: name)
+        // `--live`: the live picture window too (design D11).
+        if CommandLine.arguments.contains("--live") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { windows.showLive(peer: 0, name: name) }
+        }
+        objc_setAssociatedObject(app, "motionWindows", [cameras, files, windows] as NSArray, .OBJC_ASSOCIATION_RETAIN)
     }
     app.run()
     exit(0)

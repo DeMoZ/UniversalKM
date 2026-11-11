@@ -46,6 +46,10 @@ struct MenuBarView: View {
                         layoutSection
                         devicesSection
                         if app.appleDeviceOnCable != nil { filesSection }
+                        if !motionCameraDevices.isEmpty {
+                            MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
+                                                open: app.openMotionCamera)
+                        }
                         connectionsSection
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sectionsHeight = $0 }
@@ -66,6 +70,13 @@ struct MenuBarView: View {
     /// An Android device reachable through adb now (add-android-file-browser design D2).
     private func hasFiles(_ device: PlacedDevice) -> Bool {
         device.hostPeerID.flatMap(state.androidStatus.device)?.fileTransport != nil
+    }
+
+    /// Android devices on adb now, and those that had the motion camera (their state shows as unknown).
+    private var motionCameraDevices: [PlacedDevice] {
+        state.arrangement.devices.filter { device in
+            hasFiles(device) || device.hostPeerID.map(app.motionCameras.known.contains) == true
+        }
     }
 
     private var selectedDevice: PlacedDevice? {
@@ -596,7 +607,7 @@ private struct SizeField: View {
 }
 
 /// A titled group of the panel: a small header with an optional trailing control, then the content.
-private struct PanelSection<Trailing: View, Content: View>: View {
+struct PanelSection<Trailing: View, Content: View>: View {
     let title: LocalizedStringKey
     @ViewBuilder let trailing: Trailing
     @ViewBuilder let content: Content
@@ -626,7 +637,7 @@ private struct PanelSection<Trailing: View, Content: View>: View {
 }
 
 /// Rows on one rounded card, as in System Settings.
-private struct PanelCard<Content: View>: View {
+struct PanelCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -639,6 +650,6 @@ private struct PanelCard<Content: View>: View {
 }
 
 /// A row separator inset past the row icon.
-private struct PanelDivider: View {
+struct PanelDivider: View {
     var body: some View { Divider().padding(.leading, 42) }
 }

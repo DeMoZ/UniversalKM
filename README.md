@@ -40,6 +40,7 @@
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
 | 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
 | 🖼️ **iPhone photos** | A window with the photos and videos of an iPhone on a cable: copy them to the Mac, delete them from the iPhone. |
+| 🎥 **Motion camera** | An Android phone or tablet records video while something moves in front of it and keeps the clips; it works without the Mac. Watch the clips or the live picture from the Mac. |
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
 | 🌍 **Your language** | The interface follows the system language: English, Russian, German, French, Spanish, Portuguese (Brazil), Italian, Chinese (Simplified), Japanese, Korean. |
@@ -139,6 +140,29 @@ In the panel, press “Files…” in the Android device's row, under its switch
 - If the connection drops, the window shows “The device is not connected” and opens the folder again by itself when the phone is back over Wi‑Fi or the cable.
 - Speed: 11–17 MB/s over home Wi‑Fi (measured on a Galaxy S10e and a Galaxy Tab A9); faster over the cable with USB debugging. With both a cable and Wi‑Fi, files go over the cable. A video of several gigabytes takes minutes over Wi‑Fi.
 - Files are available while UniversalKM runs. The phone does not appear in Finder's sidebar: macOS requires an Apple Developer ID certificate for that.
+
+## Android motion camera
+
+An old Android phone or tablet can watch a room: it records video while something moves in front of its camera and stops when the picture is still again. It works on its own, without the Mac: the Mac can sleep or be away.
+
+<p align="center">
+  <img src="docs/images/motion-camera.png" width="440" alt="The motion camera window: the switch “Record when something moves”, the camera choice, sensitivity, stop delay, quality, space for clips, and the Live View… and Recordings… buttons">
+</p>
+
+1. Connect the device through `adb` (Wi‑Fi or a cable with USB debugging, as for files).
+2. In the panel, under “Motion Camera”, press “Motion Camera…” next to the device: the camera window opens (one per device, so the panel stays short). Press “Install Camera…”. UniversalKM installs its small app, **UniversalKM Motion**, on the device over `adb` and gives it access to the camera and notifications, the right to start after a restart and no battery restrictions. Some phones (Xiaomi, some Samsung) ask to confirm the install on their screen first; a Samsung phone may check the app with Play Protect for a minute or two.
+3. Turn on “Record when something moves”. Turning it off, in the window or on the device (in the UniversalKM Motion app or with “Turn off” in its notification), stops recording until it is turned on again from either side; it stays off after the device restarts. The device shows the camera indicator and a notification while the camera is on; Android does not let an app hide them. The screen can be turned off.
+
+- **How it records:** each clip starts 3 seconds before the motion and ends when nothing has moved for the time set in “Stop after” (10 seconds by default). A clip is at most 10 minutes long; long motion goes on in the next file without a gap. A light switched on in the room is not motion. No sound is recorded.
+- **Where:** `Movies/UniversalKM Motion/` on the device, named by the start time (`2026-11-10_14-32-05.mp4`). “Recordings…” in the camera window opens that folder in the files window; double-click a clip to watch it on the Mac. Clips also show in the device's gallery.
+- **Camera:** rear, front or both. “Both” works where Android reports that the device can stream from both cameras at once; each camera then records its own clips (`… rear.mp4`, `… front.mp4`) at 720p. Elsewhere “Both” is greyed out (the Galaxy Tab A9 cannot, for example).
+- **Live view:** “Live View…” in the camera window shows the camera right now: rear, front or both side by side where the device can. It works with recording on or off and does not interrupt a clip. While the Mac watches, the device's notification says so; when the window closes, a camera opened only for viewing turns off. If the device cannot use two cameras at once, only the camera that records can be shown while it records.
+- **Recording dot:** while a connected device records a clip, a red dot blinks on the UniversalKM icon in the menu bar.
+- **Settings** (in the camera window): sensitivity, how long to wait before stopping, 720p or 1080p, and how much space the clips may take (4 GB by default: the oldest clips are deleted to stay under it). Files you put into that folder yourself are never deleted.
+- **On its own:** the camera goes on after the device restarts (after the first unlock). If Android does not let it start by itself, the device shows “Tap to turn it back on”. Below 10 % battery without a charger the camera stops and goes on again when the charger is connected; keep the device on a charger. With less than 500 MB free it does not start new clips.
+- **Privacy:** the app has no internet access and sends nothing anywhere. Clips reach the Mac only when you open or download them, the live picture only while “Live View” is open. Other apps on the device cannot turn the camera on, watch it or read its state: only `adb` can.
+- Samsung and some other phones still stop background apps on their own. If the camera turns off by itself, set UniversalKM Motion's battery use to “Unrestricted” in the device's app settings.
+- To remove it: uninstall UniversalKM Motion on the device like any app (the clips stay in Movies).
 
 ## iPhone photos
 
@@ -280,6 +304,8 @@ With a stable certificate, permissions survive rebuilds and updates; with ad-hoc
 
 - **The project certificate** is in the login keychain (key and certificate "UniversalKM Self-Signed", valid 10 years) and in the repository secrets `SIGNING_CERTIFICATE_P12` / `SIGNING_CERTIFICATE_PASSWORD`, which sign releases. Back it up: Keychain Access → My Certificates → "UniversalKM Self-Signed" → Export… (.p12 with a password), and keep it in a password manager. If the certificate is lost, the next update asks for permissions once more.
 - A self-signed certificate does not remove the macOS warning on first launch. Only an Apple Developer ID certificate with notarization does.
+
+- **The motion camera app** (`Resources/ukm-motion.apk`) is built and committed; `build-app.sh` only copies it, so building the Mac app needs no Android SDK. After changing `android/motion-camera`, raise `versionCode` in `android/motion-camera/version.properties` and run `scripts/build-motion-apk.sh` (core tests, then the APK; `--test` runs only the tests). It needs the Android SDK (platform 34, build-tools), a JDK and the signing key `~/.config/universalkm/motion-release.keystore` with its password in `motion-release.pass` next to it. **Back up both files**: Android installs an update over the old app only with the same key; with a new key the app has to be uninstalled on each device first (the clips stay).
 
 ## Updates and releases
 

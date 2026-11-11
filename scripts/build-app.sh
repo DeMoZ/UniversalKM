@@ -33,6 +33,8 @@ cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/Resources/ukm-clipboard.jar" "$APP/Contents/Resources/ukm-clipboard.jar"
 # Interface translations (keys are the English source strings; scripts/localization.py writes them).
 cp -R "$ROOT"/Resources/*.lproj "$APP/Contents/Resources/"
+# The motion camera app for Android and its versionCode (scripts/build-motion-apk.sh builds them; no SDK needed here).
+cp "$ROOT/Resources/ukm-motion.apk" "$ROOT/Resources/ukm-motion.version" "$APP/Contents/Resources/"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 # Sparkle (app updates).
 ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"

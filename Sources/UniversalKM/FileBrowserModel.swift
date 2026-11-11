@@ -78,6 +78,16 @@ final class FileBrowserModel: ObservableObject {
         refresh()
     }
 
+    /// Goes to `folder` if it exists, otherwise to its parent (add-android-motion-camera: "Recordings…"
+    /// before the first clip).
+    func reveal(_ folder: RemotePath) {
+        guard let client, let parent = folder.parent, let name = folder.name else { go(to: folder); return }
+        listQueue.async { [weak self] in
+            let exists = ((try? client.list(parent.string)) ?? []).contains { $0.name == name && $0.isDirectory }
+            Task { @MainActor in self?.go(to: exists ? folder : parent) }
+        }
+    }
+
     func goUp() {
         if let parent = path.parent { go(to: parent) }
     }

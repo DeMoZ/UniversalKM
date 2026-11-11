@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import os
 import Sparkle
 import SwiftUI
@@ -58,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         Task { @MainActor in
             self?.state.androidChanged(status)
             self?.fileBrowsers.update(status)
+            self?.motionCameras.update(status)
             self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
         }
     }
@@ -68,7 +70,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private let fileBrowsers = FileBrowsers()
 
+    // MARK: Motion camera (add-android-motion-camera)
+
+    let motionCameras = MotionCameras()
+    private lazy var motionWindows = MotionCameraWindows(cameras: motionCameras) { [weak self] peer in
+        self?.openRecordings(peer: peer)
+    }
+
     /// "Files…" in the panel: the window of the device bound to `device`.
+    /// "Motion Camera…" in the panel (add-android-motion-camera design D8): the camera window of the device.
+    func openMotionCamera(_ device: PlacedDevice) {
+        guard let peer = device.hostPeerID else { return }
+        closePanel()
+        motionWindows.show(peer: peer, name: device.displayName)
+    }
+
+    /// "Recordings…" in the camera window: the file window on the clips folder.
+    func openRecordings(peer: UInt16) {
+        guard let android = state.androidStatus.device(peer) else { return }
+        let name = state.arrangement.devices.first { $0.hostPeerID == peer }?.displayName ?? android.name
+        fileBrowsers.show(key: android.serial, name: name, folder: RemotePath(MotionCamera.clipsFolder))
+    }
+
     func openFiles(_ device: PlacedDevice) {
         guard let peer = device.hostPeerID, let android = state.androidStatus.device(peer) else { return }
         closePanel()
@@ -92,6 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: Menu bar icon and panel (design D13)
 
     private var statusItem: NSStatusItem?
+    /// Blinking red dot on the icon while a motion camera records (add-android-motion-camera, «Значок записи»).
+    private var recordingDot: RecordingDot?
+    private var recordingWatch: AnyCancellable?
     private let panel = NSPopover()
 
     private func setUpStatusItem() {
@@ -100,6 +126,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         statusItem = item
+        if let button = item.button {
+            let dot = RecordingDot()
+            dot.attach(to: button)
+            recordingDot = dot
+            recordingWatch = motionCameras.$cameras
+                .map { [weak self] _ in self?.motionCameras.anyRecording ?? false }
+                .removeDuplicates()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak dot] on in dot?.isRecording = on }
+        }
 
         // Closes when the user clicks anywhere else, like a menu.
         panel.behavior = .transient
