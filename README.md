@@ -164,6 +164,14 @@ An old Android phone or tablet can watch a room: it records video while somethin
 - Samsung and some other phones still stop background apps on their own. If the camera turns off by itself, set UniversalKM Motion's battery use to “Unrestricted” in the device's app settings.
 - To remove it: uninstall UniversalKM Motion on the device like any app (the clips stay in Movies).
 
+## Android screen on the Mac
+
+The phone icon next to the device in the panel's “Motion Camera” section opens its screen on the Mac, live. Clicks and drags in the window are touches on the device, the wheel or trackpad scrolls, the right button is “Back”; the buttons under the picture are Back, Home and Recent Apps. Typed text, Return, Delete, the arrows and Tab go to the device while the window is active; Esc is “Back”; shortcuts with ⌘ stay on the Mac. It works over the cable or Wi‑Fi (`adb`); nothing is installed on the device.
+
+This is for the times another app holds the camera: while the phone streams to YouTube from its camera, the motion camera cannot record or show “Live View” (Android gives the camera to the app on screen). Open the screen to see the stream and stop it with a click. “Live View” offers “Show Screen” when the camera does not answer.
+
+The screen is captured by [scrcpy](https://github.com/Genymobile/scrcpy)'s server (v5.0.1, Apache License 2.0, unchanged, `Resources/scrcpy-server.jar`; `scripts/fetch-scrcpy-server.sh` downloads it and checks its SHA-256). The Mac copies it to `/data/local/tmp` and runs it through `adb` only while the window is open. While the device screen is off, the picture is black: Esc or the right button wakes it. Protected windows (banking apps, DRM video) are black as well.
+
 ## iPhone photos
 
 <p align="center">
@@ -291,6 +299,7 @@ scripts/build-app.sh --zip    # + build/UniversalKM-<version>.zip
 scripts/run.sh                # build, relaunch and follow the log
 scripts/run.sh --ble-demo     # demo: a square drawn with the pointer, a click and "hello" on each device
 scripts/build-android-helper.sh   # rebuild Resources/ukm-clipboard.jar (needs the Android SDK)
+scripts/fetch-scrcpy-server.sh    # download Resources/scrcpy-server.jar (scrcpy v5.0.1, SHA-256 checked)
 ```
 
 **Signing.** macOS ties the Accessibility and Input Monitoring permissions to the signing certificate. The script picks a certificate in this order:

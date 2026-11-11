@@ -35,6 +35,8 @@ cp "$ROOT/Resources/ukm-clipboard.jar" "$APP/Contents/Resources/ukm-clipboard.ja
 cp -R "$ROOT"/Resources/*.lproj "$APP/Contents/Resources/"
 # The motion camera app for Android and its versionCode (scripts/build-motion-apk.sh builds them; no SDK needed here).
 cp "$ROOT/Resources/ukm-motion.apk" "$ROOT/Resources/ukm-motion.version" "$APP/Contents/Resources/"
+# scrcpy-server for the phone screen window (Apache-2.0, unchanged; scripts/fetch-scrcpy-server.sh downloads it).
+cp "$ROOT/Resources/scrcpy-server.jar" "$APP/Contents/Resources/scrcpy-server.jar"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 # Sparkle (app updates).
 ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"

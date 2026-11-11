@@ -222,3 +222,15 @@
 "Try Again" = "Повторить";
 "The camera does not answer. It may be busy, or turned off on the device." = "Камера не отвечает. Возможно, она занята или выключена на устройстве.";
 "UniversalKM: a motion camera is recording" = "UniversalKM: камера движения ведёт запись";
+"Screen…" = "Экран…";
+"Show the screen of “%@” and control it with the mouse" = "Показать экран «%@» и управлять им мышью";
+"Screen — %@" = "Экран — %@";
+"Show Screen" = "Показать экран";
+"Another app may hold the camera: see the device's screen" = "Камеру может занимать другое приложение: посмотрите на экран устройства";
+"The screen server is missing from the app." = "В приложении нет сервера экрана.";
+"The connection to the device was lost." = "Связь с устройством пропала.";
+"The screen server on the device stopped (%lld)." = "Сервер экрана на устройстве остановился (%lld).";
+"The screen server on the device does not answer." = "Сервер экрана на устройстве не отвечает.";
+"The device cannot show its screen." = "Устройство не может показать свой экран.";
+"Home" = "Домой";
+"Recent Apps" = "Недавние";

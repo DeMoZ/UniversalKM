@@ -222,3 +222,15 @@
 "Try Again" = "다시 시도";
 "The camera does not answer. It may be busy, or turned off on the device." = "카메라가 응답하지 않습니다. 사용 중이거나 기기에서 꺼져 있을 수 있습니다.";
 "UniversalKM: a motion camera is recording" = "UniversalKM: 동작 카메라가 녹화 중";
+"Screen…" = "화면…";
+"Show the screen of “%@” and control it with the mouse" = "“%@”의 화면을 표시하고 마우스로 조작";
+"Screen — %@" = "화면 — %@";
+"Show Screen" = "화면 보기";
+"Another app may hold the camera: see the device's screen" = "다른 앱이 카메라를 사용 중일 수 있습니다: 기기 화면을 확인하세요";
+"The screen server is missing from the app." = "앱에 화면 서버가 없습니다.";
+"The connection to the device was lost." = "기기와의 연결이 끊어졌습니다.";
+"The screen server on the device stopped (%lld)." = "기기의 화면 서버가 중지되었습니다(%lld).";
+"The screen server on the device does not answer." = "기기의 화면 서버가 응답하지 않습니다.";
+"The device cannot show its screen." = "기기가 화면을 표시할 수 없습니다.";
+"Home" = "홈";
+"Recent Apps" = "최근 앱";

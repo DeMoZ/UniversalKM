@@ -305,6 +305,8 @@ struct LiveVideo: NSViewRepresentable {
 struct MotionLiveWindowView: View {
     @ObservedObject var cameras: MotionCameras
     @ObservedObject var session: MotionLiveSession
+    /// "Show Screen" when a camera does not answer: another app (a YouTube stream) may hold it.
+    let openScreen: () -> Void
 
     private var status: MotionStatus? { cameras.camera(session.peer).status }
 
@@ -334,7 +336,7 @@ struct MotionLiveWindowView: View {
             HStack(spacing: 2) {
                 ForEach(MotionLive.Facing.allCases, id: \.self) { facing in
                     if let stream = session.streams[facing] {
-                        StreamPane(stream: stream, retry: session.retry)
+                        StreamPane(stream: stream, retry: session.retry, openScreen: openScreen)
                     }
                 }
             }
@@ -366,6 +368,7 @@ struct MotionLiveWindowView: View {
     private struct StreamPane: View {
         @ObservedObject var stream: MotionLiveStream
         let retry: () -> Void
+        let openScreen: () -> Void
 
         var body: some View {
             ZStack {
@@ -382,7 +385,11 @@ struct MotionLiveWindowView: View {
                 case let .failed(message):
                     VStack(spacing: 8) {
                         Text(message).font(.callout).multilineTextAlignment(.center)
-                        Button("Try Again", action: retry)
+                        HStack {
+                            Button("Try Again", action: retry)
+                            Button("Show Screen", action: openScreen)
+                                .help(String(localized: "Another app may hold the camera: see the device's screen"))
+                        }
                     }
                     .foregroundStyle(.white)
                     .padding()

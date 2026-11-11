@@ -34,7 +34,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--files-window"), i + 1 < Comma
     app.run()
     exit(0)
 }
-// `--motion-window <adb transport> [name] [--live]`: only the motion camera window of one device
+// `--motion-window <adb transport> [name] [--live] [--screen]`: only the motion camera window of one device
 // (add-android-motion-camera), for manual checks next to a running UniversalKM (no event tap, no HID, no panel).
 if let i = CommandLine.arguments.firstIndex(of: "--motion-window"), i + 1 < CommandLine.arguments.count {
     let transport = CommandLine.arguments[i + 1]
@@ -50,6 +50,10 @@ if let i = CommandLine.arguments.firstIndex(of: "--motion-window"), i + 1 < Comm
         // `--live`: the live picture window too (design D11).
         if CommandLine.arguments.contains("--live") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { windows.showLive(peer: 0, name: name) }
+        }
+        // `--screen`: the device's screen window (add-android-screen-mirror).
+        if CommandLine.arguments.contains("--screen") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { windows.showScreen(peer: 0, name: name) }
         }
         objc_setAssociatedObject(app, "motionWindows", [cameras, files, windows] as NSArray, .OBJC_ASSOCIATION_RETAIN)
     }

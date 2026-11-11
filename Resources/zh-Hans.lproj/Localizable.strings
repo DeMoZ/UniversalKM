@@ -222,3 +222,15 @@
 "Try Again" = "重试";
 "The camera does not answer. It may be busy, or turned off on the device." = "摄像头没有响应。它可能正被占用，或已在设备上关闭。";
 "UniversalKM: a motion camera is recording" = "UniversalKM：动作摄像头正在录制";
+"Screen…" = "屏幕…";
+"Show the screen of “%@” and control it with the mouse" = "显示“%@”的屏幕并用鼠标操作";
+"Screen — %@" = "屏幕 — %@";
+"Show Screen" = "显示屏幕";
+"Another app may hold the camera: see the device's screen" = "可能有其他应用正在使用相机：看看设备的屏幕";
+"The screen server is missing from the app." = "应用中缺少屏幕服务器。";
+"The connection to the device was lost." = "与设备的连接已断开。";
+"The screen server on the device stopped (%lld)." = "设备上的屏幕服务器已停止（%lld）。";
+"The screen server on the device does not answer." = "设备上的屏幕服务器没有响应。";
+"The device cannot show its screen." = "设备无法显示其屏幕。";
+"Home" = "主屏幕";
+"Recent Apps" = "最近使用的应用";

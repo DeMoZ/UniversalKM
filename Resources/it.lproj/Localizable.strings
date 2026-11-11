@@ -222,3 +222,15 @@
 "Try Again" = "Riprova";
 "The camera does not answer. It may be busy, or turned off on the device." = "La videocamera non risponde. Potrebbe essere occupata o disattivata sul dispositivo.";
 "UniversalKM: a motion camera is recording" = "UniversalKM: una videocamera di movimento sta registrando";
+"Screen…" = "Schermo…";
+"Show the screen of “%@” and control it with the mouse" = "Mostra lo schermo di “%@” e controllalo con il mouse";
+"Screen — %@" = "Schermo — %@";
+"Show Screen" = "Mostra schermo";
+"Another app may hold the camera: see the device's screen" = "Forse un’altra app usa la fotocamera: guarda lo schermo del dispositivo";
+"The screen server is missing from the app." = "Nell’app manca il server dello schermo.";
+"The connection to the device was lost." = "La connessione al dispositivo si è interrotta.";
+"The screen server on the device stopped (%lld)." = "Il server dello schermo sul dispositivo si è fermato (%lld).";
+"The screen server on the device does not answer." = "Il server dello schermo sul dispositivo non risponde.";
+"The device cannot show its screen." = "Il dispositivo non può mostrare il suo schermo.";
+"Home" = "Home";
+"Recent Apps" = "App recenti";
