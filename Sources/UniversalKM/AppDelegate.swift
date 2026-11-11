@@ -85,6 +85,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         motionWindows.show(peer: peer, name: device.displayName)
     }
 
+    /// "Live View…" in the panel row (design D11): the live picture window of the device.
+    func openMotionLive(_ device: PlacedDevice) {
+        guard let peer = device.hostPeerID else { return }
+        closePanel()
+        motionWindows.showLive(peer: peer, name: device.displayName)
+    }
+
     /// "Recordings…" in the camera window: the file window on the clips folder.
     func openRecordings(peer: UInt16) {
         guard let android = state.androidStatus.device(peer) else { return }
