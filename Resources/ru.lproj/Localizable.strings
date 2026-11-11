@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "Устройство не может показать свой экран.";
 "Home" = "Домой";
 "Recent Apps" = "Недавние";
+"Show the lock pattern dots" = "Показать точки графического ключа";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "На экране нет графического ключа. Сначала смахните экран блокировки вверх, потом снова нажмите эту кнопку.";
+"Draw your pattern through the dots" = "Проведите ключ по точкам";

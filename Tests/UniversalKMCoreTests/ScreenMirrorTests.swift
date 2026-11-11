@@ -130,3 +130,44 @@ private func media(_ payload: [UInt8], pts: Int64 = 0, config: Bool = false, key
         #expect(String(data: long.dropFirst(5), encoding: .utf8) == String(repeating: "й", count: 150))
     }
 }
+
+/// The pattern lock screen of SM-G970F (Samsung, Android 12), trimmed from `uiautomator dump`.
+@Suite struct ScreenMirrorPatternTests {
+    private let probe = """
+    <?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" \
+    resource-id="com.android.systemui:id/container" bounds="[0,1143][1080,2119]"><node NAF="true" index="0" text="" \
+    resource-id="com.android.systemui:id/lockPatternView" class="android.view.View" bounds="[157,1143][922,1908]" />\
+    </node></hierarchy>
+    Physical size: 1080x2280
+    """
+
+    @Test func findsTheField() throws {
+        let found = try #require(ScreenMirror.lockPattern(probe: probe))
+        #expect(found.field == CGRect(x: 157, y: 1143, width: 765, height: 765))
+        #expect(found.display == CGSize(width: 1080, height: 2280))
+        let dots = ScreenMirror.patternDots(found.field)
+        #expect(dots.count == 9)
+        #expect(dots[0] == CGPoint(x: 284.5, y: 1270.5))
+        #expect(dots[4] == CGPoint(x: 539.5, y: 1525.5))
+        #expect(dots[8] == CGPoint(x: 794.5, y: 1780.5))
+    }
+
+    @Test func overrideAndLandscape() throws {
+        let p = probe.replacingOccurrences(of: "rotation=\"0\"", with: "rotation=\"1\"")
+            + "\nOverride size: 720x1520"
+        let found = try #require(ScreenMirror.lockPattern(probe: p))
+        #expect(found.display == CGSize(width: 1520, height: 720))
+    }
+
+    @Test func noPattern() {
+        #expect(ScreenMirror.lockPattern(probe: "<hierarchy rotation=\"0\"></hierarchy>\nPhysical size: 1080x2280") == nil)
+        #expect(ScreenMirror.lockPattern(probe: "") == nil)
+    }
+
+    @Test func viewPointIsTheInverse() {
+        let view = CGSize(width: 800, height: 600), video = CGSize(width: 600, height: 1200)
+        let p = ScreenMirror.viewPoint(CGPoint(x: 300, y: 600), view: view, video: video)
+        #expect(p == CGPoint(x: 400, y: 300))
+        #expect(ScreenMirror.videoPoint(p, view: view, video: video)! == (300, 600))
+    }
+}

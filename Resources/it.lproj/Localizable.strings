@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "Il dispositivo non può mostrare il suo schermo.";
 "Home" = "Home";
 "Recent Apps" = "App recenti";
+"Show the lock pattern dots" = "Mostra i punti della sequenza";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "Nessuna sequenza sullo schermo. Prima scorri in alto la schermata di blocco, poi premi di nuovo questo pulsante.";
+"Draw your pattern through the dots" = "Traccia la tua sequenza tra i punti";

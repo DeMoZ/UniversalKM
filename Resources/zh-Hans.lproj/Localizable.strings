@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "设备无法显示其屏幕。";
 "Home" = "主屏幕";
 "Recent Apps" = "最近使用的应用";
+"Show the lock pattern dots" = "显示图案解锁的点";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "屏幕上没有解锁图案。请先上滑锁定屏幕，然后再按此按钮。";
+"Draw your pattern through the dots" = "沿着这些点画出你的图案";

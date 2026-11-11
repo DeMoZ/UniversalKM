@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "L’appareil ne peut pas afficher son écran.";
 "Home" = "Accueil";
 "Recent Apps" = "Apps récentes";
+"Show the lock pattern dots" = "Afficher les points du schéma";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "Aucun schéma à l’écran. Balayez d’abord l’écran de verrouillage vers le haut, puis cliquez à nouveau sur ce bouton.";
+"Draw your pattern through the dots" = "Tracez votre schéma par les points";

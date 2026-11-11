@@ -227,3 +227,66 @@ public enum ScreenMirror {
         private static func be64(_ v: UInt64) -> Data { be32(UInt32(v >> 32)) + be32(UInt32(v & 0xFFFF_FFFF)) }
     }
 }
+
+// MARK: Lock pattern hint (the pattern screen is a secure window: black in the capture)
+
+extension ScreenMirror {
+    /// One `adb shell` command: the screen's view tree (uiautomator sees the secure lock screen, the capture
+    /// does not), then the display size.
+    public static let lockScreenProbe = "uiautomator dump /data/local/tmp/ukm-ui.xml >/dev/null 2>&1; "
+        + "cat /data/local/tmp/ukm-ui.xml 2>/dev/null; rm -f /data/local/tmp/ukm-ui.xml; echo; wm size"
+
+    /// The pattern field in display pixels, and the display size in the current orientation; nil when the
+    /// pattern is not on the screen.
+    public static func lockPattern(probe output: String) -> (field: CGRect, display: CGSize)? {
+        guard let node = output.range(of: "/lockPatternView\""),
+              let start = output.range(of: "<node", options: .backwards, range: output.startIndex..<node.lowerBound),
+              let end = output.range(of: ">", range: node.upperBound..<output.endIndex),
+              let field = bounds(String(output[start.lowerBound..<end.upperBound])),
+              field.width > 0, field.height > 0 else { return nil }
+        // "Physical size: 1080x2280", maybe followed by "Override size: …" (that one is in effect).
+        var size: CGSize?
+        for line in output.split(whereSeparator: \.isNewline) where line.contains(" size: ") {
+            let parts = line.split(separator: ":").last?.trimmingCharacters(in: .whitespaces).split(separator: "x")
+            if let parts, parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]) {
+                size = CGSize(width: w, height: h)
+            }
+        }
+        guard var display = size else { return nil }
+        // The hierarchy's rotation: 1 and 3 are landscape on a portrait-natural device.
+        if let r = output.range(of: "rotation=\""), let digit = output[r.upperBound...].first?.wholeNumberValue,
+           digit % 2 == 1 {
+            display = CGSize(width: display.height, height: display.width)
+        }
+        return (field, display)
+    }
+
+    /// The nine dot centres of a pattern field, row by row: the field is a 3×3 grid of equal cells.
+    public static func patternDots(_ field: CGRect) -> [CGPoint] {
+        var out: [CGPoint] = []
+        for row in 0..<3 {
+            for col in 0..<3 {
+                out.append(CGPoint(x: field.minX + field.width * (CGFloat(col) + 0.5) / 3,
+                                   y: field.minY + field.height * (CGFloat(row) + 0.5) / 3))
+            }
+        }
+        return out
+    }
+
+    /// Where a video pixel is in the view (the inverse of `videoPoint`), origin at the top left.
+    public static func viewPoint(_ p: CGPoint, view: CGSize, video: CGSize) -> CGPoint {
+        guard video.width > 0, video.height > 0 else { return .zero }
+        let scale = min(view.width / video.width, view.height / video.height)
+        let origin = CGPoint(x: (view.width - video.width * scale) / 2, y: (view.height - video.height * scale) / 2)
+        return CGPoint(x: origin.x + p.x * scale, y: origin.y + p.y * scale)
+    }
+
+    /// `bounds="[157,1143][922,1908]"` of one node.
+    private static func bounds(_ node: String) -> CGRect? {
+        guard let r = node.range(of: "bounds=\"") else { return nil }
+        let numbers = node[r.upperBound...].prefix { $0 != "\"" }
+            .split(whereSeparator: { "[],".contains($0) }).compactMap { Double($0) }
+        guard numbers.count == 4 else { return nil }
+        return CGRect(x: numbers[0], y: numbers[1], width: numbers[2] - numbers[0], height: numbers[3] - numbers[1])
+    }
+}

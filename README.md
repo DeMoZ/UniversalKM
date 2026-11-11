@@ -170,7 +170,7 @@ The phone icon next to the device in the panel's “Motion Camera” section ope
 
 This is for the times another app holds the camera: while the phone streams to YouTube from its camera, the motion camera cannot record or show “Live View” (Android gives the camera to the app on screen). Open the screen to see the stream and stop it with a click. “Live View” offers “Show Screen” when the camera does not answer.
 
-The screen is captured by [scrcpy](https://github.com/Genymobile/scrcpy)'s server (v5.0.1, Apache License 2.0, unchanged, `Resources/scrcpy-server.jar`; `scripts/fetch-scrcpy-server.sh` downloads it and checks its SHA-256). The Mac copies it to `/data/local/tmp` and runs it through `adb` only while the window is open. While the device screen is off, the picture is black: Esc or the right button wakes it. Protected windows (banking apps, DRM video) are black as well.
+The screen is captured by [scrcpy](https://github.com/Genymobile/scrcpy)'s server (v5.0.1, Apache License 2.0, unchanged, `Resources/scrcpy-server.jar`; `scripts/fetch-scrcpy-server.sh` downloads it and checks its SHA-256). The Mac copies it to `/data/local/tmp` and runs it through `adb` only while the window is open. While the device screen is off, the picture is black: Esc or the right button wakes it. Protected windows (banking apps, DRM video) are black as well. The lock screen's pattern is such a window: swipe the lock screen up, press the dots button under the picture, and draw your pattern through the dots it shows where they are on the device.
 
 ## iPhone photos
 

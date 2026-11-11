@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "Das Gerät kann seinen Bildschirm nicht zeigen.";
 "Home" = "Home";
 "Recent Apps" = "Letzte Apps";
+"Show the lock pattern dots" = "Punkte des Entsperrmusters zeigen";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "Kein Muster auf dem Bildschirm. Wische zuerst den Sperrbildschirm nach oben und klicke dann erneut auf diese Taste.";
+"Draw your pattern through the dots" = "Zeichne dein Muster durch die Punkte";

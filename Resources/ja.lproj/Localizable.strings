@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "デバイスは画面を表示できません。";
 "Home" = "ホーム";
 "Recent Apps" = "最近のアプリ";
+"Show the lock pattern dots" = "パターンロックの点を表示";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "画面にパターンがありません。まずロック画面を上にスワイプしてから、もう一度このボタンを押してください。";
+"Draw your pattern through the dots" = "点をなぞってパターンを描いてください";
