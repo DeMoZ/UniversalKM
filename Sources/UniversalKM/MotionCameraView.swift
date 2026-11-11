@@ -8,6 +8,8 @@ struct MotionCameraSection: View {
     @ObservedObject var cameras: MotionCameras
     let devices: [PlacedDevice]
     let open: (PlacedDevice) -> Void
+    /// "Live View…" right in the row (design D11): the live picture window of the device.
+    let openLive: (PlacedDevice) -> Void
 
     var body: some View {
         PanelSection("Motion Camera") {
@@ -39,6 +41,13 @@ struct MotionCameraSection: View {
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
+            let liveReady = cameras.isConnected(peer) && (camera.installed ?? 0) >= MotionCamera.liveVersion
+            Button("Live View…") { openLive(device) }
+                .controlSize(.small)
+                .disabled(!liveReady)
+                .help(liveReady || !cameras.isConnected(peer)
+                      ? String(localized: "Watch the camera of “\(device.displayName)” right now")
+                      : String(localized: "Update the camera on the device first"))
             Button("Motion Camera…") { open(device) }
                 .controlSize(.small)
                 .help("Recording on motion for “\(device.displayName)”: on and off, camera, settings, clips")

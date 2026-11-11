@@ -1,12 +1,15 @@
 import AppKit
 import UniversalKMCore
 
-// UniversalKM lives in the menu bar only (LSUIElement): no Dock icon, no main window.
+// UniversalKM lives in the menu bar (LSUIElement): no Dock icon, no main window. While one of its
+// windows is open it shows in the Dock and ⌘Tab (DockPresence).
 // AppKit lifecycle: a SwiftUI `App` needs a scene, and even an empty Settings scene shows
 // a window when the agent app activates. The menu bar icon and its panel are an
 // NSStatusItem with an NSPopover hosting SwiftUI, owned by AppDelegate (design D13).
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
+// A Dock icon while a window is open, so the user can switch back to it.
+MainActor.assumeIsolated { DockPresence.shared.install() }
 // `--photos-window`: only the photo window (add-iphone-photo-browser), for manual checks.
 if CommandLine.arguments.contains("--photos-window") {
     MainActor.assumeIsolated {
