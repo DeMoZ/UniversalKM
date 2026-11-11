@@ -145,6 +145,10 @@ In the panel, press “Files…” in the Android device's row, under its switch
 
 An old Android phone or tablet can watch a room: it records video while something moves in front of its camera and stops when the picture is still again. It works on its own, without the Mac: the Mac can sleep or be away.
 
+<p align="center">
+  <img src="docs/images/motion-camera.png" width="440" alt="The motion camera window: the switch “Record when something moves”, the camera choice, sensitivity, stop delay, quality, space for clips, and the Live View… and Recordings… buttons">
+</p>
+
 1. Connect the device through `adb` (Wi‑Fi or a cable with USB debugging, as for files).
 2. In the panel, under “Motion Camera”, press “Motion Camera…” next to the device: the camera window opens (one per device, so the panel stays short). Press “Install Camera…”. UniversalKM installs its small app, **UniversalKM Motion**, on the device over `adb` and gives it access to the camera and notifications, the right to start after a restart and no battery restrictions. Some phones (Xiaomi, some Samsung) ask to confirm the install on their screen first; a Samsung phone may check the app with Play Protect for a minute or two.
 3. Turn on “Record when something moves”. Turning it off, in the window or on the device (in the UniversalKM Motion app or with “Turn off” in its notification), stops recording until it is turned on again from either side; it stays off after the device restarts. The device shows the camera indicator and a notification while the camera is on; Android does not let an app hide them. The screen can be turned off.
