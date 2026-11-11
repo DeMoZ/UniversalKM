@@ -10,6 +10,8 @@ struct MotionCameraSection: View {
     let open: (PlacedDevice) -> Void
     /// "Live View…" right in the row (design D11): the live picture window of the device.
     let openLive: (PlacedDevice) -> Void
+    /// "Screen…": the device's screen with touches (add-android-screen-mirror design D5).
+    let openScreen: (PlacedDevice) -> Void
 
     var body: some View {
         PanelSection("Motion Camera") {
@@ -48,6 +50,13 @@ struct MotionCameraSection: View {
                 .help(liveReady || !cameras.isConnected(peer)
                       ? String(localized: "Watch the camera of “\(device.displayName)” right now")
                       : String(localized: "Update the camera on the device first"))
+            // An icon: three text buttons leave no room for the name in a 400 pt panel (in Russian).
+            Button { openScreen(device) } label: {
+                Label("Screen…", systemImage: "iphone").labelStyle(.iconOnly)
+            }
+                .controlSize(.small)
+                .disabled(!cameras.isConnected(peer))
+                .help(String(localized: "Show the screen of “\(device.displayName)” and control it with the mouse"))
             Button("Motion Camera…") { open(device) }
                 .controlSize(.small)
                 .help("Recording on motion for “\(device.displayName)”: on and off, camera, settings, clips")
@@ -66,6 +75,8 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
     private var open: [UInt16: NSWindow] = [:]
     /// Live picture windows (design D11), with their sessions.
     private var live: [UInt16: (window: NSWindow, session: MotionLiveSession)] = [:]
+    /// Screen windows (add-android-screen-mirror), with their sessions.
+    private var screens: [UInt16: (window: NSWindow, session: ScreenMirrorSession)] = [:]
 
     init(cameras: MotionCameras, openRecordings: @escaping (UInt16) -> Void) {
         self.cameras = cameras
@@ -106,7 +117,9 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = String(localized: "Live — \(name)")
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: MotionLiveWindowView(cameras: cameras, session: session))
+        let view = MotionLiveWindowView(cameras: cameras, session: session,
+                                        openScreen: { [weak self] in self?.showScreen(peer: peer, name: name) })
+        window.contentView = NSHostingView(rootView: view)
         window.setFrameAutosaveName("MotionCameraLive")
         if live.isEmpty { window.center() }
         window.delegate = self
@@ -116,8 +129,58 @@ final class MotionCameraWindows: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// "Screen…": the device's screen, live, with the mouse and keyboard going to it.
+    func showScreen(peer: UInt16, name: String) {
+        NSApp.activate()
+        if let w = screens[peer]?.window {
+            w.makeKeyAndOrderFront(nil)
+            return
+        }
+        guard let adb = cameras.adb, let transport = cameras.transport(peer) else { return }
+        let session = ScreenMirrorSession(adb: adb, transport: transport)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 760),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.title = String(localized: "Screen — \(name)")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: ScreenMirrorWindowView(session: session))
+        if screens.isEmpty { window.center() } else {
+            window.cascadeTopLeft(from: NSPoint(x: window.frame.minX + 24, y: window.frame.maxY - 24))
+        }
+        // The window takes the device's proportions: at first up to 80 % of the screen, after a turn with the
+        // same long side as before.
+        var first = true
+        session.onOrientation = { [weak window] size in
+            guard let window, let screen = window.screen ?? NSScreen.main else { return }
+            let bar: CGFloat = 34
+            let area = screen.visibleFrame
+            var box = CGSize(width: area.width * 0.8, height: area.height * 0.8 - bar)
+            if !first, let current = window.contentView?.bounds.size {
+                let long = max(current.width, current.height - bar)
+                box = CGSize(width: min(box.width, long), height: min(box.height, long))
+            }
+            first = false
+            let scale = min(box.width / size.width, box.height / size.height)
+            let content = NSSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded() + bar)
+            let top = min(window.frame.maxY, area.maxY)
+            window.setContentSize(content)
+            var origin = NSPoint(x: window.frame.minX, y: top - window.frame.height)
+            origin.x = min(max(origin.x, area.minX), area.maxX - window.frame.width)
+            origin.y = max(origin.y, area.minY)
+            window.setFrameOrigin(origin)
+        }
+        window.delegate = self
+        screens[peer] = (window, session)
+        session.start()
+        window.makeKeyAndOrderFront(nil)
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
+        if let peer = screens.first(where: { $0.value.window === window })?.key {
+            screens[peer]?.session.stop()
+            screens[peer] = nil
+            return
+        }
         if let peer = live.first(where: { $0.value.window === window })?.key {
             live[peer]?.session.stop()
             live[peer] = nil

@@ -222,3 +222,15 @@
 "Try Again" = "やり直す";
 "The camera does not answer. It may be busy, or turned off on the device." = "カメラが応答しません。使用中か、デバイスでオフになっている可能性があります。";
 "UniversalKM: a motion camera is recording" = "UniversalKM：モーションカメラが録画中";
+"Screen…" = "画面…";
+"Show the screen of “%@” and control it with the mouse" = "“%@”の画面を表示してマウスで操作";
+"Screen — %@" = "画面 — %@";
+"Show Screen" = "画面を表示";
+"Another app may hold the camera: see the device's screen" = "別のアプリがカメラを使っている可能性があります：デバイスの画面を確認してください";
+"The screen server is missing from the app." = "アプリに画面サーバがありません。";
+"The connection to the device was lost." = "デバイスとの接続が切れました。";
+"The screen server on the device stopped (%lld)." = "デバイスの画面サーバが停止しました（%lld）。";
+"The screen server on the device does not answer." = "デバイスの画面サーバが応答しません。";
+"The device cannot show its screen." = "デバイスは画面を表示できません。";
+"Home" = "ホーム";
+"Recent Apps" = "最近のアプリ";
