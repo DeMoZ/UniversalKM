@@ -234,3 +234,6 @@
 "The device cannot show its screen." = "The device cannot show its screen.";
 "Home" = "Home";
 "Recent Apps" = "Recent Apps";
+"Show the lock pattern dots" = "Show the lock pattern dots";
+"No pattern on the screen. Swipe the lock screen up first, then press this button again." = "No pattern on the screen. Swipe the lock screen up first, then press this button again.";
+"Draw your pattern through the dots" = "Draw your pattern through the dots";
