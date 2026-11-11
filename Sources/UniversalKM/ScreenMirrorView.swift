@@ -46,6 +46,8 @@ final class ScreenMirrorSession: ObservableObject {
     @Published private(set) var patternTrail: [CGPoint] = []
     @Published private(set) var patternNote: String?
     @Published private(set) var findingPattern = false
+    /// Where the current press started while no hint is shown (a swipe up looks for the pattern).
+    private var swipeStart: CGPoint?
     /// Portrait or landscape of the last size passed to `onOrientation`; nil before the first.
     private var landscape: Bool?
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "screen")
@@ -306,8 +308,23 @@ final class ScreenMirrorSession: ObservableObject {
 
     func touch(_ action: ScreenMirror.Control.TouchAction, x: Int, y: Int) {
         send(ScreenMirror.Control.touch(action, x: x, y: y, width: width, height: height))
-        guard patternDots != nil else { return }
+        if action != .move { log.debug("touch \(action == .down ? "down" : "up", privacy: .public) \(x),\(y) of \(self.width)×\(self.height)") }
         let p = CGPoint(x: x, y: y)
+        guard patternDots != nil else {
+            // A swipe up over a quarter of the screen may have opened the pattern screen: look for it, quietly.
+            switch action {
+            case .down: swipeStart = p
+            case .move: break
+            case .up:
+                if let start = swipeStart, start.y - p.y > videoSize.height / 4, !findingPattern {
+                    log.info("swipe up: looking for the lock pattern")
+                    findingPattern = true
+                    probePattern(attempt: 0, quiet: true)
+                }
+                swipeStart = nil
+            }
+            return
+        }
         switch action {
         case .down: patternTrail = [p]
         case .move: patternTrail.append(p)
@@ -327,23 +344,25 @@ final class ScreenMirrorSession: ObservableObject {
         guard !findingPattern, phase == .playing else { return }
         findingPattern = true
         patternNote = nil
-        probePattern(attempt: 0)
+        probePattern(attempt: 0, quiet: false)
     }
 
-    private func probePattern(attempt: Int) {
+    /// `quiet`: after a swipe, not asked for: no note when there is no pattern.
+    private func probePattern(attempt: Int, quiet: Bool) {
         adb.run(["-s", transport, "shell", ScreenMirror.lockScreenProbe], timeout: 15, on: .main) { [weak self] result in
             MainActor.assumeIsolated {
                 guard let self, !self.stopped else { return }
                 guard let found = ScreenMirror.lockPattern(probe: result.output), self.videoSize.width > 0 else {
+                    self.log.info("no lock pattern on the screen (try \(attempt + 1), \(result.output.count) bytes)")
                     // uiautomator fails while the screen still animates: once more.
                     if attempt == 0 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-                            MainActor.assumeIsolated { self?.probePattern(attempt: 1) }
+                            MainActor.assumeIsolated { self?.probePattern(attempt: 1, quiet: quiet) }
                         }
                         return
                     }
                     self.findingPattern = false
-                    self.showPatternNote(String(localized: "No pattern on the screen. Swipe the lock screen up first, then press this button again."))
+                    if !quiet { self.showPatternNote(String(localized: "No pattern on the screen. Swipe the lock screen up first, then press this button again.")) }
                     return
                 }
                 self.findingPattern = false
