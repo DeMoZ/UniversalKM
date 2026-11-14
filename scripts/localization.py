@@ -1430,6 +1430,8 @@ T13 = {'ru': ['Телефон перезагрузился: снова вклю�
  'zh-Hans': ['手机已重启：正在通过数据线重新打开 Wi‑Fi…', '手机已重启，而重启会关闭通过数据线打开的 Wi‑Fi。请连接一次数据线：Wi‑Fi 会自动恢复，之后即可拔掉数据线。如果手机已用配对码配对，也可以在手机上打开“无线调试”。', '正在充电', '已充满', '未充电', '使用电池', '设备电池：%@，%@'],
  'ja': ['電話が再起動しました：ケーブル経由で Wi‑Fi を再びオンにしています…', '電話が再起動しました。再起動すると、ケーブル経由でオンにした Wi‑Fi はオフになります。ケーブルを一度つなぐと Wi‑Fi は自動で戻り、その後ケーブルは外せます。ペア設定コードでペアリング済みなら、電話で「ワイヤレス デバッグ」をオンにしても戻ります。', '充電中', '充電完了', '充電していません', 'バッテリー駆動', 'デバイスのバッテリー：%@、%@'],
  'ko': ['휴대폰이 재시작되었습니다: 케이블로 Wi‑Fi를 다시 켜는 중…', '휴대폰이 재시작되었고, 재시작하면 케이블로 켠 Wi‑Fi가 꺼집니다. 케이블을 한 번 연결하면 Wi‑Fi가 저절로 돌아오고, 그 뒤에는 케이블을 빼도 됩니다. 코드로 페어링한 휴대폰이라면 휴대폰에서 무선 디버깅을 켜도 됩니다.', '충전 중', '충전 완료', '충전 안 됨', '배터리 사용 중', '기기 배터리: %@, %@']}
+K14 = ['%@: battery %@']
+T14 = {'ru': ['%@: батарея %@'], 'de': ['%@: Akku %@'], 'fr': ['%@ : batterie %@'], 'es': ['%@: batería %@'], 'pt-BR': ['%@: bateria %@'], 'it': ['%@: batteria %@'], 'zh-Hans': ['%@：电池 %@'], 'ja': ['%@：バッテリー %@'], 'ko': ['%@: 배터리 %@']}
 EN_BT = "UniversalKM controls the ChameleonUltra over Bluetooth when it is not connected over USB."
 def esc(s): return s.replace('\\', '\\\\').replace('"', '\\"')
 for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
@@ -1449,7 +1451,8 @@ for lang, vals in [("en", K + [EN_BT])] + list(T.items()):
         assert lang == "en" or len(T11[lang]) == len(K11), (lang, len(T11[lang]))
         assert lang == "en" or len(T12[lang]) == len(K12), (lang, len(T12[lang]))
         assert lang == "en" or len(T13[lang]) == len(K13), (lang, len(T13[lang]))
-        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9 + K10 + K11 + K12 + K13, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9 + K10 + K11 + K12 + K13 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang] + T8[lang] + T9[lang] + T10[lang] + T11[lang] + T12[lang] + T13[lang])):
+        assert lang == "en" or len(T14[lang]) == len(K14), (lang, len(T14[lang]))
+        for k, v in zip(K + K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9 + K10 + K11 + K12 + K13 + K14, vals[:-1] + (K2 + K3 + K4 + K5 + K6 + K7 + K8 + K9 + K10 + K11 + K12 + K13 + K14 if lang == "en" else T2[lang] + T3[lang] + T4[lang] + T5[lang] + T6[lang] + T7[lang] + T8[lang] + T9[lang] + T10[lang] + T11[lang] + T12[lang] + T13[lang] + T14[lang])):
             f.write(f'"{esc(k)}" = "{esc(v)}";\n')
     with open(f"{d}/InfoPlist.strings", "w") as f:
         f.write(f'"{BT}" = "{esc(vals[-1])}";\n')

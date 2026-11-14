@@ -244,3 +244,4 @@
 "not charging" = "未充电";
 "on battery" = "使用电池";
 "Battery of the device: %@, %@" = "设备电池：%@，%@";
+"%@: battery %@" = "%@：电池 %@";

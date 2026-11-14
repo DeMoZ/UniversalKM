@@ -244,3 +244,4 @@
 "not charging" = "not charging";
 "on battery" = "on battery";
 "Battery of the device: %@, %@" = "Battery of the device: %@, %@";
+"%@: battery %@" = "%@: battery %@";

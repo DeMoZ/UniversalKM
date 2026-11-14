@@ -244,3 +244,4 @@
 "not charging" = "non in carica";
 "on battery" = "a batteria";
 "Battery of the device: %@, %@" = "Batteria del dispositivo: %@, %@";
+"%@: battery %@" = "%@: batteria %@";

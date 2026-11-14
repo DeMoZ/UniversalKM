@@ -22,6 +22,26 @@ public struct AndroidBattery: Equatable, Sendable {
 
     public var isPlugged: Bool { state != .discharging }
 
+    /// Low battery in the menu bar icon: only off the charger.
+    public enum Alert: Comparable, Sendable {
+        /// 20 % or less.
+        case low
+        /// 10 % or less.
+        case critical
+    }
+
+    public var alert: Alert? {
+        guard !isPlugged else { return nil }
+        if percent <= 10 { return .critical }
+        if percent <= 20 { return .low }
+        return nil
+    }
+
+    /// The device to show in the menu bar: the emptiest one with an alert.
+    public static func lowest<ID>(_ batteries: [(id: ID, battery: AndroidBattery)]) -> (id: ID, battery: AndroidBattery)? {
+        batteries.filter { $0.battery.alert != nil }.min { $0.battery.percent < $1.battery.percent }
+    }
+
     /// `dumpsys battery` output:
     /// ```
     /// Current Battery Service state:

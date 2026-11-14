@@ -26,13 +26,14 @@ final class RecordingDot: NSView {
 
     required init?(coder: NSCoder) { nil }
 
-    /// Bottom right of the button, following its width when the image changes.
+    /// Bottom right of the icon. Attached while the button shows only the icon; it keeps its distance
+    /// from the left edge, so the low-battery percent after the icon does not push it.
     func attach(to button: NSView) {
         let b = button.bounds
         // Low on screen whether or not the button's coordinates are flipped.
         let y = button.isFlipped ? b.maxY - Self.diameter - 2 : b.minY + 2
         frame = NSRect(x: b.maxX - Self.diameter - 1, y: y, width: Self.diameter, height: Self.diameter)
-        autoresizingMask = button.isFlipped ? [.minXMargin, .minYMargin] : [.minXMargin, .maxYMargin]
+        autoresizingMask = button.isFlipped ? [.maxXMargin, .minYMargin] : [.maxXMargin, .maxYMargin]
         button.addSubview(self)
     }
 
