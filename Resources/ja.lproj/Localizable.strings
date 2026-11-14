@@ -244,3 +244,4 @@
 "not charging" = "充電していません";
 "on battery" = "バッテリー駆動";
 "Battery of the device: %@, %@" = "デバイスのバッテリー：%@、%@";
+"%@: battery %@" = "%@：バッテリー %@";

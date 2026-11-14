@@ -50,3 +50,25 @@ private func dump(ac: Bool = false, usb: Bool = false, status: Int, level: Int, 
     #expect(AndroidBattery.parse("") == nil)
     #expect(AndroidBattery.parse("Can't find service: battery") == nil)
 }
+
+@Test func batteryAlert() {
+    #expect(AndroidBattery(percent: 21, state: .discharging).alert == nil)
+    #expect(AndroidBattery(percent: 20, state: .discharging).alert == .low)
+    #expect(AndroidBattery(percent: 11, state: .discharging).alert == .low)
+    #expect(AndroidBattery(percent: 10, state: .discharging).alert == .critical)
+    #expect(AndroidBattery(percent: 0, state: .discharging).alert == .critical)
+    // On the charger nothing, even when it does not take charge.
+    #expect(AndroidBattery(percent: 5, state: .charging).alert == nil)
+    #expect(AndroidBattery(percent: 5, state: .notCharging).alert == nil)
+}
+
+@Test func batteryLowest() {
+    let list: [(id: Int, battery: AndroidBattery)] = [
+        (1, AndroidBattery(percent: 18, state: .discharging)),
+        (2, AndroidBattery(percent: 3, state: .charging)),
+        (3, AndroidBattery(percent: 12, state: .discharging)),
+        (4, AndroidBattery(percent: 80, state: .discharging)),
+    ]
+    #expect(AndroidBattery.lowest(list)?.id == 3)
+    #expect(AndroidBattery.lowest([(id: 4, battery: AndroidBattery(percent: 80, state: .discharging))]) == nil)
+}

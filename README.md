@@ -34,7 +34,7 @@
 | ↩️ **Come back the same way** | Move the cursor to the device edge that faces the Mac and keep pushing: input returns to the Mac at the same height. ⌃⌥⌘⎋ always works too. |
 | 👻 **The Mac cursor stays out of the way** | While you control a device, the Mac cursor is hidden and does not move. |
 | 📱 **Up to three devices** | Three devices connect at once, each with its own zone in the layout. |
-| 🎛️ **Switches per device** | Each device row has its own switches: keyboard and mouse, shared clipboard, Wi‑Fi, and a Files… button. Switch the keyboard and mouse off and the device stays connected for files and the clipboard. An Android device reached over adb also shows its battery: the charge and whether it is charging. |
+| 🎛️ **Switches per device** | Each device row has its own switches: keyboard and mouse, shared clipboard, Wi‑Fi, and a Files… button. Switch the keyboard and mouse off and the device stays connected for files and the clipboard. An Android device reached over adb also shows its battery: the charge and whether it is charging. When a device off the charger drops to 20 %, the menu bar icon gets the device’s outline, filled to its charge, with its percent: orange, red at 10 %. |
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
 | 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |

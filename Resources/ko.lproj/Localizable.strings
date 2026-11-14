@@ -244,3 +244,4 @@
 "not charging" = "충전 안 됨";
 "on battery" = "배터리 사용 중";
 "Battery of the device: %@, %@" = "기기 배터리: %@, %@";
+"%@: battery %@" = "%@: 배터리 %@";

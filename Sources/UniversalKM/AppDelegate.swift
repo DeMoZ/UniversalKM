@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private(set) lazy var android: AndroidHIDTransport = AndroidHIDTransport { [weak self] status in
         Task { @MainActor in
             self?.state.androidChanged(status)
+            self?.updateBatteryBadge()
             self?.fileBrowsers.update(status)
             self?.motionCameras.update(status)
             self?.demo?.peersChanged(self?.state.subscribedPeers ?? [])
@@ -165,6 +166,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     /// the panel (mouse down outside the popover), then reaches the icon's action: without this check
     /// the action would open the panel again at once.
     private var panelClosedAt = Date.distantPast
+
+    /// Low battery next to the icon: the emptiest Android device off the charger at 20 % or less, as its
+    /// outline filled to the charge and its percent, orange, red at 10 % or less. The tooltip names every such device.
+    private func updateBatteryBadge() {
+        guard let button = statusItem?.button else { return }
+        let names = Dictionary(state.arrangement.devices.compactMap { d in d.hostPeerID.map { ($0, d.displayName) } },
+                               uniquingKeysWith: { first, _ in first })
+        let low = state.androidStatus.devices.compactMap { d in d.battery.map { (id: d.peerID, battery: $0) } }
+            .filter { $0.battery.alert != nil }
+            .sorted { $0.battery.percent < $1.battery.percent }
+        guard let lowest = AndroidBattery.lowest(low), let alert = lowest.battery.alert else {
+            if button.title != "" || button.toolTip != nil {
+                button.attributedTitle = NSAttributedString()
+                button.toolTip = nil
+            }
+            return
+        }
+        let color: NSColor = alert == .critical ? .systemRed : .systemOrange
+        let font = NSFont.menuBarFont(ofSize: 0)
+        let tablet = state.arrangement.devices.first { $0.hostPeerID == lowest.id }?.kind == .tablet
+        let glyph = StatusIcon.deviceBattery(percent: lowest.battery.percent, color: color, tablet: tablet)
+        let title = NSMutableAttributedString(string: " ")
+        let attachment = NSTextAttachment()
+        attachment.image = glyph
+        // Centred on the text's capitals.
+        attachment.bounds = CGRect(x: 0, y: (font.capHeight - glyph.size.height) / 2,
+                                   width: glyph.size.width, height: glyph.size.height)
+        title.append(NSAttributedString(attachment: attachment))
+        let percent = (Double(lowest.battery.percent) / 100).formatted(.percent)
+        title.append(NSAttributedString(string: " " + percent, attributes: [.foregroundColor: color, .font: font]))
+        button.attributedTitle = title
+        button.imagePosition = .imageLeft
+        button.toolTip = low.map { item in
+            let name = names[item.id] ?? state.androidStatus.device(item.id)?.name ?? "?"
+            return String(localized: "\(name): battery \((Double(item.battery.percent) / 100).formatted(.percent))")
+        }.joined(separator: "\n")
+    }
 
     @objc private func togglePanel() {
         if panel.isShown {

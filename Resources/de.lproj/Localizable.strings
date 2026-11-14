@@ -244,3 +244,4 @@
 "not charging" = "lädt nicht";
 "on battery" = "Akkubetrieb";
 "Battery of the device: %@, %@" = "Akku des Geräts: %@, %@";
+"%@: battery %@" = "%@: Akku %@";
