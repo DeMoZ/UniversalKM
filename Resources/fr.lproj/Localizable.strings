@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "Afficher les points du schéma";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "Aucun schéma à l’écran. Balayez d’abord l’écran de verrouillage vers le haut, puis cliquez à nouveau sur ce bouton.";
 "Draw your pattern through the dots" = "Tracez votre schéma par les points";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "Le téléphone a redémarré : réactivation du Wi‑Fi par le câble…";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "Le téléphone a redémarré, et un redémarrage coupe le Wi‑Fi activé par le câble. Branchez le câble une fois : le Wi‑Fi revient tout seul, puis le câble peut être retiré. Ou activez le débogage sans fil sur le téléphone s’il est associé avec un code.";
+"charging" = "en charge";
+"charged" = "chargé";
+"not charging" = "ne charge pas";
+"on battery" = "sur batterie";
+"Battery of the device: %@, %@" = "Batterie de l’appareil : %@, %@";

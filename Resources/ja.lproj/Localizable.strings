@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "パターンロックの点を表示";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "画面にパターンがありません。まずロック画面を上にスワイプしてから、もう一度このボタンを押してください。";
 "Draw your pattern through the dots" = "点をなぞってパターンを描いてください";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "電話が再起動しました：ケーブル経由で Wi‑Fi を再びオンにしています…";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "電話が再起動しました。再起動すると、ケーブル経由でオンにした Wi‑Fi はオフになります。ケーブルを一度つなぐと Wi‑Fi は自動で戻り、その後ケーブルは外せます。ペア設定コードでペアリング済みなら、電話で「ワイヤレス デバッグ」をオンにしても戻ります。";
+"charging" = "充電中";
+"charged" = "充電完了";
+"not charging" = "充電していません";
+"on battery" = "バッテリー駆動";
+"Battery of the device: %@, %@" = "デバイスのバッテリー：%@、%@";

@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "Punkte des Entsperrmusters zeigen";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "Kein Muster auf dem Bildschirm. Wische zuerst den Sperrbildschirm nach oben und klicke dann erneut auf diese Taste.";
 "Draw your pattern through the dots" = "Zeichne dein Muster durch die Punkte";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "Das Telefon wurde neu gestartet: WLAN wird über das Kabel wieder eingeschaltet …";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "Das Telefon wurde neu gestartet, und ein Neustart schaltet das über das Kabel eingeschaltete WLAN aus. Schließe das Kabel einmal an: WLAN kommt von selbst zurück, danach kann das Kabel ab. Oder schalte auf dem Telefon „Wireless Debugging“ ein, wenn es mit einem Code gekoppelt ist.";
+"charging" = "lädt";
+"charged" = "geladen";
+"not charging" = "lädt nicht";
+"on battery" = "Akkubetrieb";
+"Battery of the device: %@, %@" = "Akku des Geräts: %@, %@";

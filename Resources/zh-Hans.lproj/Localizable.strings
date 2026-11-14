@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "显示图案解锁的点";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "屏幕上没有解锁图案。请先上滑锁定屏幕，然后再按此按钮。";
 "Draw your pattern through the dots" = "沿着这些点画出你的图案";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "手机已重启：正在通过数据线重新打开 Wi‑Fi…";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "手机已重启，而重启会关闭通过数据线打开的 Wi‑Fi。请连接一次数据线：Wi‑Fi 会自动恢复，之后即可拔掉数据线。如果手机已用配对码配对，也可以在手机上打开“无线调试”。";
+"charging" = "正在充电";
+"charged" = "已充满";
+"not charging" = "未充电";
+"on battery" = "使用电池";
+"Battery of the device: %@, %@" = "设备电池：%@，%@";

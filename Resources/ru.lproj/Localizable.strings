@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "Показать точки графического ключа";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "На экране нет графического ключа. Сначала смахните экран блокировки вверх, потом снова нажмите эту кнопку.";
 "Draw your pattern through the dots" = "Проведите ключ по точкам";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "Телефон перезагрузился: снова включаю Wi‑Fi через кабель…";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "Телефон перезагрузился, а перезагрузка выключает Wi‑Fi, включённый через кабель. Подключите кабель один раз: Wi‑Fi включится сам, после этого кабель можно отключить. Или включите на телефоне «Отладку по Wi‑Fi», если он сопряжён по коду.";
+"charging" = "заряжается";
+"charged" = "заряжен";
+"not charging" = "не заряжается";
+"on battery" = "от батареи";
+"Battery of the device: %@, %@" = "Батарея устройства: %@, %@";
