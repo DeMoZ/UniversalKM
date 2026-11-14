@@ -48,6 +48,33 @@ enum StatusIcon {
         return image
     }
 
+    /// Low battery of a connected device, for after the menu bar icon: the device's outline (a phone, or
+    /// a wider tablet) filled from the bottom up to its charge. Upright and shaped like the device, so it
+    /// does not read as the Mac's own battery. In `color`, not a template.
+    static func deviceBattery(percent: Int, color: NSColor, tablet: Bool) -> NSImage {
+        let body = tablet ? CGSize(width: 12, height: 15) : CGSize(width: 8.5, height: 15)
+        let size = NSSize(width: body.width + 1, height: 18)
+        let image = NSImage(size: size, flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            let outline = CGRect(x: 0.75, y: (size.height - body.height) / 2, width: body.width - 0.5, height: body.height)
+            let corner: CGFloat = tablet ? 1.75 : 2
+            ctx.setStrokeColor(color.cgColor)
+            ctx.setFillColor(color.cgColor)
+            ctx.setLineWidth(1.5)
+            ctx.addPath(CGPath(roundedRect: outline, cornerWidth: corner, cornerHeight: corner, transform: nil))
+            ctx.strokePath()
+            // The charge inside, from the bottom; at least a sliver so 0 % still shows something.
+            let inner = outline.insetBy(dx: 2, dy: 2)
+            let height = max(1.5, inner.height * CGFloat(min(100, max(0, percent))) / 100)
+            ctx.addPath(CGPath(roundedRect: CGRect(x: inner.minX, y: inner.maxY - height, width: inner.width, height: height),
+                               cornerWidth: 0.75, cornerHeight: 0.75, transform: nil))
+            ctx.fillPath()
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+
     /// Arrow cursor, tip at `tip`, pointing up-left (flipped coordinates, y down).
     private static func cursorPath(tip: CGPoint, height: CGFloat) -> CGPath {
         let s = height / 17

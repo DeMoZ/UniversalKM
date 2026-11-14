@@ -167,8 +167,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     /// the action would open the panel again at once.
     private var panelClosedAt = Date.distantPast
 
-    /// Low battery next to the icon: the emptiest Android device off the charger at 20 % or less, as a
-    /// battery and its percent, orange, red at 10 % or less. The tooltip names every such device.
+    /// Low battery next to the icon: the emptiest Android device off the charger at 20 % or less, as its
+    /// outline filled to the charge and its percent, orange, red at 10 % or less. The tooltip names every such device.
     private func updateBatteryBadge() {
         guard let button = statusItem?.button else { return }
         let names = Dictionary(state.arrangement.devices.compactMap { d in d.hostPeerID.map { ($0, d.displayName) } },
@@ -185,19 +185,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
         let color: NSColor = alert == .critical ? .systemRed : .systemOrange
         let font = NSFont.menuBarFont(ofSize: 0)
-        let symbol = NSImage(systemSymbolName: alert == .critical ? "battery.0percent" : "battery.25percent",
-                             accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: font.pointSize, weight: .regular)
-                .applying(.init(paletteColors: [color])))
+        let tablet = state.arrangement.devices.first { $0.hostPeerID == lowest.id }?.kind == .tablet
+        let glyph = StatusIcon.deviceBattery(percent: lowest.battery.percent, color: color, tablet: tablet)
         let title = NSMutableAttributedString(string: " ")
-        if let symbol {
-            let attachment = NSTextAttachment()
-            attachment.image = symbol
-            // On the text's middle line.
-            attachment.bounds = CGRect(x: 0, y: (font.capHeight - symbol.size.height) / 2,
-                                       width: symbol.size.width, height: symbol.size.height)
-            title.append(NSAttributedString(attachment: attachment))
-        }
+        let attachment = NSTextAttachment()
+        attachment.image = glyph
+        // Centred on the text's capitals.
+        attachment.bounds = CGRect(x: 0, y: (font.capHeight - glyph.size.height) / 2,
+                                   width: glyph.size.width, height: glyph.size.height)
+        title.append(NSAttributedString(attachment: attachment))
         let percent = (Double(lowest.battery.percent) / 100).formatted(.percent)
         title.append(NSAttributedString(string: " " + percent, attributes: [.foregroundColor: color, .font: font]))
         button.attributedTitle = title
