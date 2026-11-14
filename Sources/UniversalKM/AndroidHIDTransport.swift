@@ -37,6 +37,13 @@ struct AndroidDeviceStatus: Equatable, Sendable, Identifiable {
     /// The adb transport for files (add-android-file-browser design D2): over the cable first, then
     /// Wi‑Fi; nil = no adb now, no "Files…" button.
     var fileTransport: String?
+    /// Wi‑Fi from `adb tcpip` is gone because the phone restarted: its address answers, but adbd no
+    /// longer listens there ("Connection refused"). One time on the cable brings it back.
+    var wifiNeedsCable = false
+    /// The cable is in and the app is switching Wi‑Fi back on after a restart.
+    var isRestoringWiFi = false
+    /// From `dumpsys battery` while adb reaches the device; nil without adb (AOA only).
+    var battery: AndroidBattery?
 
     var isAvailable: Bool { hasUSB || hasWiFi || hasADBOverUSB }
 }
@@ -148,6 +155,17 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private var timer: DispatchSourceTimer?
     private var connecting: Set<String> = []
     private var mdnsRunning = false
+    /// Devices whose saved `tcpip` address refused the last `adb connect`: the phone is on the network,
+    /// but adbd went back to USB only, which is what a restart does.
+    private var tcpipRefused: Set<String> = []
+    /// Devices getting `adb tcpip` right now (on the cable after a restart).
+    private var tcpipRunning: Set<String> = []
+    /// When `tcpip` was last run by itself for a device: once a minute at most, so a phone that keeps
+    /// refusing (another device took its address) does not restart adbd every few seconds.
+    private var tcpipAutoAt: [String: TimeInterval] = [:]
+    private var batteries: [String: AndroidBattery] = [:]
+    /// When the battery of a device was last asked for.
+    private var batteryAsked: [String: TimeInterval] = [:]
 
     private static let registryKey = "androidPeers"
     private static let namesKey = "androidNames"
@@ -162,6 +180,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     private static let wifiWait: TimeInterval = 8
     private static let statusGrace: TimeInterval = 5
     private static let problemDelay: TimeInterval = 3
+    private static let batteryInterval: TimeInterval = 30
 
     init(onStatus: @escaping @Sendable (AndroidStatus) -> Void) {
         self.onStatus = onStatus
@@ -187,6 +206,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             timer.schedule(deadline: .now() + Self.reconnectInterval, repeating: Self.reconnectInterval)
             timer.setEventHandler { [weak self] in
                 self?.reconnectWiFi()
+                self?.pollBatteries()
                 if self?.switching.isEmpty == false { self?.reconcile() }
             }
             timer.resume()
@@ -306,31 +326,49 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
     /// to TCP and connects over the network.
     func enableWiFi(peerID: UInt16, completion: @escaping @Sendable (Result<String, ADBError>) -> Void) {
         queue.async { [self] in
-            guard let adb else { completion(.failure(.noADB)); return }
-            guard let key = registry.key(for: peerID),
-                  let transport = adbDevices.values.first(where: { $0.key == key && !$0.device.isNetwork && $0.device.state == "device" })?.device.serial
-            else { completion(.failure(.failed("no USB debugging connection"))); return }
-            adb.run(["-s", transport, "shell", "ip", "-4", "addr", "show", "wlan0"], timeout: 5, on: queue) { [weak self] result in
+            guard let key = registry.key(for: peerID) else { completion(.failure(.failed("no USB debugging connection"))); return }
+            startTCPIP(key, completion: completion)
+        }
+    }
+
+    /// `enableWiFi` on `queue`, by serial number.
+    private func startTCPIP(_ key: String, completion: @escaping @Sendable (Result<String, ADBError>) -> Void) {
+        guard let adb else { completion(.failure(.noADB)); return }
+        guard let transport = cableTransport(key) else { completion(.failure(.failed("no USB debugging connection"))); return }
+        tcpipRunning.insert(key)
+        publish()
+        let done: @Sendable (Result<String, ADBError>) -> Void = { [weak self] result in
+            guard let self else { return }
+            self.tcpipRunning.remove(key)
+            if case .success = result { self.tcpipRefused.remove(key) }
+            self.publish()
+            completion(result)
+        }
+        adb.run(["-s", transport, "shell", "ip", "-4", "addr", "show", "wlan0"], timeout: 5, on: queue) { [weak self] result in
+            guard let self else { return }
+            guard let ip = ADBClient.wlanAddress(result.output) else {
+                done(.failure(.failed("the phone is not on Wi‑Fi")))
+                return
+            }
+            let address = "\(ip):\(Self.tcpipPort)"
+            adb.run(["-s", transport, "tcpip", String(Self.tcpipPort)], timeout: 10, on: self.queue) { [weak self] result in
                 guard let self else { return }
-                guard let ip = ADBClient.wlanAddress(result.output) else {
-                    completion(.failure(.failed("the phone is not on Wi‑Fi")))
-                    return
-                }
-                let address = "\(ip):\(Self.tcpipPort)"
-                adb.run(["-s", transport, "tcpip", String(Self.tcpipPort)], timeout: 10, on: self.queue) { [weak self] result in
-                    guard let self else { return }
-                    guard result.ok else { completion(.failure(.failed(result.error))); return }
-                    self.wifiAddresses[key] = address
-                    UserDefaults.standard.set(self.wifiAddresses, forKey: Self.wifiKey)
-                    self.log.info("tcpip on \(address, privacy: .public)")
-                    // adbd restarts in TCP mode: give it a moment.
-                    self.queue.asyncAfter(deadline: .now() + 2) { [weak self] in
-                        self?.connect(address)
-                        completion(.success(address))
-                    }
+                guard result.ok else { done(.failure(.failed(result.error))); return }
+                self.wifiAddresses[key] = address
+                UserDefaults.standard.set(self.wifiAddresses, forKey: Self.wifiKey)
+                self.log.info("tcpip on \(address, privacy: .public)")
+                // adbd restarts in TCP mode: give it a moment.
+                self.queue.asyncAfter(deadline: .now() + 2) { [weak self] in
+                    self?.connect(address, key: key)
+                    done(.success(address))
                 }
             }
         }
+    }
+
+    /// ADB over the cable of a device, ready for commands.
+    private func cableTransport(_ key: String) -> String? {
+        adbDevices.values.first { $0.key == key && !$0.device.isNetwork && $0.device.state == "device" }?.device.serial
     }
 
     /// The panel's Wi‑Fi switch of a device. On: over the cable with USB debugging `adb tcpip` (as
@@ -360,6 +398,7 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
                 }
             } else {
                 wifiOff.insert(key)
+                tcpipRefused.remove(key)
                 UserDefaults.standard.set(wifiOff.sorted(), forKey: Self.wifiOffKey)
                 log.info("Wi‑Fi off for \(key, privacy: .public)")
                 for entry in adbDevices.values where entry.key == key && entry.device.isNetwork {
@@ -489,16 +528,29 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             }
             _ = self.peerID(for: key, name: model)
             self.reconcile()
+            self.pollBatteries()
         }
     }
 
-    private func connect(_ address: String) {
+    /// `adb connect`. With `key`, the answer of a saved `tcpip` address is kept: "Connection refused"
+    /// means the phone is there but restarted (see `tcpipRefused`).
+    private func connect(_ address: String, key: String? = nil) {
         guard let adb, !connecting.contains(address) else { return }
         connecting.insert(address)
         adb.run(["connect", address], timeout: 8, on: queue) { [weak self] result in
-            self?.connecting.remove(address)
-            if !result.output.contains("connected to") {
-                self?.log.debug("adb connect \(address, privacy: .public): \(result.output.trimmingCharacters(in: .whitespacesAndNewlines), privacy: .public)")
+            guard let self else { return }
+            self.connecting.remove(address)
+            let text = result.output + result.error
+            let tcpip = key.map { self.wifiAddresses[$0] == address && address.hasSuffix(":\(Self.tcpipPort)") } ?? false
+            if text.contains("connected to") {
+                if let key, tcpip, self.tcpipRefused.remove(key) != nil { self.publish() }
+                return
+            }
+            self.log.debug("adb connect \(address, privacy: .public): \(text.trimmingCharacters(in: .whitespacesAndNewlines), privacy: .public)")
+            if let key, tcpip, text.localizedCaseInsensitiveContains("refused"), !self.tcpipRefused.contains(key) {
+                self.log.info("\(address, privacy: .public) refuses adb: \(key, privacy: .public) restarted, Wi‑Fi needs the cable once")
+                self.tcpipRefused.insert(key)
+                self.publish()
             }
         }
     }
@@ -512,7 +564,19 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
         let missing = wanted.filter { !onNetwork.contains($0) && !wifiOff.contains($0) }
         guard !missing.isEmpty else { return }
         for key in missing {
-            if let address = wifiAddresses[key] { connect(address) }
+            if let address = wifiAddresses[key] { connect(address, key: key) }
+            // Restarted and now on the cable: Wi‑Fi comes back by itself, as it was before the restart.
+            let now = ProcessInfo.processInfo.systemUptime
+            if tcpipRefused.contains(key), !tcpipRunning.contains(key), cableTransport(key) != nil,
+               tcpipAutoAt[key].map({ now - $0 >= 60 }) ?? true {
+                tcpipAutoAt[key] = now
+                log.info("\(key, privacy: .public) is on the cable after a restart: tcpip again")
+                startTCPIP(key) { [weak self] result in
+                    if case .failure(let error) = result {
+                        self?.log.error("tcpip after a restart of \(key, privacy: .public): \(String(describing: error), privacy: .public)")
+                    }
+                }
+            }
         }
         guard !mdnsRunning else { return }
         mdnsRunning = true
@@ -522,6 +586,28 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             let services = ADBClient.mdnsConnectServices(result.output)
             for key in missing {
                 if let address = services[key] { self.connect(address) }
+            }
+        }
+    }
+
+    // MARK: Battery
+
+    /// `dumpsys battery` every `batteryInterval` on each device adb reaches (the clipboard's transport).
+    private func pollBatteries() {
+        guard let adb else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        for (key, peer) in registry.peers {
+            guard let transport = Self.clipboardTransport(candidates(key), active: active[peer]) else {
+                batteries[key] = nil
+                continue
+            }
+            if let asked = batteryAsked[key], now - asked < Self.batteryInterval { continue }
+            batteryAsked[key] = now
+            adb.run(["-s", transport, "shell", "dumpsys", "battery"], timeout: 5, on: queue) { [weak self] result in
+                guard let self, result.ok, let battery = AndroidBattery.parse(result.output) else { return }
+                guard self.batteries[key] != battery else { return }
+                self.batteries[key] = battery
+                self.publish()
             }
         }
     }
@@ -594,6 +680,9 @@ final class AndroidHIDTransport: HIDTransport, @unchecked Sendable {
             device.adbTransport = Self.clipboardTransport(channels, active: active[peer])
             device.tcpipAddress = wifiAddresses[key].flatMap { $0.hasSuffix(":\(Self.tcpipPort)") ? $0 : nil }
             device.isWiFiOff = wifiOff.contains(key)
+            device.wifiNeedsCable = tcpipRefused.contains(key) && !device.hasWiFi && !device.isWiFiOff && device.tcpipAddress != nil
+            device.isRestoringWiFi = tcpipRunning.contains(key)
+            device.battery = device.adbTransport != nil || device.fileTransport != nil ? batteries[key] : nil
             if status.device(peer)?.fileTransport != device.fileTransport {
                 log.info("files for \(key, privacy: .public): \(device.fileTransport ?? "none", privacy: .public)")
             }

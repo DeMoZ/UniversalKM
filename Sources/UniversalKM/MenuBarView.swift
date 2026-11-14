@@ -282,6 +282,19 @@ struct MenuBarView: View {
         .help(canSwitch
               ? String(localized: "Keep adb on Wi‑Fi for this device, so it works without the cable. Off: the app disconnects it from Wi‑Fi and does not reconnect.")
               : String(localized: "To switch Wi‑Fi on, connect the cable with USB debugging, or pair the phone with a code under Connections."))
+        if status.isRestoringWiFi && !pending {
+            Text("The phone restarted: switching Wi‑Fi back on through the cable…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if status.wifiNeedsCable {
+            Text("The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         if let error = wifiErrors[peer] {
             Text(error)
                 .font(.caption)
@@ -326,6 +339,9 @@ struct MenuBarView: View {
                 HStack(spacing: 4) {
                     Circle().fill(state.isConnected(device) ? Color.green : Color.gray.opacity(0.6)).frame(width: 6, height: 6)
                     Text(connectionText(device))
+                    if let peer = device.hostPeerID, let battery = state.androidStatus.device(peer)?.battery {
+                        batteryLabel(battery)
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -350,6 +366,35 @@ struct MenuBarView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help("More for “\(device.displayName)”")
+        }
+    }
+
+    /// "􀛨 85 % · charging" after the connection of an Android device.
+    private func batteryLabel(_ battery: AndroidBattery) -> some View {
+        let low = battery.percent <= 15 && !battery.isPlugged
+        let state = switch battery.state {
+        case .charging: String(localized: "charging")
+        case .full: String(localized: "charged")
+        case .notCharging: String(localized: "not charging")
+        case .discharging: String(localized: "on battery")
+        }
+        return HStack(spacing: 3) {
+            Text(verbatim: "·")
+            Image(systemName: Self.batterySymbol(battery))
+                .foregroundStyle(low ? Color.red : battery.state == .charging ? Color.green : Color.secondary)
+            Text(verbatim: "\((Double(battery.percent) / 100).formatted(.percent)) · \(state)")
+        }
+        .help(String(localized: "Battery of the device: \((Double(battery.percent) / 100).formatted(.percent)), \(state)"))
+    }
+
+    private static func batterySymbol(_ battery: AndroidBattery) -> String {
+        if battery.state == .charging || battery.state == .full { return "battery.100percent.bolt" }
+        return switch battery.percent {
+        case ..<13: "battery.0percent"
+        case ..<38: "battery.25percent"
+        case ..<63: "battery.50percent"
+        case ..<88: "battery.75percent"
+        default: "battery.100percent"
         }
     }
 

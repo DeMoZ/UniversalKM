@@ -34,7 +34,7 @@
 | ↩️ **Come back the same way** | Move the cursor to the device edge that faces the Mac and keep pushing: input returns to the Mac at the same height. ⌃⌥⌘⎋ always works too. |
 | 👻 **The Mac cursor stays out of the way** | While you control a device, the Mac cursor is hidden and does not move. |
 | 📱 **Up to three devices** | Three devices connect at once, each with its own zone in the layout. |
-| 🎛️ **Switches per device** | Each device row has its own switches: keyboard and mouse, shared clipboard, Wi‑Fi, and a Files… button. Switch the keyboard and mouse off and the device stays connected for files and the clipboard. |
+| 🎛️ **Switches per device** | Each device row has its own switches: keyboard and mouse, shared clipboard, Wi‑Fi, and a Files… button. Switch the keyboard and mouse off and the device stays connected for files and the clipboard. An Android device reached over adb also shows its battery: the charge and whether it is charging. |
 | 📐 **True size** | Enter the device screen size in points and pixels, then drag a corner so the device matches its physical size next to your displays. |
 | 🔌 **Android: cable or Wi‑Fi** | Plug an Android phone or tablet into the Mac, or connect it over Wi‑Fi. Nothing to buy and nothing to install on it. Unplug the cable and input carries on over Wi‑Fi. |
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
@@ -106,7 +106,7 @@ Without a cable the app drives the phone over ADB: Android's built-in `hid` tool
 2. On the phone, unlock developer options: Settings → About phone → tap "Build number" seven times.
 3. Connect the phone one of two ways:
    - **Wireless debugging (Android 11 and later):** Developer options → Wireless debugging → "Pair device with pairing code" (not the QR code). In the panel press "Pair with code…" and enter the IP address with port and the six-digit code from that screen. From then on the app finds the phone on the network by itself whenever wireless debugging is on.
-   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and switch **Wi‑Fi** on in its row in the panel. The phone stays reachable over Wi‑Fi until it restarts; after a restart, plug it in and switch Wi‑Fi on again. Switching it off disconnects the phone from Wi‑Fi, and the app does not reconnect it until you switch it on.
+   - **Through the cable (any Android):** turn on USB debugging, plug the phone in, allow the Mac on the phone, and switch **Wi‑Fi** on in its row in the panel. The phone stays reachable over Wi‑Fi until it restarts: a restart turns this Wi‑Fi off (Android does that). The panel then says so in the phone's row; plug the cable in once and the app switches Wi‑Fi back on by itself. Switching it off disconnects the phone from Wi‑Fi, and the app does not reconnect it until you switch it on.
 4. Add the device in the panel ("Add…") and place it next to a display edge.
 
 - A phone on both the cable and Wi‑Fi uses the cable. Unplugging it switches to Wi‑Fi in under a second without returning the cursor to the Mac; plugging it back in switches back.

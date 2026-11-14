@@ -237,3 +237,10 @@
 "Show the lock pattern dots" = "Show the lock pattern dots";
 "No pattern on the screen. Swipe the lock screen up first, then press this button again." = "No pattern on the screen. Swipe the lock screen up first, then press this button again.";
 "Draw your pattern through the dots" = "Draw your pattern through the dots";
+"The phone restarted: switching Wi‑Fi back on through the cable…" = "The phone restarted: switching Wi‑Fi back on through the cable…";
+"The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code." = "The phone restarted, and a restart turns off Wi‑Fi that was switched on through the cable. Connect the cable once: Wi‑Fi comes back by itself, then the cable can go. Or turn on Wireless debugging on the phone if it is paired with a code.";
+"charging" = "charging";
+"charged" = "charged";
+"not charging" = "not charging";
+"on battery" = "on battery";
+"Battery of the device: %@, %@" = "Battery of the device: %@, %@";
