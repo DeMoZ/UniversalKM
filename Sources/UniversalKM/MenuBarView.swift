@@ -47,7 +47,7 @@ struct MenuBarView: View {
                         devicesSection
                         if app.appleDeviceOnCable != nil { filesSection }
                         if !motionCameraDevices.isEmpty {
-                            MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
+                            MotionCameraSection(cameras: app.motionCameras, displays: app.secondDisplays, devices: motionCameraDevices,
                                                 open: app.openMotionCamera, openLive: app.openMotionLive,
                                                 openScreen: app.openScreen)
                         }

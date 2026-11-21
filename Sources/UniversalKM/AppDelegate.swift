@@ -74,6 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: Motion camera (add-android-motion-camera)
 
     let motionCameras = MotionCameras()
+    /// An Android device as a second monitor of the Mac (add-android-second-display).
+    lazy var secondDisplays = SecondDisplays(cameras: motionCameras)
     private lazy var motionWindows = MotionCameraWindows(cameras: motionCameras) { [weak self] peer in
         self?.openRecordings(peer: peer)
     }
@@ -225,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // Cursor back on the Mac first, then hosts get neutral reports and are disconnected (design D13).
         state.input.release(.quit)
         state.clipboard.shutdown()
+        secondDisplays.stopAll()
         transport.shutdown(timeout: 0.3)
         // Files opened from the file window (add-android-file-browser design D8).
         try? FileManager.default.removeItem(at: FileBrowserModel.temporaryRoot)

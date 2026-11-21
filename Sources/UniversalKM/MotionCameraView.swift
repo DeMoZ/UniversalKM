@@ -6,6 +6,8 @@ import UniversalKMCore
 /// device with adb or with the camera installed earlier. Everything else is in the camera window.
 struct MotionCameraSection: View {
     @ObservedObject var cameras: MotionCameras
+    /// "Use as Monitor" (add-android-second-display design D8).
+    @ObservedObject var displays: SecondDisplays
     let devices: [PlacedDevice]
     let open: (PlacedDevice) -> Void
     /// "Live View…" right in the row (design D11): the live picture window of the device.
@@ -39,7 +41,7 @@ struct MotionCameraSection: View {
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 1) {
                 Text(device.displayName).fontWeight(.medium)
-                Text(MotionCameraWindowView.summary(camera, connected: cameras.isConnected(peer)))
+                Text(displays.status(peer) ?? MotionCameraWindowView.summary(camera, connected: cameras.isConnected(peer)))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
@@ -57,6 +59,16 @@ struct MotionCameraSection: View {
                 .controlSize(.small)
                 .disabled(!cameras.isConnected(peer))
                 .help(String(localized: "Show the screen of “\(device.displayName)” and control it with the mouse"))
+            let monitorOn = displays.isOn(peer)
+            Button { displays.toggle(peer: peer, name: device.displayName) } label: {
+                Label(monitorOn ? "Turn Monitor Off" : "Use as Monitor",
+                      systemImage: monitorOn ? "stop.circle" : "display")
+                    .labelStyle(.iconOnly)
+            }
+                .controlSize(.small)
+                .disabled(!cameras.isConnected(peer) && !monitorOn)
+                .help(monitorOn ? String(localized: "Stop using “\(device.displayName)” as a monitor")
+                                : String(localized: "Use “\(device.displayName)” as a second monitor of this Mac"))
             Button("Motion Camera…") { open(device) }
                 .controlSize(.small)
                 .help("Recording on motion for “\(device.displayName)”: on and off, camera, settings, clips")

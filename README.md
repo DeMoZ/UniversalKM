@@ -172,6 +172,12 @@ This is for the times another app holds the camera: while the phone streams to Y
 
 The screen is captured by [scrcpy](https://github.com/Genymobile/scrcpy)'s server (v5.0.1, Apache License 2.0, unchanged, `Resources/scrcpy-server.jar`; `scripts/fetch-scrcpy-server.sh` downloads it and checks its SHA-256). The Mac copies it to `/data/local/tmp` and runs it through `adb` only while the window is open. While the device screen is off, the picture is black: Esc or the right button wakes it. Protected windows (banking apps, DRM video) are black as well. The lock screen's pattern is such a window: swipe the lock screen up, the dots appear by themselves (or press the dots button under the picture); draw your pattern through the dots it shows where they are on the device.
 
+## Android as a second display
+
+The display icon next to the device in the panel's “Motion Camera” section makes the phone or tablet a second monitor of the Mac, like Sidecar for iPad. The Mac creates a virtual display with the device's proportions (it appears in System Settings → Displays; drag windows onto it and arrange it there) and shows it on the device full screen. The icon turns into a stop button; the device or the cable going away removes the display, and its windows return to the main monitor. It works over the cable (about 12 Mbit/s of H.264) or Wi‑Fi (6 Mbit/s) through `adb`.
+
+The first time, the Mac installs a small receiver app on the device (`Resources/ukm-display.apk`, no permissions, built by `scripts/build-display-apk.sh`) and asks for **Screen Recording** — UniversalKM captures the virtual display to send it. The display is made with CoreGraphics' private `CGVirtualDisplay` (the API DeskPad and BetterDisplay use), so it is for direct downloads, not the Mac App Store, and a future macOS may change it. The device needs a hardware H.264 decoder (every phone has one). Touch input, rotation and the latency figures are in `openspec/changes/add-android-second-display`.
+
 ## iPhone photos
 
 <p align="center">
