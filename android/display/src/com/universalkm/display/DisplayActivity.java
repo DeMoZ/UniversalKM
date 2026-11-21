@@ -85,6 +85,8 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
     @Override public void surfaceCreated(SurfaceHolder holder) {
         surface = holder.getSurface();
         startListening();
+        Session s = session;
+        if (s != null) s.resume(); // the surface came back after a rotation: decode into the new one
     }
 
     @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
@@ -92,7 +94,7 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
     @Override public void surfaceDestroyed(SurfaceHolder holder) {
         surface = null;
         Session s = session;
-        if (s != null) s.close();
+        if (s != null) s.pause(); // a rotation may recreate the surface: keep the connection
     }
 
     @Override public void onConfigurationChanged(android.content.res.Configuration config) {
@@ -206,6 +208,9 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
         private final Map<Long, Long> queuedAt = new HashMap<>();
         private volatile boolean done;
         private boolean needKey = true;
+        private final Object codecLock = new Object();
+        private int lastWidth, lastHeight;
+        private byte[] lastSets;
 
         Session(LocalSocket socket) {
             this.socket = socket;
@@ -258,7 +263,33 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
             }
         }
 
+        /** The surface is gone: stop the decoder, keep the connection and what is needed to start it again. */
+        void pause() {
+            stopCodec();
+        }
+
+        /** The surface is back: start the decoder again and ask the Mac for a key frame. */
+        void resume() {
+            synchronized (codecLock) {
+                if (lastSets == null || codec != null || done) return;
+                try {
+                    startCodec(lastWidth, lastHeight, lastSets);
+                    send(Protocol.keyFrameRequest());
+                } catch (IOException | RuntimeException ignored) {
+                }
+            }
+        }
+
         private void startCodec(int width, int height, byte[] parameterSets) throws IOException {
+            synchronized (codecLock) {
+                lastWidth = width;
+                lastHeight = height;
+                lastSets = parameterSets;
+                startCodecLocked(width, height, parameterSets);
+            }
+        }
+
+        private void startCodecLocked(int width, int height, byte[] parameterSets) throws IOException {
             stopCodec();
             Surface target = surface;
             byte[] sps = Protocol.findNal(parameterSets, 7), pps = Protocol.findNal(parameterSets, 8);
@@ -280,6 +311,12 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
         }
 
         private void stopCodec() {
+            synchronized (codecLock) {
+                stopCodecLocked();
+            }
+        }
+
+        private void stopCodecLocked() {
             MediaCodec c = codec;
             codec = null;
             if (c == null) return;
@@ -301,6 +338,12 @@ public final class DisplayActivity extends Activity implements SurfaceHolder.Cal
         }
 
         private void decode(byte[] body) {
+            synchronized (codecLock) {
+                decodeLocked(body);
+            }
+        }
+
+        private void decodeLocked(byte[] body) {
             MediaCodec c = codec;
             if (c == null) return;
             boolean key = Protocol.frameIsKey(body);

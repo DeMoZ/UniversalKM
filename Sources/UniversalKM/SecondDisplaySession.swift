@@ -39,6 +39,9 @@ final class SecondDisplaySession {
     private var encoder: DisplayEncoder?
     private var idleTimer: Timer?
     private var stopped = false
+    private var currentSize = (width: 0, height: 0)
+    private var reconfiguring = false
+    private var pendingDeviceSize: (Int, Int)?
     private var task: Task<Void, Never>?
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "display")
 
@@ -112,8 +115,19 @@ final class SecondDisplaySession {
             throw Failure(message: String(localized: "macOS did not create the virtual display."))
         }
         display = virtual
+        try await startPipeline(virtual, size: size)
+        guard !stopped else { return }
+        log.info("display: \(self.name, privacy: .public) \(size.width)x\(size.height) on \(self.transport, privacy: .public)")
+        onPhase?(.running)
+    }
+
+    // MARK: Capture and encoder (restarted when the device turns)
+
+    /// Encoder, capture of the virtual display and the idle repeat, for one display size.
+    private func startPipeline(_ virtual: UKMVirtualDisplay, size: (width: Int, height: Int)) async throws {
         let encoder = try makeEncoder(width: size.width, height: size.height)
         self.encoder = encoder
+        currentSize = size
         let capture = DisplayCapture(displayID: virtual.displayID, width: size.width, height: size.height,
                                      onFrame: { [weak encoder] buffer, pts in encoder?.encode(buffer, pts: pts) },
                                      onStop: { [weak self] error in
@@ -128,12 +142,53 @@ final class SecondDisplaySession {
             throw Failure(message: String(localized: "Screen capture did not start: \(error.localizedDescription)"),
                           needsScreenRecording: !CGPreflightScreenCaptureAccess())
         }
-        guard !stopped else { return }
         idleTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak encoder] _ in
             encoder?.repeatIfIdle()
         }
-        log.info("display: \(self.name, privacy: .public) \(size.width)x\(size.height) on \(self.transport, privacy: .public)")
-        onPhase?(.running)
+    }
+
+    private func stopPipeline() async {
+        idleTimer?.invalidate()
+        idleTimer = nil
+        encoder?.invalidate()
+        encoder = nil
+        let capture = self.capture
+        self.capture = nil
+        await capture?.stop()
+    }
+
+    /// The device turned (design D7): the display changes its mode and keeps its windows, the capture and the
+    /// encoder start again for the new size, a new CONFIG and key frame follow by themselves.
+    private func rotate(toDeviceWidth width: Int, _ height: Int) {
+        let size = SecondDisplay.displaySize(forDevice: width, height)
+        guard size.width > 0, size.width != currentSize.width || size.height != currentSize.height else { return }
+        if reconfiguring {
+            pendingDeviceSize = (width, height)
+            return
+        }
+        reconfiguring = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.stopPipeline()
+            if !self.stopped, let virtual = self.display {
+                if virtual.setWidth(UInt32(size.width), height: UInt32(size.height)) {
+                    do {
+                        try await self.startPipeline(virtual, size: size)
+                        self.log.info("display: turned to \(size.width)x\(size.height)")
+                    } catch {
+                        self.finish(error)
+                    }
+                } else {
+                    self.finish(Failure(message: String(localized: "macOS did not create the virtual display.")))
+                }
+            }
+            if self.stopped { await self.stopPipeline() }
+            self.reconfiguring = false
+            if let next = self.pendingDeviceSize {
+                self.pendingDeviceSize = nil
+                self.rotate(toDeviceWidth: next.0, next.1)
+            }
+        }
     }
 
     private func makeEncoder(width: Int, height: Int) throws -> DisplayEncoder {
@@ -301,8 +356,10 @@ final class SecondDisplaySession {
             encoder?.forceKeyFrame()
         case let .stats(decodeUs, presentUs):
             log.info("display: device decode \(decodeUs) µs, present \(presentUs) µs")
+        case let .rotated(width, height):
+            rotate(toDeviceWidth: width, height)
         default:
-            break // touches and rotation: add-android-second-display tasks 5.x
+            break // touches: add-android-second-display task 5.1
         }
     }
 
