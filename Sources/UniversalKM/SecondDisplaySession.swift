@@ -175,12 +175,10 @@ final class SecondDisplaySession {
         await capture?.stop()
     }
 
-    /// Size of the display in points: the device's rectangle in the layout, so windows have the physical size they
-    /// have on a real monitor (design D9). Without a rectangle: the pixels of the picture.
+    /// Size of the display in points: its pixels, 1:1 with the device's screen (design D9). The layout decides only
+    /// where the display stands and which way it is turned.
     private func logicalSize(pixels: (width: Int, height: Int)) -> (width: Int, height: Int) {
-        guard let rect = host.rect(), rect.width >= 100, rect.height >= 100 else { return pixels }
-        func even(_ v: CGFloat) -> Int { max(2, Int(v.rounded()) & ~1) }
-        return (even(rect.width), even(rect.height))
+        pixels
     }
 
     /// Puts the display where the device's rectangle is in the layout (design D9). The system may take a moment

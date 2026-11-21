@@ -49,8 +49,8 @@ static const double kRefreshRate = 60;
     }
     CGVirtualDisplayDescriptor *descriptor = [[descriptorClass alloc] init];
     descriptor.name = name;
-    descriptor.maxPixelsWide = MAX(width * 2, kMaxSide * 2);
-    descriptor.maxPixelsHigh = MAX(height * 2, kMaxSide * 2);
+    descriptor.maxPixelsWide = MAX(width, kMaxSide);
+    descriptor.maxPixelsHigh = MAX(height, kMaxSide);
     // About 110 pixels per inch.
     descriptor.sizeInMillimeters = CGSizeMake(width / 110.0 * 25.4, height / 110.0 * 25.4);
     descriptor.vendorID = kVendorID;
@@ -78,7 +78,8 @@ static const double kRefreshRate = 60;
 - (BOOL)setWidth:(unsigned int)width height:(unsigned int)height {
     if (!_display) return NO;
     CGVirtualDisplaySettings *settings = [[NSClassFromString(@"CGVirtualDisplaySettings") alloc] init];
-    settings.hiDPI = 1; // twice the pixels of the points (design D9)
+    // Not HiDPI: macOS doubles the size of a HiDPI virtual mode (tried on macOS 27), so points = pixels (design D9).
+    settings.hiDPI = 0;
     settings.modes = @[ [[NSClassFromString(@"CGVirtualDisplayMode") alloc] initWithWidth:width
                                                                                    height:height
                                                                               refreshRate:kRefreshRate] ];

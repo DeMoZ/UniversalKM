@@ -9,8 +9,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface UKMVirtualDisplay : NSObject
 
 /// nil when the system refused to create it (the private API is gone or changed).
-/// `width` and `height` are the size in points (what the display "looks like"); the display has twice as many
-/// pixels in each direction (HiDPI), so the device's own resolution is used in full.
+/// `width` and `height` are the size in pixels, which are also its points (no HiDPI: a HiDPI virtual mode comes
+/// out twice as big).
 + (nullable instancetype)displayWithName:(NSString *)name
                                    width:(unsigned int)width
                                   height:(unsigned int)height
