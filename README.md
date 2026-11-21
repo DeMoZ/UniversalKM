@@ -9,6 +9,7 @@
 <p align="center">
   <b>Your Mac's mouse and keyboard for any phone or tablet.</b><br>
   Push the cursor against a screen edge and input moves to Android, iPad or iPhone, like Universal Control, but not limited to Apple devices. Android needs nothing but a cable or Wi‑Fi.<br>
+  <b>Or use an Android phone or tablet as a second monitor of the Mac</b>, like Sidecar for iPad: drag windows onto it and touch it like a mouse.<br>
   Plus files: Android storage and iPhone photos straight in Finder.
 </p>
 
@@ -21,7 +22,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: the layout with two displays, a phone and a tablet; each device row has switches for the keyboard and mouse, the shared clipboard and Wi‑Fi, and a Files… button">
+  <img src="docs/images/second-monitor.svg" alt="Android as a second monitor: the Mac sends the picture of an extra display to the phone or tablet over adb (USB cable or Wi‑Fi) as H.264, and touches come back as mouse clicks, drags and scrolling">
+</p>
+
+<p align="center">
+  <img src="docs/images/panel.png" width="426" alt="UniversalKM panel: the layout with two displays, a phone and a tablet. Each device card has a Keyboard and mouse | Monitor switch; the tablet is a monitor now, so its rectangle in the layout shows a display icon. Below are the switches for the shared clipboard and Wi‑Fi, and a Files… button">
 </p>
 
 ---
@@ -30,6 +35,7 @@
 
 | | |
 |---|---|
+| 🖥️ **Android as a second monitor** | Switch an Android phone or tablet from “Keyboard and mouse” to “Monitor” and it becomes a second display of the Mac, like Sidecar for iPad: drag windows onto it, touch it like a mouse. It stands where the device is in your layout and turns with it. Needs adb (cable or Wi‑Fi) and the Screen Recording permission. [More](#android-as-a-second-display) |
 | 🖱️ **Cross at an edge** | Place a phone or tablet next to any edge of any display. When the cursor hits that edge, it moves to the device together with the keyboard. |
 | ↩️ **Come back the same way** | Move the cursor to the device edge that faces the Mac and keep pushing: input returns to the Mac at the same height. ⌃⌥⌘⎋ always works too. |
 | 👻 **The Mac cursor stays out of the way** | While you control a device, the Mac cursor is hidden and does not move. |
@@ -40,7 +46,6 @@
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
 | 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
 | 🖼️ **iPhone photos** | A window with the photos and videos of an iPhone on a cable: copy them to the Mac, delete them from the iPhone. |
-| 🖥️ **Android as a second monitor** | Switch an Android phone or tablet from “Keyboard and mouse” to “Monitor” and it becomes a second display of the Mac, like Sidecar for iPad: drag windows onto it, touch it like a mouse. It stands where the device is in your layout and turns with it. Needs adb (cable or Wi‑Fi) and the Screen Recording permission. [More](#android-as-a-second-display) |
 | 🎥 **Motion camera** | An Android phone or tablet records video while something moves in front of it and keeps the clips; it works without the Mac. Watch the clips or the live picture from the Mac. |
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
@@ -174,6 +179,10 @@ This is for the times another app holds the camera: while the phone streams to Y
 The screen is captured by [scrcpy](https://github.com/Genymobile/scrcpy)'s server (v5.0.1, Apache License 2.0, unchanged, `Resources/scrcpy-server.jar`; `scripts/fetch-scrcpy-server.sh` downloads it and checks its SHA-256). The Mac copies it to `/data/local/tmp` and runs it through `adb` only while the window is open. While the device screen is off, the picture is black: Esc or the right button wakes it. Protected windows (banking apps, DRM video) are black as well. The lock screen's pattern is such a window: swipe the lock screen up, the dots appear by themselves (or press the dots button under the picture); draw your pattern through the dots it shows where they are on the device.
 
 ## Android as a second display
+
+<p align="center">
+  <img src="docs/images/second-monitor.svg" alt="Android as a second monitor: the picture goes to the device over adb, touches come back as the mouse">
+</p>
 
 In the device's card in the panel, “Use as” switches the phone or tablet between **Keyboard and mouse** and **Monitor** (like Sidecar for iPad); they exclude each other. As a monitor the device is a second display of the Mac, shown on it full screen. The display stands where the device's rectangle is in the layout (same edge, same offset, same physical size and orientation); moving, resizing or turning it there moves the display, and turning the device turns both. The Mac fills in the device's pixel size in its settings when it is missing. The display is in System Settings → Displays too; drag windows onto it. Switching back, the device or the cable going away removes the display, and its windows return to the main monitor. It works over the cable (about 12 Mbit/s of H.264) or Wi‑Fi (6 Mbit/s) through `adb`.
 

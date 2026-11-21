@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6f8ff"/>
+      <stop offset="1" stop-color="#eef1f8"/>
+    </linearGradient>
+    <linearGradient id="mac" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4cc0"/>
+      <stop offset="1" stop-color="#2a3590"/>
+    </linearGradient>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f9e5a"/>
+    </marker>
+    <marker id="arrb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b4cc0"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="960" height="400" rx="18" fill="url(#bg)"/>
+
+  <text x="480" y="40" text-anchor="middle" font-size="20" font-weight="700" fill="#2a3590">Android as a second monitor</text>
+
+  <!-- Mac: its display and the virtual display next to it -->
+  <rect x="40" y="80" width="300" height="190" rx="16" fill="url(#mac)"/>
+  <rect x="58" y="98" width="170" height="130" rx="8" fill="#e9ecff"/>
+  <rect x="72" y="112" width="100" height="62" rx="5" fill="#ffffff" stroke="#c9cff5"/>
+  <rect x="80" y="122" width="60" height="6" rx="3" fill="#c9cff5"/>
+  <rect x="80" y="136" width="84" height="6" rx="3" fill="#dfe3fa"/>
+  <rect x="80" y="148" width="70" height="6" rx="3" fill="#dfe3fa"/>
+  <text x="143" y="212" text-anchor="middle" font-size="12" fill="#3b4cc0">Mac display</text>
+  <rect x="236" y="98" width="86" height="130" rx="8" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <rect x="246" y="116" width="66" height="46" rx="5" fill="#ffffff"/>
+  <rect x="252" y="124" width="40" height="6" rx="3" fill="#c9cff5"/>
+  <rect x="252" y="136" width="52" height="6" rx="3" fill="#dfe3fa"/>
+  <text x="279" y="196" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Android</text>
+  <text x="279" y="210" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">display</text>
+  <text x="190" y="298" text-anchor="middle" font-size="14" font-weight="600" fill="#2b3245">Mac</text>
+  <text x="190" y="318" text-anchor="middle" font-size="12" fill="#5a6378">The extra display stands where the device</text>
+  <text x="190" y="334" text-anchor="middle" font-size="12" fill="#5a6378">is in your layout, and turns with it</text>
+
+  <!-- Picture to the device, touches back -->
+  <path d="M346 170 C 440 150, 520 150, 628 168" fill="none" stroke="#2f9e5a" stroke-width="3.5" marker-end="url(#arrg)"/>
+  <text x="487" y="136" text-anchor="middle" font-size="14" font-weight="700" fill="#1f6e3e">Picture</text>
+  <text x="487" y="154" text-anchor="middle" font-size="12" fill="#3f6b52">H.264 · adb · USB cable or Wi‑Fi</text>
+  <path d="M628 214 C 520 236, 440 236, 346 216" fill="none" stroke="#3b4cc0" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrb)"/>
+  <text x="487" y="262" text-anchor="middle" font-size="14" font-weight="700" fill="#2a3590">Touches</text>
+  <text x="487" y="280" text-anchor="middle" font-size="12" fill="#4a55a8">tap = click · drag · two fingers scroll · long press = right button</text>
+
+  <!-- The device -->
+  <rect x="640" y="90" width="270" height="170" rx="22" fill="#2b3245"/>
+  <rect x="652" y="102" width="246" height="146" rx="12" fill="#e9ecff"/>
+  <rect x="672" y="120" width="130" height="82" rx="6" fill="#ffffff" stroke="#c9cff5"/>
+  <rect x="682" y="132" width="76" height="7" rx="3" fill="#c9cff5"/>
+  <rect x="682" y="148" width="104" height="7" rx="3" fill="#dfe3fa"/>
+  <rect x="682" y="162" width="88" height="7" rx="3" fill="#dfe3fa"/>
+  <circle cx="842" cy="198" r="15" fill="#3b4cc0" fill-opacity="0.18" stroke="#3b4cc0" stroke-width="2"/>
+  <circle cx="842" cy="198" r="4" fill="#3b4cc0"/>
+  <text x="775" y="298" text-anchor="middle" font-size="14" font-weight="600" fill="#2b3245">Android phone or tablet</text>
+  <text x="775" y="318" text-anchor="middle" font-size="12" fill="#5a6378">Monitor mode: no keyboard and mouse handoff meanwhile</text>
+
+  <text x="480" y="378" text-anchor="middle" font-size="13" fill="#2b3245">“Keyboard and mouse” or “Monitor”: one switch per device, one mode at a time</text>
+</svg>
