@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import os
 import UniversalKMCore
+import UniversalKMDisplay
 
 /// Active displays in the system arrangement (design D14): global CG bounds, stable UUIDs, the main
 /// display. Refreshes on CGDisplayRegisterReconfigurationCallback.
@@ -36,6 +37,8 @@ final class DisplayLayoutProvider {
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
         return ids.prefix(Int(count)).compactMap { id in
+            // The virtual display of a device used as a monitor is not a place for devices (add-android-second-display D9).
+            if UKMVirtualDisplay.isVirtualDisplayID(id) { return nil }
             guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),
                   let string = CFUUIDCreateString(nil, uuid) as String?
             else { return nil }

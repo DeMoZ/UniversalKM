@@ -208,6 +208,8 @@ struct ArrangementView: View {
         let rect = map.view(isDragging ? (draggedRect(device.id, map: map) ?? layout.rect) : resizedRect(layout))
         let connected = state.isConnected(device)
         let small = min(rect.width, rect.height)
+        // A second monitor of the Mac now: the device's rectangle is the display (add-android-second-display D9).
+        let isMonitor = device.hostPeerID.map(state.monitorPeers.contains) ?? false
 
         return ZStack {
             RoundedRectangle(cornerRadius: ArrangementStyle.deviceCorner)
@@ -217,9 +219,9 @@ struct ArrangementView: View {
                     .fill(Color.accentColor.opacity(ArrangementStyle.deviceHoverOpacity))
             }
             VStack(spacing: 2) {
-                Image(systemName: device.kind == .tablet ? "ipad" : "iphone")
+                Image(systemName: isMonitor ? "display" : (device.kind == .tablet ? "ipad" : "iphone"))
                     .font(.system(size: max(9, small * 0.32)))
-                    .rotationEffect(.degrees(device.orientation == .landscape ? 90 : 0))
+                    .rotationEffect(.degrees(!isMonitor && device.orientation == .landscape ? 90 : 0))
                     .foregroundStyle(.tint)
                 if rect.height > 48 {
                     Text(device.displayName).font(.system(size: 9, weight: .medium)).lineLimit(1).minimumScaleFactor(0.7)
@@ -239,7 +241,7 @@ struct ArrangementView: View {
                     .padding(2)
             }
             // Rotate.
-            if isSelected && !isDragging {
+            if isSelected && !isDragging && !isMonitor {
                 Button {
                     state.setOrientation(device.orientation.rotated, of: device.id)
                 } label: {

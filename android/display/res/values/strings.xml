@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniversalKM Display</string>
+    <string name="waiting">Waiting for Mac…</string>
+    <string name="no_decoder">This device has no hardware H.264 decoder</string>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UniversalKM Display (openspec/changes/add-android-second-display, design D5): the receiver of the Mac's
+     second display. No permissions: the Mac connects through adb forward to a local socket, nothing uses the network. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.universalkm.display">
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@android:drawable/ic_menu_gallery"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+
+        <!-- Started by the Mac: adb shell am start -n com.universalkm.display/.DisplayActivity -->
+        <activity
+            android:name=".DisplayActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -22,10 +22,18 @@ let package = Package(
             name: "UKMUSB",
             linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation")]
         ),
+        // A virtual display of the Mac for an Android device used as a second monitor (add-android-second-display
+        // design D1): CoreGraphics' private CGVirtualDisplay, looked up at run time. Objective-C, because Swift
+        // cannot declare a private class it does not import.
+        .target(
+            name: "UniversalKMDisplay",
+            cSettings: [.unsafeFlags(["-fobjc-arc"])],
+            linkerSettings: [.linkedFramework("CoreGraphics"), .linkedFramework("Foundation")]
+        ),
         // The menu bar app: event tap, Chameleon and Android transports, SwiftUI panel, Sparkle updates.
         .executableTarget(
             name: "UniversalKM",
-            dependencies: ["UniversalKMCore", "UKMUSB", .product(name: "Sparkle", package: "Sparkle")]
+            dependencies: ["UniversalKMCore", "UKMUSB", "UniversalKMDisplay", .product(name: "Sparkle", package: "Sparkle")]
         ),
         .testTarget(
             name: "UniversalKMCoreTests",

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="waiting">Ожидание Mac…</string>
+    <string name="no_decoder">На устройстве нет аппаратного декодера H.264</string>
+</resources>
