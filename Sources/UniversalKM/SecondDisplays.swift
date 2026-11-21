@@ -16,9 +16,15 @@ final class SecondDisplays: ObservableObject {
     @Published private(set) var errors: [UInt16: String] = [:]
     private var sessions: [UInt16: SecondDisplaySession] = [:]
     private let cameras: MotionCameras
+    private let layout: AppStateManager
 
-    init(cameras: MotionCameras) {
+    init(cameras: MotionCameras, state: AppStateManager) {
         self.cameras = cameras
+        self.layout = state
+        // A monitor follows its rectangle in the layout (design D9).
+        state.onLayoutChange = { [weak self] in
+            for session in self?.sessions.values.map({ $0 }) ?? [] { session.layoutChanged() }
+        }
     }
 
     func isOn(_ peer: UInt16) -> Bool { sessions[peer] != nil }
@@ -32,11 +38,13 @@ final class SecondDisplays: ObservableObject {
         }
     }
 
-    func toggle(peer: UInt16, name: String) {
-        if let session = sessions[peer] {
-            session.stop()
+    /// The device's mode (design D8): `true` is "Monitor", `false` is "Keyboard and mouse".
+    func set(_ on: Bool, peer: UInt16, name: String) {
+        if !on {
+            sessions[peer]?.stop()
             return
         }
+        guard sessions[peer] == nil else { return }
         guard sessions.isEmpty else {
             errors[peer] = String(localized: "Turn the other monitor off first.")
             return
@@ -46,8 +54,13 @@ final class SecondDisplays: ObservableObject {
             return
         }
         errors[peer] = nil
-        let session = SecondDisplaySession(adb: adb, transport: transport, name: name, serial: UInt32(peer) + 1)
+        let layout = self.layout
+        let host = SecondDisplaySession.Host(
+            rect: { layout.layout(forPeer: peer)?.rect },
+            deviceScreen: { width, height in layout.deviceReportedScreen(peer: peer, width: width, height: height) })
+        let session = SecondDisplaySession(adb: adb, transport: transport, name: name, serial: UInt32(peer) + 1, host: host)
         sessions[peer] = session
+        layout.setMonitor(true, peer: peer)
         states[peer] = .starting(String(localized: "Starting…"))
         session.onPhase = { [weak self] phase in
             switch phase {
@@ -58,6 +71,7 @@ final class SecondDisplays: ObservableObject {
         session.onEnd = { [weak self] message, needsScreenRecording in
             guard let self else { return }
             self.sessions[peer] = nil
+            self.layout.setMonitor(false, peer: peer)
             self.states[peer] = nil
             self.errors[peer] = message
             if needsScreenRecording { Self.askForScreenRecording() }

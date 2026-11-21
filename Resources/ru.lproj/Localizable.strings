@@ -245,10 +245,10 @@
 "on battery" = "от батареи";
 "Battery of the device: %@, %@" = "Батарея устройства: %@, %@";
 "%@: battery %@" = "%@: батарея %@";
-"Use as Monitor" = "Использовать как монитор";
-"Turn Monitor Off" = "Отключить монитор";
-"Stop using “%@” as a monitor" = "Перестать использовать «%@» как монитор";
-"Use “%@” as a second monitor of this Mac" = "Использовать «%@» как второй монитор этого Mac";
+"Use as" = "Использовать как";
+"Monitor" = "Монитор";
+"The device is a second display of this Mac. The keyboard and mouse are not sent to it." = "Устройство — второй монитор этого Mac. Клавиатура и мышь на него не передаются.";
+"Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac." = "Клавиатура и мышь: курсор уходит на устройство через край. Монитор: устройство показывает второй монитор этого Mac.";
 "Monitor on" = "Монитор включён";
 "Turn the other monitor off first." = "Сначала отключите другой монитор.";
 "The device is not connected through adb." = "Устройство не подключено через adb.";

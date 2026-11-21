@@ -245,10 +245,10 @@
 "on battery" = "バッテリー駆動";
 "Battery of the device: %@, %@" = "デバイスのバッテリー：%@、%@";
 "%@: battery %@" = "%@：バッテリー %@";
-"Use as Monitor" = "モニターとして使用";
-"Turn Monitor Off" = "モニターをオフ";
-"Stop using “%@” as a monitor" = "「%@」をモニターとして使うのをやめる";
-"Use “%@” as a second monitor of this Mac" = "「%@」をこの Mac の2台目のモニターとして使用";
+"Use as" = "用途";
+"Monitor" = "モニター";
+"The device is a second display of this Mac. The keyboard and mouse are not sent to it." = "デバイスはこの Mac の2台目のモニターです。キーボードとマウスは送られません。";
+"Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac." = "キーボードとマウス：カーソルが端を越えてデバイスへ移ります。モニター：デバイスにこの Mac の2台目のモニターを表示します。";
 "Monitor on" = "モニターはオン";
 "Turn the other monitor off first." = "先にもう一方のモニターをオフにしてください。";
 "The device is not connected through adb." = "デバイスは adb で接続されていません。";

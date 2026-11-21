@@ -75,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     let motionCameras = MotionCameras()
     /// An Android device as a second monitor of the Mac (add-android-second-display).
-    lazy var secondDisplays = SecondDisplays(cameras: motionCameras)
+    lazy var secondDisplays = SecondDisplays(cameras: motionCameras, state: state)
     private lazy var motionWindows = MotionCameraWindows(cameras: motionCameras) { [weak self] peer in
         self?.openRecordings(peer: peer)
     }

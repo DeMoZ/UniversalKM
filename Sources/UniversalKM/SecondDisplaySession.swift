@@ -39,13 +39,26 @@ final class SecondDisplaySession {
     private var encoder: DisplayEncoder?
     private var idleTimer: Timer?
     private var stopped = false
+    /// Pixels of the picture and size in points of the display now (design D9).
     private var currentSize = (width: 0, height: 0)
+    private var currentLogical = (width: 0, height: 0)
+    /// The device's screen in pixels in its current orientation.
+    private var deviceSize = (width: 0, height: 0)
     private var reconfiguring = false
-    private var pendingDeviceSize: (Int, Int)?
+    private var retargetAgain = false
+    private let host: Host
     private var task: Task<Void, Never>?
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "display")
 
-    init(adb: ADBClient, transport: String, name: String, serial: UInt32) {
+    /// What the session needs from the layout (design D9, D10): where the device's rectangle is, and a way to tell
+    /// the layout the device's screen.
+    struct Host {
+        var rect: @MainActor () -> CGRect?
+        var deviceScreen: @MainActor (_ width: Int, _ height: Int) -> Void
+    }
+
+    init(adb: ADBClient, transport: String, name: String, serial: UInt32, host: Host) {
+        self.host = host
         self.adb = adb
         self.transport = transport
         self.name = name
@@ -109,15 +122,20 @@ final class SecondDisplaySession {
         guard !stopped else { return }
         // 4. The virtual display, its capture and the encoder.
         phase(String(localized: "Creating the display…"))
+        deviceSize = (hello.width, hello.height)
+        host.deviceScreen(hello.width, hello.height) // fills the pixel size and the orientation in the layout
         let size = SecondDisplay.displaySize(forDevice: hello.width, hello.height)
-        guard let virtual = UKMVirtualDisplay(name: "UniversalKM · \(name)", width: UInt32(size.width),
-                                              height: UInt32(size.height), serial: serial) else {
+        let logical = logicalSize(pixels: size)
+        guard let virtual = UKMVirtualDisplay(name: "UniversalKM · \(name)", width: UInt32(logical.width),
+                                              height: UInt32(logical.height), serial: serial) else {
             throw Failure(message: String(localized: "macOS did not create the virtual display."))
         }
         display = virtual
+        currentLogical = logical
+        place()
         try await startPipeline(virtual, size: size)
         guard !stopped else { return }
-        log.info("display: \(self.name, privacy: .public) \(size.width)x\(size.height) on \(self.transport, privacy: .public)")
+        log.info("display: \(self.name, privacy: .public) \(logical.width)x\(logical.height) pt, \(size.width)x\(size.height) px on \(self.transport, privacy: .public)")
         onPhase?(.running)
     }
 
@@ -157,13 +175,62 @@ final class SecondDisplaySession {
         await capture?.stop()
     }
 
-    /// The device turned (design D7): the display changes its mode and keeps its windows, the capture and the
-    /// encoder start again for the new size, a new CONFIG and key frame follow by themselves.
-    private func rotate(toDeviceWidth width: Int, _ height: Int) {
-        let size = SecondDisplay.displaySize(forDevice: width, height)
-        guard size.width > 0, size.width != currentSize.width || size.height != currentSize.height else { return }
+    /// Size of the display in points: the device's rectangle in the layout, so windows have the physical size they
+    /// have on a real monitor (design D9). Without a rectangle: the pixels of the picture.
+    private func logicalSize(pixels: (width: Int, height: Int)) -> (width: Int, height: Int) {
+        guard let rect = host.rect(), rect.width >= 100, rect.height >= 100 else { return pixels }
+        func even(_ v: CGFloat) -> Int { max(2, Int(v.rounded()) & ~1) }
+        return (even(rect.width), even(rect.height))
+    }
+
+    /// Puts the display where the device's rectangle is in the layout (design D9). The system may take a moment
+    /// to accept a new display, so the placement is repeated once.
+    private func place() {
+        placeNow()
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            self?.placeNow()
+        }
+    }
+
+    private func placeNow() {
+        guard !stopped, let virtual = display, let rect = host.rect() else { return }
+        let x = Int32(rect.minX.rounded()), y = Int32(rect.minY.rounded())
+        let now = CGDisplayBounds(virtual.displayID).origin
+        guard Int32(now.x) != x || Int32(now.y) != y else { return }
+        var config: CGDisplayConfigRef?
+        guard CGBeginDisplayConfiguration(&config) == .success else { return }
+        CGConfigureDisplayOrigin(config, virtual.displayID, x, y)
+        CGCompleteDisplayConfiguration(config, .forSession)
+    }
+
+    /// The device turned (D10).
+    private func rotated(toDeviceWidth width: Int, _ height: Int) {
+        guard width > 0, height > 0, width != deviceSize.width || height != deviceSize.height else { return }
+        deviceSize = (width, height)
+        host.deviceScreen(width, height) // the layout turns the rectangle; it calls layoutChanged()
+        retarget()
+    }
+
+    /// The layout changed (a move, a resize, a turn): the display follows (design D9).
+    func layoutChanged() {
+        guard display != nil, !stopped else { return }
+        retarget()
+    }
+
+    /// Brings the display to the layout: another size restarts the capture and the encoder with a new mode, the
+    /// display and its windows stay; a new place only moves it.
+    private func retarget() {
+        let pixels = SecondDisplay.displaySize(forDevice: deviceSize.width, deviceSize.height)
+        let logical = logicalSize(pixels: pixels)
+        guard pixels.width > 0, display != nil else { return }
         if reconfiguring {
-            pendingDeviceSize = (width, height)
+            retargetAgain = true
+            return
+        }
+        guard pixels.width != currentSize.width || pixels.height != currentSize.height
+                || logical.width != currentLogical.width || logical.height != currentLogical.height else {
+            place()
             return
         }
         reconfiguring = true
@@ -171,10 +238,12 @@ final class SecondDisplaySession {
             guard let self else { return }
             await self.stopPipeline()
             if !self.stopped, let virtual = self.display {
-                if virtual.setWidth(UInt32(size.width), height: UInt32(size.height)) {
+                if virtual.setWidth(UInt32(logical.width), height: UInt32(logical.height)) {
+                    self.currentLogical = logical
+                    self.place()
                     do {
-                        try await self.startPipeline(virtual, size: size)
-                        self.log.info("display: turned to \(size.width)x\(size.height)")
+                        try await self.startPipeline(virtual, size: pixels)
+                        self.log.info("display: now \(logical.width)x\(logical.height) pt, \(pixels.width)x\(pixels.height) px")
                     } catch {
                         self.finish(error)
                     }
@@ -184,9 +253,9 @@ final class SecondDisplaySession {
             }
             if self.stopped { await self.stopPipeline() }
             self.reconfiguring = false
-            if let next = self.pendingDeviceSize {
-                self.pendingDeviceSize = nil
-                self.rotate(toDeviceWidth: next.0, next.1)
+            if self.retargetAgain {
+                self.retargetAgain = false
+                self.retarget()
             }
         }
     }
@@ -357,7 +426,7 @@ final class SecondDisplaySession {
         case let .stats(decodeUs, presentUs):
             log.info("display: device decode \(decodeUs) µs, present \(presentUs) µs")
         case let .rotated(width, height):
-            rotate(toDeviceWidth: width, height)
+            rotated(toDeviceWidth: width, height)
         default:
             break // touches: add-android-second-display task 5.1
         }

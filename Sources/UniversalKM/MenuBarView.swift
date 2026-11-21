@@ -47,7 +47,7 @@ struct MenuBarView: View {
                         devicesSection
                         if app.appleDeviceOnCable != nil { filesSection }
                         if !motionCameraDevices.isEmpty {
-                            MotionCameraSection(cameras: app.motionCameras, displays: app.secondDisplays, devices: motionCameraDevices,
+                            MotionCameraSection(cameras: app.motionCameras, devices: motionCameraDevices,
                                                 open: app.openMotionCamera, openLive: app.openMotionLive,
                                                 openScreen: app.openScreen)
                         }
@@ -226,13 +226,21 @@ struct MenuBarView: View {
     /// and (Android) the shared clipboard.
     private func deviceSwitches(_ device: PlacedDevice, peer: UInt16) -> some View {
         VStack(spacing: 6) {
-            switchRow("Keyboard and mouse", isOn: Binding(
-                get: { device.isInputOn },
-                set: { state.setInput($0, of: device.id) }
-            ))
-            .help(device.isInputOn
-                  ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
-                  : String(localized: "Click to send the keyboard and mouse to this device again."))
+            // Keyboard and mouse or a second monitor, never both (add-android-second-display design D8): only
+            // for an Android device, and only while adb reaches it (the picture goes through adb).
+            if AndroidPeerRegistry.isAndroidPeer(peer), state.androidStatus.adbPath != nil {
+                DeviceModePicker(displays: app.secondDisplays, peer: peer, name: device.displayName,
+                                 available: app.motionCameras.isConnected(peer))
+            }
+            if !state.monitorPeers.contains(peer) {
+                switchRow("Keyboard and mouse", isOn: Binding(
+                    get: { device.isInputOn },
+                    set: { state.setInput($0, of: device.id) }
+                ))
+                .help(device.isInputOn
+                      ? String(localized: "Click to stop sending the keyboard and mouse to this device. It stays connected: files and the clipboard keep working.")
+                      : String(localized: "Click to send the keyboard and mouse to this device again."))
+            }
             if AndroidPeerRegistry.isAndroidPeer(peer) {
                 let clipboard = state.clipboard
                 switchRow("Shared clipboard", isOn: Binding(
@@ -621,6 +629,35 @@ struct MenuBarView: View {
 }
 
 /// "1280 × 800": two number fields; empty means unknown.
+/// "Use as": the device is a target of the keyboard and mouse or a second monitor of the Mac (add-android-second-display
+/// design D8). Turning one on turns the other off.
+private struct DeviceModePicker: View {
+    @ObservedObject var displays: SecondDisplays
+    let peer: UInt16
+    let name: String
+    /// adb reaches the device now.
+    let available: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker("Use as", selection: Binding(get: { displays.isOn(peer) },
+                                                set: { displays.set($0, peer: peer, name: name) })) {
+                Text("Keyboard and mouse").tag(false)
+                Text("Monitor").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(!available && !displays.isOn(peer))
+            .help(displays.isOn(peer)
+                  ? String(localized: "The device is a second display of this Mac. The keyboard and mouse are not sent to it.")
+                  : String(localized: "Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac."))
+            if let status = displays.status(peer) {
+                Text(status).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 private struct SizeField: View {
     let size: CGSize?
     let commit: (CGSize?) -> Void

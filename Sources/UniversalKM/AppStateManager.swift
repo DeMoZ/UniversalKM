@@ -33,6 +33,11 @@ final class AppStateManager {
     /// Hosts that take reports: Chameleon subscribers and registered Android devices.
     private(set) var subscribedPeers: [UInt16] = []
     private(set) var isCaptureRunning = false
+    /// Android devices that are a second monitor of the Mac right now (add-android-second-display D8): the
+    /// keyboard and mouse are not sent to them. Not saved: after a restart a device is a keyboard and mouse again.
+    private(set) var monitorPeers: Set<UInt16> = []
+    /// Called after the arrangement or the displays changed (a monitor follows its rectangle in the layout).
+    @ObservationIgnored var onLayoutChange: (() -> Void)?
 
     /// The menu bar icon follows the mode (set by AppDelegate).
     @ObservationIgnored var onModeChange: ((PlacedDevice?) -> Void)?
@@ -96,7 +101,7 @@ final class AppStateManager {
         guard let peer = device.hostPeerID else { return nil }
         guard AndroidPeerRegistry.isAndroidPeer(peer) else { return subscribedPeers.contains(peer) ? .chameleon : nil }
         guard let status = androidStatus.device(peer) else { return nil }
-        if device.isInputOn, subscribedPeers.contains(peer) {
+        if isInputActive(device), subscribedPeers.contains(peer) {
             switch status.active {
             case .usb, .adbUSB: return .usb
             case .wifi: return .wifi
@@ -175,6 +180,43 @@ final class AppStateManager {
         guard let index = arrangement.devices.firstIndex(where: { $0.id == id }) else { return }
         arrangement.devices[index].returnThroughEdge = on
         arrangementChanged()
+    }
+
+    /// The device is (or stops being) a second monitor: no keyboard and mouse to it while it is.
+    func setMonitor(_ on: Bool, peer: UInt16) {
+        guard on != monitorPeers.contains(peer) else { return }
+        if on { monitorPeers.insert(peer) } else { monitorPeers.remove(peer) }
+        pushToInput()
+    }
+
+    /// Whether the keyboard and mouse go to the device: its switch is on and it is not a monitor now.
+    func isInputActive(_ device: PlacedDevice) -> Bool {
+        device.isInputOn && !(device.hostPeerID.map(monitorPeers.contains) ?? false)
+    }
+
+    /// The device's rectangle in the layout (global points) and the device itself, by its host peer.
+    func layout(forPeer peer: UInt16) -> DeviceLayout? {
+        layouts.first { $0.device.hostPeerID == peer }
+    }
+
+    /// The device reported its screen (a monitor session, add-android-second-display D9, D10): fills the pixel
+    /// size when it is missing or does not match, and follows the orientation.
+    func deviceReportedScreen(peer: UInt16, width: Int, height: Int) {
+        guard width > 0, height > 0, let device = arrangement.device(boundTo: peer) else { return }
+        let portrait = CGSize(width: min(width, height), height: max(width, height))
+        let known = device.screenPixels
+        let matches = known.map { abs(Double($0.width / $0.height) - Double(portrait.width / portrait.height)) < 0.01 * Double(portrait.width / portrait.height) } ?? false
+        if !matches, let index = arrangement.devices.firstIndex(where: { $0.id == device.id }) {
+            // The device's own size beats a guess; points stay as the user set them unless they disagree too.
+            arrangement.devices[index].screenPixels = portrait
+            if let points = device.screenPoints, abs(points.width / points.height - portrait.width / portrait.height) > 0.01 * portrait.width / portrait.height {
+                arrangement.devices[index].screenPoints = nil
+            }
+            resnap(index)
+            arrangementChanged()
+        }
+        let orientation: DeviceOrientation = width > height ? .landscape : .portrait
+        if device.orientation != orientation { setOrientation(orientation, of: device.id, source: .device) }
     }
 
     /// Keyboard and mouse to the device on or off. Off: the cursor no longer passes to it, an Android
@@ -275,11 +317,13 @@ final class AppStateManager {
         }
         displayNames = names
         pushToInput()
+        onLayoutChange?()
     }
 
     private func arrangementChanged() {
         save()
         pushToInput()
+        onLayoutChange?()
     }
 
     private func save() {
@@ -292,7 +336,7 @@ final class AppStateManager {
         // An Android device with the keyboard and mouse off is not bound in the transport: they are
         // removed from it (its on-screen keyboard comes back). A Chameleon host keeps its Bluetooth link.
         var bound = Set(arrangement.devices.compactMap { device in
-            device.hostPeerID.flatMap { device.isInputOn || !AndroidPeerRegistry.isAndroidPeer($0) ? $0 : nil }
+            device.hostPeerID.flatMap { isInputActive(device) || !AndroidPeerRegistry.isAndroidPeer($0) ? $0 : nil }
         })
         if demoBindsAll { bound.formUnion(androidStatus.availablePeers) }
         transport.setBoundPeers(bound)
@@ -300,10 +344,10 @@ final class AppStateManager {
         updateClipboard()
         // A device with the input off has no zones and no target: the cursor passes its edge, and a
         // capture on it ends (InputManager.update(targets:) releases a device that is gone).
-        input.update(zones: layouts.filter(\.device.isInputOn).flatMap(\.zones), displays: displays)
+        input.update(zones: layouts.filter { isInputActive($0.device) }.flatMap(\.zones), displays: displays)
         let rects = Dictionary(uniqueKeysWithValues: layouts.map { ($0.device.id, $0.rect) })
         input.update(targets: arrangement.devices.compactMap { device in
-            guard let peer = device.hostPeerID, device.isInputOn else { return nil }
+            guard let peer = device.hostPeerID, isInputActive(device) else { return nil }
             return CaptureTarget(deviceID: device.id, peerID: peer, isConnected: subscribedPeers.contains(peer),
                                  pointerSpeed: device.pointerSpeed, rect: rects[device.id] ?? .zero,
                                  screen: device.screenInPoints, returnThroughEdge: device.isReturnThroughEdgeOn)

@@ -245,10 +245,10 @@
 "on battery" = "使用电池";
 "Battery of the device: %@, %@" = "设备电池：%@，%@";
 "%@: battery %@" = "%@：电池 %@";
-"Use as Monitor" = "用作显示器";
-"Turn Monitor Off" = "关闭显示器";
-"Stop using “%@” as a monitor" = "不再将“%@”用作显示器";
-"Use “%@” as a second monitor of this Mac" = "将“%@”用作此 Mac 的第二台显示器";
+"Use as" = "用作";
+"Monitor" = "显示器";
+"The device is a second display of this Mac. The keyboard and mouse are not sent to it." = "设备是此 Mac 的第二台显示器，键盘和鼠标不会发送给它。";
+"Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac." = "键盘和鼠标：光标越过边缘进入设备。显示器：设备显示此 Mac 的第二台显示器。";
 "Monitor on" = "显示器已开启";
 "Turn the other monitor off first." = "请先关闭另一台显示器。";
 "The device is not connected through adb." = "设备未通过 adb 连接。";

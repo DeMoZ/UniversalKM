@@ -9,14 +9,19 @@ NS_ASSUME_NONNULL_BEGIN
 @interface UKMVirtualDisplay : NSObject
 
 /// nil when the system refused to create it (the private API is gone or changed).
+/// `width` and `height` are the size in points (what the display "looks like"); the display has twice as many
+/// pixels in each direction (HiDPI), so the device's own resolution is used in full.
 + (nullable instancetype)displayWithName:(NSString *)name
                                    width:(unsigned int)width
                                   height:(unsigned int)height
                                   serial:(unsigned int)serial;
 
+/// True for a display made by this class (by its vendor number), also from another process.
++ (BOOL)isVirtualDisplayID:(CGDirectDisplayID)displayID;
+
 @property(nonatomic, readonly) CGDirectDisplayID displayID;
 
-/// Changes the mode (the device was rotated); the display and its windows stay.
+/// Changes the size in points (the device was rotated or resized); the display and its windows stay.
 - (BOOL)setWidth:(unsigned int)width height:(unsigned int)height;
 
 /// Removes the display now.

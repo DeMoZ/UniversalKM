@@ -245,10 +245,10 @@
 "on battery" = "배터리 사용 중";
 "Battery of the device: %@, %@" = "기기 배터리: %@, %@";
 "%@: battery %@" = "%@: 배터리 %@";
-"Use as Monitor" = "모니터로 사용";
-"Turn Monitor Off" = "모니터 끄기";
-"Stop using “%@” as a monitor" = "“%@”을(를) 모니터로 사용 중지";
-"Use “%@” as a second monitor of this Mac" = "“%@”을(를) 이 Mac의 두 번째 모니터로 사용";
+"Use as" = "사용 방식";
+"Monitor" = "모니터";
+"The device is a second display of this Mac. The keyboard and mouse are not sent to it." = "기기는 이 Mac의 두 번째 모니터입니다. 키보드와 마우스는 보내지 않습니다.";
+"Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac." = "키보드와 마우스: 커서가 가장자리를 넘어 기기로 이동합니다. 모니터: 기기가 이 Mac의 두 번째 모니터를 표시합니다.";
 "Monitor on" = "모니터 켜짐";
 "Turn the other monitor off first." = "먼저 다른 모니터를 끄십시오.";
 "The device is not connected through adb." = "기기가 adb로 연결되어 있지 않습니다.";

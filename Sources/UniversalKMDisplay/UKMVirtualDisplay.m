@@ -30,6 +30,7 @@
 
 /// The most a mode may have on a side: the display is created for this so a rotation never exceeds it.
 static const unsigned int kMaxSide = 2560;
+static const unsigned int kVendorID = 0x756B;
 static const double kRefreshRate = 60;
 
 @implementation UKMVirtualDisplay {
@@ -48,11 +49,11 @@ static const double kRefreshRate = 60;
     }
     CGVirtualDisplayDescriptor *descriptor = [[descriptorClass alloc] init];
     descriptor.name = name;
-    descriptor.maxPixelsWide = MAX(width, kMaxSide);
-    descriptor.maxPixelsHigh = MAX(height, kMaxSide);
+    descriptor.maxPixelsWide = MAX(width * 2, kMaxSide * 2);
+    descriptor.maxPixelsHigh = MAX(height * 2, kMaxSide * 2);
     // About 110 pixels per inch.
     descriptor.sizeInMillimeters = CGSizeMake(width / 110.0 * 25.4, height / 110.0 * 25.4);
-    descriptor.vendorID = 0x756B;
+    descriptor.vendorID = kVendorID;
     descriptor.productID = 0x4B44;
     descriptor.serialNum = serial;
     [descriptor setDispatchQueue:dispatch_get_main_queue()];
@@ -66,6 +67,10 @@ static const double kRefreshRate = 60;
     return result;
 }
 
++ (BOOL)isVirtualDisplayID:(CGDirectDisplayID)displayID {
+    return CGDisplayVendorNumber(displayID) == kVendorID;
+}
+
 - (CGDirectDisplayID)displayID {
     return _display ? _display.displayID : 0;
 }
@@ -73,7 +78,7 @@ static const double kRefreshRate = 60;
 - (BOOL)setWidth:(unsigned int)width height:(unsigned int)height {
     if (!_display) return NO;
     CGVirtualDisplaySettings *settings = [[NSClassFromString(@"CGVirtualDisplaySettings") alloc] init];
-    settings.hiDPI = 0; // points = pixels (design D1)
+    settings.hiDPI = 1; // twice the pixels of the points (design D9)
     settings.modes = @[ [[NSClassFromString(@"CGVirtualDisplayMode") alloc] initWithWidth:width
                                                                                    height:height
                                                                               refreshRate:kRefreshRate] ];

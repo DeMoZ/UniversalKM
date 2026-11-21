@@ -245,10 +245,10 @@
 "on battery" = "a batteria";
 "Battery of the device: %@, %@" = "Batteria del dispositivo: %@, %@";
 "%@: battery %@" = "%@: batteria %@";
-"Use as Monitor" = "Usa come monitor";
-"Turn Monitor Off" = "Spegni il monitor";
-"Stop using “%@” as a monitor" = "Non usare più “%@” come monitor";
-"Use “%@” as a second monitor of this Mac" = "Usa “%@” come secondo monitor di questo Mac";
+"Use as" = "Usa come";
+"Monitor" = "Monitor";
+"The device is a second display of this Mac. The keyboard and mouse are not sent to it." = "Il dispositivo è un secondo monitor di questo Mac. Tastiera e mouse non gli vengono inviati.";
+"Keyboard and mouse: the cursor passes through the edge to the device. Monitor: the device shows a second display of this Mac." = "Tastiera e mouse: il cursore passa dal bordo al dispositivo. Monitor: il dispositivo mostra un secondo monitor di questo Mac.";
 "Monitor on" = "Monitor attivo";
 "Turn the other monitor off first." = "Spegni prima l’altro monitor.";
 "The device is not connected through adb." = "Il dispositivo non è collegato tramite adb.";
