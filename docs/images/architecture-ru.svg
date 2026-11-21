@@ -65,6 +65,7 @@
     <rect x="776" y="90" width="34" height="62" rx="6" fill="none" stroke="#2f9e5a" stroke-width="3"/>
     <text x="824" y="118" font-size="15" font-weight="600" fill="#2b3245">Android</text>
     <text x="824" y="138" font-size="12" fill="#5a6378">телефон, планшет</text>
+    <text x="824" y="158" font-size="12" font-weight="600" fill="#2f9e5a">или второй монитор</text>
   </g>
   <g>
     <rect x="756" y="305" width="182" height="90" rx="14" fill="#ffffff" stroke="#c7cddb"/>
