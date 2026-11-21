@@ -47,6 +47,9 @@ final class SecondDisplaySession {
     private var reconfiguring = false
     private var retargetAgain = false
     private let host: Host
+    /// Touches of the device as the mouse on the display (design D6).
+    private let injector = DisplayTouchInjector()
+    private var gesture = SecondDisplay.Gesture(displayWidth: 1, displayHeight: 1)
     private var task: Task<Void, Never>?
     private let log = Logger(subsystem: "com.universalkm.UniversalKM", category: "display")
 
@@ -146,6 +149,7 @@ final class SecondDisplaySession {
         let encoder = try makeEncoder(width: size.width, height: size.height)
         self.encoder = encoder
         currentSize = size
+        gesture = SecondDisplay.Gesture(displayWidth: size.width, displayHeight: size.height)
         let capture = DisplayCapture(displayID: virtual.displayID, width: size.width, height: size.height,
                                      onFrame: { [weak encoder] buffer, pts in encoder?.encode(buffer, pts: pts) },
                                      onStop: { [weak self] error in
@@ -425,8 +429,11 @@ final class SecondDisplaySession {
             log.info("display: device decode \(decodeUs) µs, present \(presentUs) µs")
         case let .rotated(width, height):
             rotated(toDeviceWidth: width, height)
+        case let .touch(touch):
+            guard let virtual = display else { return }
+            injector.inject(gesture.feed(touch), origin: CGDisplayBounds(virtual.displayID).origin)
         default:
-            break // touches: add-android-second-display task 5.1
+            break
         }
     }
 
@@ -435,6 +442,7 @@ final class SecondDisplaySession {
     private func finish(_ error: Error?) {
         guard !stopped else { return }
         stopped = true
+        injector.finish()
         task?.cancel()
         idleTimer?.invalidate()
         idleTimer = nil
