@@ -40,6 +40,7 @@
 | 📋 **Clipboard shared with Android** | Text copied on the Mac pastes on the Android device, and back. Works over adb (USB debugging or Wi‑Fi). |
 | 📂 **Android files** | A window with the phone's storage: drag photos and files to Finder and back, over Wi‑Fi or a cable with USB debugging. |
 | 🖼️ **iPhone photos** | A window with the photos and videos of an iPhone on a cable: copy them to the Mac, delete them from the iPhone. |
+| 🖥️ **Android as a second monitor** | Switch an Android phone or tablet from “Keyboard and mouse” to “Monitor” and it becomes a second display of the Mac, like Sidecar for iPad: drag windows onto it, touch it like a mouse. It stands where the device is in your layout and turns with it. Needs adb (cable or Wi‑Fi) and the Screen Recording permission. [More](#android-as-a-second-display) |
 | 🎥 **Motion camera** | An Android phone or tablet records video while something moves in front of it and keeps the clips; it works without the Mac. Watch the clips or the live picture from the Mac. |
 | 📡 **iPhone: ChameleonUltra** | A ChameleonUltra (or a similar Bluetooth board) acts as a Bluetooth keyboard and mouse for any device, an iPhone too. |
 | 🔄 **Updates** | Updates install from the app (Sparkle, signed appcast). macOS permissions survive updates. |
@@ -306,6 +307,7 @@ scripts/run.sh                # build, relaunch and follow the log
 scripts/run.sh --ble-demo     # demo: a square drawn with the pointer, a click and "hello" on each device
 scripts/build-android-helper.sh   # rebuild Resources/ukm-clipboard.jar (needs the Android SDK)
 scripts/fetch-scrcpy-server.sh    # download Resources/scrcpy-server.jar (scrcpy v5.0.1, SHA-256 checked)
+scripts/build-display-apk.sh      # rebuild Resources/ukm-display.apk, the second-monitor receiver (needs the Android SDK)
 ```
 
 **Signing.** macOS ties the Accessibility and Input Monitoring permissions to the signing certificate. The script picks a certificate in this order:
@@ -321,6 +323,7 @@ With a stable certificate, permissions survive rebuilds and updates; with ad-hoc
 - A self-signed certificate does not remove the macOS warning on first launch. Only an Apple Developer ID certificate with notarization does.
 
 - **The motion camera app** (`Resources/ukm-motion.apk`) is built and committed; `build-app.sh` only copies it, so building the Mac app needs no Android SDK. After changing `android/motion-camera`, raise `versionCode` in `android/motion-camera/version.properties` and run `scripts/build-motion-apk.sh` (core tests, then the APK; `--test` runs only the tests). It needs the Android SDK (platform 34, build-tools), a JDK and the signing key `~/.config/universalkm/motion-release.keystore` with its password in `motion-release.pass` next to it. **Back up both files**: Android installs an update over the old app only with the same key; with a new key the app has to be uninstalled on each device first (the clips stay).
+- **The second-monitor receiver** (`Resources/ukm-display.apk`) is built and committed like the motion camera app: `build-app.sh` only copies it. After changing `android/display`, raise `versionCode` in `android/display/version.properties` and run `scripts/build-display-apk.sh` (`--test` runs only the protocol checks, no SDK needed). It is signed with the same key as the motion camera app (`motion-release.keystore`, alias `ukm-motion`), so the same backup covers both. The Mac updates the receiver on the device by itself when its `versionCode` is older.
 
 ## Updates and releases
 
