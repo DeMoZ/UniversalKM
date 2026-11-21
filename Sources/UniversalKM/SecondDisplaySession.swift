@@ -110,6 +110,7 @@ final class SecondDisplaySession {
             throw Failure(message: String(localized: "The receiver did not start on the device. Unlock it and try again."))
         }
         phase(String(localized: "Connecting…"))
+        await removeStaleForwards()
         let forward = await adbRun(["-s", transport, "forward", "tcp:0", SecondDisplay.socket])
         guard forward.ok, let port = Int(forward.output.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             throw Failure(message: forward.error.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -315,6 +316,16 @@ final class SecondDisplaySession {
         guard result.ok, text.contains("Success") else {
             let line = text.split(whereSeparator: \.isNewline).last { $0.contains("Failure") || $0.contains("error") }
             throw Failure(message: String(localized: "The install on the device failed: \(line.map(String.init) ?? text)"))
+        }
+    }
+
+    /// Forwards left by an earlier run that was cut short (the app was quit or killed before it could clean up).
+    private func removeStaleForwards() async {
+        let list = await adbRun(["-s", transport, "forward", "--list"])
+        for line in list.output.split(whereSeparator: \.isNewline) {
+            let parts = line.split(separator: " ")
+            guard parts.count == 3, parts[0] == Substring(transport), parts[2] == Substring(SecondDisplay.socket) else { continue }
+            _ = await adbRun(["-s", transport, "forward", "--remove", String(parts[1])])
         }
     }
 
